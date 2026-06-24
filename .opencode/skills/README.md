@@ -3,11 +3,12 @@
 이 폴더는 ML 개발자가 사용자가 지정한 모델 프로젝트 폴더를 대상으로 챗봇을 통해 모델 개발과 MLflow 기록 확인을 진행할 수 있도록 돕는 OpenCode skill을 포함합니다.
 
 ```text
-Step 1  agent-mlflow-skill-project-analyze
-Step 2  agent-mlflow-skill-environment-check
-Step 3  agent-mlflow-skill-train-model
-Step 4  agent-mlflow-skill-inference-test
-Step 5  agent-mlflow-skill-mlflow-verify
+Step 1  환경 검증
+Step 2  샘플 규격 확인/보충
+Step 3  환경 변수 입력/export
+Step 4  패키지 설치
+Step 5  로컬 학습 모델 실행
+Step 6  산출물 확인
 ```
 
 ## Goal
@@ -15,15 +16,15 @@ Step 5  agent-mlflow-skill-mlflow-verify
 사용자가 직접 명령을 많이 알지 못해도 다음 흐름을 챗봇으로 점검할 수 있게 한다.
 
 ```text
-프로젝트 구조 분석
-실행 환경 검증
-로컬 학습 실행
-모델 생성 확인
-추론 테스트
-MLflow Run 생성 확인
+환경 검증
+샘플 규격 확인/보충
+환경 변수 입력/export
+패키지 설치
+로컬 학습 모델 실행
+산출물 확인
 ```
 
-상세 설명은 [MLFLOW_5_STEP_GUIDE.md](./MLFLOW_5_STEP_GUIDE.md)를 참고한다.
+상세 설명은 [MLFLOW_5_STEP_GUIDE.md](./MLFLOW_5_STEP_GUIDE.md)를 참고한다. 파일명은 호환을 위해 유지하지만 내용은 6단계 TOD 기준이다.
 아키텍처는 [MLFLOW_5_STEP_ARCHITECTURE.md](./MLFLOW_5_STEP_ARCHITECTURE.md)를 참고한다.
 
 ## Skill Boundaries

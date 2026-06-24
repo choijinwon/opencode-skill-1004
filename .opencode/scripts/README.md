@@ -1,6 +1,6 @@
 # OpenCode MLflow Scripts
 
-이 폴더는 `.opencode/skills`의 MLflow 5단계 흐름을 보조하는 로컬 스크립트를 포함한다.
+이 폴더는 `.opencode/skills`의 MLflow 6단계 TOD 흐름을 보조하는 로컬 스크립트를 포함한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
 
@@ -14,14 +14,16 @@ Step 1  프로젝트 구조 분석
 Step 2  실행 환경 검증
         check_environment.py
 
-Step 3  로컬 학습 실행 및 모델 생성 확인
+Step 3  환경 변수 입력/export
+
+Step 4  패키지 설치
+
+Step 5  로컬 학습 실행 및 모델 생성 확인
         run_training.py
         test_local_sample.py
 
-Step 4  추론 테스트
+Step 6  산출물 확인
         test_inference.py
-
-Step 5  MLflow Run/Model 기록 확인
         verify_mlflow.py
 ```
 
@@ -38,7 +40,7 @@ python .opencode/scripts/validate_mlflow_project.py --project <model-project-fol
 
 ### bootstrap_sample_project.py
 
-모델 프로젝트 폴더에 실행 가능한 모델이 없을 때, 샘플 4개 중 하나를 선택해 워크스페이스 아래로 샘플 폴더째 복사한다.
+모델 프로젝트 폴더에 실행 가능한 모델이 없을 때, 샘플 3개 중 하나를 선택해 워크스페이스 아래로 샘플 폴더째 복사한다.
 
 선택 가능한 샘플은 원본에 `aiu_custom/`, `local_serving/`, `save_model/` 기본 폴더가 있어야 한다.
 
@@ -76,7 +78,11 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 
 ```text
 1. 환경 검증
-2. 환경 변수 설정
+2. 샘플 규격 확인/보충
+3. 환경 변수 입력/export
+4. 패키지 설치
+5. 로컬 학습 모델 실행
+6. 산출물 확인
 ```
 
 기존 파일이 있을 때 덮어쓰기는 사용자가 명시적으로 요청한 경우에만 사용한다.

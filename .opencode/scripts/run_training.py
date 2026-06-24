@@ -266,8 +266,8 @@ def main():
 
     process_checklist = [
         EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
-        EnvVarStatus("2. 샘플 폴더 확인", checklist_status(model_found)),
-        EnvVarStatus("3. 환경 변수 입력", "done" if not missing_env else "needs_input"),
+        EnvVarStatus("2. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
+        EnvVarStatus("3. 환경 변수 입력/export", "done" if not missing_env else "needs_input"),
         EnvVarStatus("4. 패키지 설치", "manual_check"),
         EnvVarStatus("5. 로컬 학습 모델 실행", "done" if args.execute and return_code == 0 else "pending"),
         EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),

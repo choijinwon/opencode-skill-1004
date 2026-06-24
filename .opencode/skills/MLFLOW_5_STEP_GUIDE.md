@@ -1,6 +1,6 @@
-# MLflow 5단계 Skill 설명서
+# MLflow 6단계 TOD Skill 설명서
 
-이 문서는 `.opencode/skills`의 MLflow 관련 OpenCode skill 5개를 설명한다.
+이 문서는 `.opencode/skills`의 MLflow 관련 OpenCode skill과 6단계 TOD 흐름을 설명한다.
 
 기준 대상은 **사용자가 지정한 모델 프로젝트 폴더**다.  
 즉, ML 개발자가 실제로 작업 중인 모델 코드 루트 폴더를 의미한다.
@@ -18,11 +18,12 @@
 ML 개발자가 챗봇을 통해 다음 작업을 순서대로 수행할 수 있게 한다.
 
 ```text
-1. 프로젝트 구조 분석
-2. 실행 환경 검증
-3. 로컬 학습 실행 및 모델 생성 확인
-4. 추론 테스트
-5. MLflow Run/Model 기록 확인
+1. 환경 검증
+2. 샘플 규격 확인/보충
+3. 환경 변수 입력/export
+4. 패키지 설치
+5. 로컬 학습 모델 실행
+6. 산출물 확인
 ```
 
 ## 핵심 분기
@@ -49,6 +50,7 @@ ML 개발자가 챗봇을 통해 다음 작업을 순서대로 수행할 수 있
 3. 모델 있음이면 기존 모델 진행 가이드
 4. 모델 없음이면 sklearn/pytorch/tensorflow 선택 가이드
 5. 사용자가 선택하면 샘플 폴더째 복사
+6. TOD Guide 6단계로 진행
 ```
 
 사용자 선택 샘플은 아래 3개만 사용한다.
@@ -224,7 +226,13 @@ required_dirs:
   local_serving: set | missing
   save_model: set | missing
 input_example_path: input_example.json | null
-next_action: Step 2 환경 검증
+next_action:
+  1. 환경 검증
+  2. 샘플 규격 확인/보충
+  3. 환경 변수 입력/export
+  4. 패키지 설치
+  5. 로컬 학습 모델 실행
+  6. 산출물 확인
 ```
 
 ### 모델 없음 판단
@@ -250,7 +258,13 @@ selected_sample: sklearn
 sample_source_path: .opencode/samples/sklearn_sample
 target_project_path: <model-project-folder>/sklearn_sample
 copy_mode: folder
-next_action: Step 2 환경 검증 후 Step 3 모델 생성
+next_action:
+  1. 환경 검증
+  2. 샘플 규격 확인/보충
+  3. 환경 변수 입력/export
+  4. 패키지 설치
+  5. 로컬 학습 모델 실행
+  6. 산출물 확인
 ```
 
 ### Step 1 출력
@@ -579,7 +593,7 @@ Step 5  MLflow Run/Model 기록 확인
 
 ## 최종 확인 질문
 
-5단계가 끝나면 아래 질문에 답할 수 있어야 한다.
+6단계 TOD가 끝나면 아래 질문에 답할 수 있어야 한다.
 
 ```text
 이 모델 프로젝트 폴더는 어떤 ML 프로젝트인가?

@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-project-analyze
-description: Use when the user asks "분석해줘", "MLflow 5단계", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/save_model.
+description: Use when the user asks "분석해줘", "MLflow 6단계 TOD", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/save_model.
 license: MIT
 compatibility: opencode
 metadata:
@@ -17,7 +17,7 @@ metadata:
 - 학습, 추론, MLflow 등록 전에 어떤 파일이 있는지 확인해야 할 때
 - 프로젝트가 sklearn, PyTorch, TensorFlow, HuggingFace, custom pyfunc 중 무엇에 가까운지 판단해야 할 때
 - `aiu_custom`, `local_serving`, `save_model`, `runtest.py`, `run_model.py`, `input_example.json` 같은 구성 요소가 필요한지 확인해야 할 때
-- 사용자가 지정한 모델 프로젝트 폴더에 모델 프로젝트가 없어서 `.opencode/samples` 아래 샘플 4개 중 하나를 선택해 폴더째 복사해야 할 때
+- 사용자가 지정한 모델 프로젝트 폴더에 모델 프로젝트가 없어서 `.opencode/samples` 아래 샘플 3개 중 하나를 선택해 폴더째 복사해야 할 때
 
 ## Guidance Checks
 
@@ -48,7 +48,7 @@ metadata:
 ```text
 이 워크스페이스 분석해줘
 현재 프로젝트 봐줘
-MLflow 5단계로 봐줘
+MLflow 6단계 TOD로 봐줘
 모델 있으면 진행하고 없으면 샘플로 시작해줘
 ```
 
@@ -117,7 +117,13 @@ train_entrypoint
 inference_entrypoint
 model_artifact_path
 input_example_path
-next_action: 발견된 프로젝트로 Step 2 환경 검증 후 Step 3 실행
+next_action:
+  1. 환경 검증
+  2. 샘플 규격 확인/보충
+  3. 환경 변수 입력/export
+  4. 패키지 설치
+  5. 로컬 학습 모델 실행
+  6. 산출물 확인
 ```
 
 모델이 발견된 경우 사용자에게 보여줄 가이드는 아래 방향으로 작성한다.
@@ -294,7 +300,11 @@ copy_mode: folder
 required_dirs: aiu_custom, local_serving, save_model
 next_action:
   1. 환경 검증
-  2. 환경 변수 설정
+  2. 샘플 규격 확인/보충
+  3. 환경 변수 입력/export
+  4. 패키지 설치
+  5. 로컬 학습 모델 실행
+  6. 산출물 확인
 ```
 
 ## Output
@@ -302,7 +312,7 @@ next_action:
 - 선택된 프로젝트 경로
 - 모델 프로젝트 발견 여부
 - 모델이 있을 때 발견된 학습/추론/model artifact 경로
-- 모델이 없을 때 사용자가 선택할 샘플 4개
+- 모델이 없을 때 사용자가 선택할 샘플 3개
 - 선택된 샘플 원본 경로와 폴더 복사 대상 경로
 - 발견된 핵심 파일 목록
 - 누락되었거나 확인 필요한 파일 목록

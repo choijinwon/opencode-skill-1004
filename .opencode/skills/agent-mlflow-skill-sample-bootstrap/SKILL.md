@@ -202,12 +202,11 @@ copy_mode: folder
 ignored_generated_files
 next_action:
   1. 환경 검증
-  2. 샘플 폴더 이동
-  3. 환경 변수 입력
-  4. 환경 변수 export
-  5. 패키지 설치
-  6. 로컬 학습 모델 실행
-  7. 산출물 확인
+  2. 샘플 규격 확인/보충
+  3. 환경 변수 입력/export
+  4. 패키지 설치
+  5. 로컬 학습 모델 실행
+  6. 산출물 확인
 ```
 
 샘플 폴더 복사 후 첫 번째 다음 단계는 반드시 환경 검증이다.
@@ -216,14 +215,16 @@ next_action:
 1. 환경 검증: python .opencode/scripts/check_environment.py --project <target_project_path>
 ```
 
-세 번째 다음 단계는 반드시 환경 변수 입력 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필요한 값을 사용자가 직접 입력하도록 안내하고, secret 값은 출력하지 않는다.
+두 번째 다음 단계는 반드시 샘플 규격 확인/보충이다. 모델이 이미 있으면 `--scaffold-existing`으로 부족한 골격만 복사하고 기존 모델 파일은 덮어쓰지 않는다.
+
+세 번째 다음 단계는 반드시 환경 변수 입력/export 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필요한 값을 사용자가 직접 입력하도록 안내하고, 실행 시 `MLFLOW_*` 환경변수로 export된다는 점을 함께 안내한다. secret 값은 출력하지 않는다.
 
 ```text
-3. 환경 변수 입력: run_model.py 또는 runtest.py의 설정 블록에 MLflow/AI Studio 설정값 직접 입력
-4. 환경 변수 export: run_model.py 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export
-5. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
-6. 로컬 학습 모델 실행: python run_model.py 또는 python runtest.py
-7. 산출물 확인: ai_studio/model_info.json 또는 MLflow artifact 생성 확인
+2. 샘플 규격 확인/보충: aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json 확인
+3. 환경 변수 입력/export: run_model.py 또는 runtest.py 설정 블록 값 직접 입력 및 실행 시 MLFLOW_* export
+4. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
+5. 로컬 학습 모델 실행: python run_model.py 또는 python runtest.py
+6. 산출물 확인: ai_studio/model_info.json 또는 MLflow artifact 생성 확인
 ```
 
 ## Safety
