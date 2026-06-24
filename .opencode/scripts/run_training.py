@@ -23,6 +23,47 @@ AI_STUDIO_ENV_KEYS = [
 ]
 MODEL_SETTING_FILES = ["runtest.py", "run_model.py"]
 
+SETTING_ALIASES = {
+    "mlflow_tracking_url": {
+        "mlflow_tracking_url",
+        "mflow_tracking_url",
+        "tracking_url",
+        "mlflow_tracking_uri",
+        "MLFLOW_TRACKING_URI",
+    },
+    "mlflow_tracking_username": {
+        "mlflow_tracking_username",
+        "tracking_username",
+        "mlflow_username",
+        "username",
+        "MLFLOW_TRACKING_USERNAME",
+    },
+    "mlflow_tracking_password": {
+        "mlflow_tracking_password",
+        "tracking_password",
+        "mlflow_password",
+        "password",
+        "MLFLOW_TRACKING_PASSWORD",
+    },
+    "mlflow_experiment_name": {
+        "mlflow_experiment_name",
+        "experiment_name",
+        "MLFLOW_EXPERIMENT_NAME",
+    },
+    "mlflow_register_model_name": {
+        "mlflow_register_model_name",
+        "register_model_name",
+        "registered_model_name",
+        "MLFLOW_REGISTER_MODEL_NAME",
+    },
+}
+
+ALIAS_TO_SETTING = {
+    alias: setting_key
+    for setting_key, aliases in SETTING_ALIASES.items()
+    for alias in aliases
+}
+
 
 @dataclass
 class TrainingReport:
@@ -92,6 +133,28 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def literal_string(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def target_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Subscript):
+        return literal_string(node.slice)
+    return None
+
+
+def record_setting(values: dict[str, str], key: str | None, value: str | None) -> None:
+    if key is None or value is None:
+        return
+    setting_key = ALIAS_TO_SETTING.get(key)
+    if setting_key and value:
+        values[setting_key] = value
+
+
 def parse_python_string_assignments(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     if not path.exists():
@@ -100,14 +163,16 @@ def parse_python_string_assignments(path: Path) -> dict[str, str]:
         tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
     except SyntaxError:
         return values
-    for node in tree.body:
-        if not isinstance(node, ast.Assign):
-            continue
-        if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name):
-                values[target.id] = node.value.value
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            value = literal_string(node.value)
+            for target in node.targets:
+                record_setting(values, target_name(target), value)
+        elif isinstance(node, ast.AnnAssign):
+            record_setting(values, target_name(node.target), literal_string(node.value))
+        elif isinstance(node, ast.Dict):
+            for key_node, value_node in zip(node.keys, node.values):
+                record_setting(values, literal_string(key_node), literal_string(value_node))
     return values
 
 
