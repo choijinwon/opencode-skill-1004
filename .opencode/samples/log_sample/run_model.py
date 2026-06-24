@@ -1,7 +1,29 @@
 import os
+import io
 import json
+import sys
+import logging
 from pathlib import Path
 
+
+def configure_utf8_stdio() -> None:
+    if os.name != "nt":
+        return
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name)
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+        elif hasattr(stream, "buffer"):
+            setattr(sys, stream_name, io.TextIOWrapper(stream.buffer, encoding="utf-8"))
+
+
+def quiet_mlflow_logging() -> None:
+    for logger_name in ("mlflow", "mlflow.tracking", "mlflow.tracking.fluent"):
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+
+configure_utf8_stdio()
+quiet_mlflow_logging()
 
 PROJECT_DIR = Path(__file__).resolve().parent
 AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
@@ -76,6 +98,7 @@ def log_mlflow_outputs(summary_path: Path) -> None:
         print(f"MLflow import failed; local ai_studio outputs were created. reason={exc}")
         return
 
+    quiet_mlflow_logging()
     try:
         mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
         mlflow.set_experiment(mlflow_experiment_name)
