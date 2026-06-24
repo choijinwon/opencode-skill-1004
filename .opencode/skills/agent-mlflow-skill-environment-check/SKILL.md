@@ -22,6 +22,8 @@ metadata:
 ## Guidance Checks
 
 - Python 실행 파일과 버전을 확인한다.
+  - 기대 버전: Python 3.11.9
+  - 3.11.9가 아니면 `version_mismatch:python`으로 분류한다.
 - virtualenv 또는 conda 환경 사용 여부를 확인한다.
 - dependency 파일을 확인한다.
   - `requirements.txt`
@@ -47,6 +49,9 @@ metadata:
 ## Output
 
 - Python 환경 요약
+  - 현재 Python version
+  - 기대 Python version: 3.11.9
+  - Python version status: `set` 또는 `version_mismatch`
 - dependency 파일 존재 여부
 - 설치된 핵심 dependency와 version
 - MLflow 설치/version 상태
@@ -60,6 +65,7 @@ metadata:
 
 - `missing_dependency`: 필요한 패키지가 없음
 - `version_mismatch`: 설치 버전이 기대 범위와 다름
+  - Python은 정확히 3.11.9를 기대한다.
 - `missing_env`: 필수 환경 변수가 없음
 - `config_error`: 설정 파일은 있으나 읽거나 해석할 수 없음
 - `tracking_unreachable`: MLflow tracking server에 접근할 수 없음

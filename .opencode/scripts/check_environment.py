@@ -30,6 +30,8 @@ CORE_PACKAGES = [
     "transformers",
 ]
 
+EXPECTED_PYTHON_VERSION = "3.11.9"
+
 
 @dataclass
 class PackageStatus:
@@ -56,6 +58,8 @@ class EnvironmentReport:
     os: str
     python_executable: str
     python_version: str
+    expected_python_version: str
+    python_version_status: str
     virtual_env: str
     dependency_files: list[str]
     packages: list[PackageStatus] = field(default_factory=list)
@@ -115,6 +119,7 @@ def ai_studio_env_status(project: Path) -> EnvFileStatus:
 
 
 def build_report(project: Path) -> EnvironmentReport:
+    python_version = platform.python_version()
     deps = dependency_files(project)
     packages = []
     for package in CORE_PACKAGES:
@@ -125,7 +130,11 @@ def build_report(project: Path) -> EnvironmentReport:
     ai_env = ai_studio_env_status(project)
     failures: list[str] = []
     next_steps: list[str] = []
+    python_version_status = "set" if python_version == EXPECTED_PYTHON_VERSION else "version_mismatch"
 
+    if python_version_status == "version_mismatch":
+        failures.append(f"version_mismatch:python expected {EXPECTED_PYTHON_VERSION} got {python_version}")
+        next_steps.append(f"Use Python {EXPECTED_PYTHON_VERSION} for this MLflow workflow.")
     if not deps:
         failures.append("missing_dependency_file")
         next_steps.append("Add or confirm requirements.txt, pyproject.toml, or environment.yml.")
@@ -146,7 +155,9 @@ def build_report(project: Path) -> EnvironmentReport:
         project_path=str(project),
         os=f"{platform.system()} {platform.release()}",
         python_executable=sys.executable,
-        python_version=platform.python_version(),
+        python_version=python_version,
+        expected_python_version=EXPECTED_PYTHON_VERSION,
+        python_version_status=python_version_status,
         virtual_env=virtual_env,
         dependency_files=deps,
         packages=packages,
@@ -161,6 +172,7 @@ def print_text(report: EnvironmentReport):
     print(f"Project: {report.project_path}")
     print(f"OS: {report.os}")
     print(f"Python: {report.python_version} ({report.python_executable})")
+    print(f"Expected Python: {report.expected_python_version} ({report.python_version_status})")
     print(f"Virtual env: {report.virtual_env}")
     print(f"Dependency files: {', '.join(report.dependency_files) if report.dependency_files else 'missing'}")
     print("\nPackages:")

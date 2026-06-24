@@ -31,15 +31,14 @@ def run(cmd, cwd: Path):
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def interpreter_version(python_bin: Path) -> tuple[int, int]:
+def interpreter_version(python_bin: Path) -> str:
     result = subprocess.run(
-        [str(python_bin), "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+        [str(python_bin), "-c", "import platform; print(platform.python_version())"],
         check=True,
         capture_output=True,
         text=True,
     )
-    major, minor = result.stdout.strip().split(".")
-    return int(major), int(minor)
+    return result.stdout.strip()
 
 
 def ensure_venv(sample_dir: Path, rebuild: bool, base_python: Path) -> Path:
@@ -126,13 +125,11 @@ def main():
     if not base_python.exists():
         raise FileNotFoundError(f"python interpreter not found: {base_python}")
 
-    major, minor = interpreter_version(base_python)
-    # kserve==0.15.0 does not currently support Python 3.13+. Fail early with a
-    # clear message instead of producing a long pip resolver error.
-    if (major, minor) >= (3, 13):
+    version = interpreter_version(base_python)
+    if version != "3.11.9":
         raise RuntimeError(
-            f"python {major}.{minor} is not supported for this sample set. "
-            "Use Python 3.9 to 3.12 with --python."
+            f"python {version} is not supported for this sample set. "
+            "Use Python 3.11.9 with --python."
         )
 
     targets = DEFAULT_SAMPLES if args.sample == "all" else [args.sample]
