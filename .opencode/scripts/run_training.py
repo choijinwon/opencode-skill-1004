@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLES_DIR = ROOT / "samples"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
-ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "scripts/train.py"]
+SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
+ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "main.py", "app.py", "scripts/train.py"]
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "save_model"]
 ARTIFACT_DIRS = ["save_model", "model", "artifacts", "saved_model"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags"}
@@ -92,17 +93,46 @@ def has_model_project(project: Path) -> bool:
     markers = ["runtest.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
     if any((project / name).exists() for name in markers):
         return True
+    if find_entrypoint_candidates(project):
+        return True
     if any((project / name).exists() for name in ARTIFACT_DIRS):
         return True
     return any(path.suffix in ARTIFACT_SUFFIXES for path in project.glob("*") if path.is_file())
 
 
+def is_sample_project(project: Path) -> bool:
+    return project.name in SAMPLE_PROJECT_NAMES
+
+
 def find_entrypoint(project: Path) -> Path | None:
+    candidates = find_entrypoint_candidates(project)
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def find_entrypoint_candidates(project: Path) -> list[Path]:
+    found = []
     for name in ENTRYPOINTS:
         candidate = project / name
-        if candidate.exists():
-            return candidate
-    return None
+        if candidate.exists() and candidate.is_file():
+            found.append(candidate)
+    found.extend(sorted(path for path in project.glob("*.py") if path.is_file()))
+    return sorted(set(found))
+
+
+def resolve_entrypoint(project: Path, entrypoint_name: str | None) -> tuple[Path | None, list[Path], str | None]:
+    candidates = find_entrypoint_candidates(project)
+    if entrypoint_name:
+        candidate = (project / entrypoint_name).resolve()
+        try:
+            candidate.relative_to(project)
+        except ValueError:
+            return None, candidates, "entrypoint_outside_project"
+        if not candidate.exists() or not candidate.is_file():
+            return None, candidates, f"entrypoint_not_found:{entrypoint_name}"
+        return candidate, candidates, None
+    return find_entrypoint(project), candidates, None
 
 
 def build_command(python_bin: str, entrypoint: Path, prepare_only: bool) -> list[str]:
@@ -193,7 +223,11 @@ def parse_python_string_assignments(path: Path) -> dict[str, str]:
     return values
 
 
-def find_model_settings(project: Path) -> dict[str, str]:
+def find_model_settings(project: Path, entrypoint: Path | None = None) -> dict[str, str]:
+    if entrypoint is not None:
+        values = parse_python_string_assignments(entrypoint)
+        if values:
+            return values
     for name in MODEL_SETTING_FILES:
         path = project / name
         if path.exists():
@@ -201,12 +235,12 @@ def find_model_settings(project: Path) -> dict[str, str]:
     return {}
 
 
-def missing_ai_studio_env(project: Path) -> list[str]:
+def missing_ai_studio_env(project: Path, entrypoint: Path | None = None) -> list[str]:
     path = project / "ai_studio.env"
-    values = find_model_settings(project) or parse_env_file(path)
+    values = find_model_settings(project, entrypoint) or parse_env_file(path)
     missing = []
     if not values:
-        missing.append("runtest.py_or_run_model.py_settings")
+        missing.append("entrypoint_or_ai_studio_env_settings")
     for key in AI_STUDIO_ENV_KEYS:
         if key == "mlflow_tracking_url":
             continue
@@ -229,6 +263,7 @@ def main():
     parser.add_argument("--project", default=".", help="user-specified model project folder")
     parser.add_argument("--python", default=sys.executable, help="Python interpreter to use")
     parser.add_argument("--execute", action="store_true", help="actually run the selected command")
+    parser.add_argument("--entrypoint", help="training/model creation file confirmed by the user, relative to --project")
     parser.add_argument("--force-sample", action="store_true", help="deprecated; use bootstrap_sample_project.py for sample folder copy")
     parser.add_argument("--prepare-only", action="store_true", help="prefer prepare-only mode when supported")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
@@ -249,12 +284,20 @@ def main():
         failures.append("sample_bootstrap_required: choose one of sklearn, pytorch, tensorflow and copy the sample folder first")
         next_steps.append("python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute")
 
-    entrypoint = find_entrypoint(work_path)
-    if entrypoint is None:
-        failures.append("missing_train_entrypoint")
-        cmd = []
-    else:
-        cmd = build_command(args.python, entrypoint, args.prepare_only)
+    entrypoint = None
+    entrypoint_candidates: list[Path] = []
+    cmd = []
+    if model_found:
+        entrypoint, entrypoint_candidates, entrypoint_error = resolve_entrypoint(work_path, args.entrypoint)
+        if entrypoint_error:
+            failures.append(entrypoint_error)
+        if entrypoint is None:
+            failures.append("missing_train_entrypoint")
+            next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요. 예: --entrypoint train.py")
+            if entrypoint_candidates:
+                next_steps.append("Entrypoint candidates: " + ", ".join(str(path.relative_to(work_path)) for path in entrypoint_candidates))
+        else:
+            cmd = build_command(args.python, entrypoint, args.prepare_only)
 
     return_code = None
     if args.execute and cmd:
@@ -268,20 +311,32 @@ def main():
     missing_dirs = missing_required_dirs(work_path)
     if missing_dirs:
         failures.extend(f"missing_required_dir:{name}" for name in missing_dirs)
-    missing_env = missing_ai_studio_env(work_path)
+    missing_env = missing_ai_studio_env(work_path, entrypoint)
     if missing_env:
         failures.extend(f"missing_env:{name}" for name in missing_env)
     if args.execute and not artifacts:
         failures.append("artifact_not_created")
 
-    process_checklist = [
-        EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
-        EnvVarStatus("2. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
-        EnvVarStatus("3. 환경 변수 입력/export", "done" if not missing_env else "needs_input"),
-        EnvVarStatus("4. 패키지 설치", "manual_check"),
-        EnvVarStatus("5. 로컬 학습 모델 실행", "done" if args.execute and return_code == 0 else "pending"),
-        EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),
-    ]
+    existing_model_flow = model_found and not is_sample_project(work_path)
+    if existing_model_flow:
+        process_checklist = [
+            EnvVarStatus("1. 실행 파일 확정", "done" if entrypoint else "needs_input"),
+            EnvVarStatus("2. 환경 검증", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("3. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
+            EnvVarStatus("4. 환경 변수 입력/export", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("5. 패키지 설치", "manual_check"),
+            EnvVarStatus("6. 로컬 학습 모델 실행", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("7. 산출물 확인", "done" if artifacts else "pending"),
+        ]
+    else:
+        process_checklist = [
+            EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("2. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
+            EnvVarStatus("3. 환경 변수 입력/export", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("4. 패키지 설치", "manual_check"),
+            EnvVarStatus("5. 로컬 학습 모델 실행", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),
+        ]
 
     report = TrainingReport(
         project_path=str(project),

@@ -271,31 +271,32 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
-def check_ai_studio_env(project: Path) -> Check:
+def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
     path = project / "ai_studio.env"
     values = parse_env_file(path)
     evidence = []
     missing = []
     if path.exists():
         evidence.append("ai_studio.env")
-    else:
-        missing.append("ai_studio.env")
+    evidence.extend(code_settings)
     for key in AI_STUDIO_ENV_KEYS:
-        if key not in values or values[key] == "":
+        found_in_env = key in values and values[key] != ""
+        found_in_code = any(key in item for item in code_settings)
+        if not found_in_env and not found_in_code:
             missing.append(key)
-        else:
+        elif found_in_env:
             evidence.append(f"{key}: set")
     if missing:
         return Check(
             "ai_studio.env required settings",
             "block",
-            "required ai_studio.env settings are missing or empty",
+            "required MLflow settings are missing or empty",
             [f"missing_or_empty: {', '.join(missing)}"] + evidence,
         )
     return Check(
         "ai_studio.env required settings",
         "pass",
-        "required ai_studio.env settings are available",
+        "required MLflow settings are available from entrypoint code or ai_studio.env",
         evidence,
     )
 
@@ -310,9 +311,8 @@ def find_first_existing(project: Path, names: list[str]) -> Path | None:
 
 def find_entrypoints(project: Path) -> list[Path]:
     found = [project / name for name in ENTRYPOINT_NAMES if (project / name).exists()]
-    if found:
-        return found
-    return [path for path in iter_files(project, max_depth=2) if path.suffix == ".py"]
+    found.extend(path for path in iter_files(project, max_depth=2) if path.suffix == ".py")
+    return sorted(set(found))
 
 
 def check_aiu_custom(project: Path, entrypoints: list[Path]) -> Check:
@@ -421,13 +421,37 @@ def sample_spec_missing(project: Path) -> list[str]:
     for name in SAMPLE_SPEC_FILES:
         if not (project / name).exists():
             missing.append(name)
-    if not any((project / name).exists() for name in ["runtest.py", "run_model.py", "train.py"]):
-        missing.append("run_model.py")
+    if not find_entrypoints(project):
+        missing.append("training entrypoint")
     if not ((project / "aiu_custom" / "predict.py").exists() or (project / "aiu_custom" / "model_wrapper.py").exists()):
         missing.append("aiu_custom/predict.py")
     if not (project / "local_serving" / "serve.py").exists():
         missing.append("local_serving/serve.py")
     return missing
+
+
+def check_entrypoint_confirmation(project: Path, entrypoints: list[Path]) -> Check:
+    evidence = [safe_relative(path, project) for path in entrypoints[:10]]
+    if not entrypoints:
+        return Check(
+            "entrypoint confirmation",
+            "warn",
+            "training/model creation entrypoint is not confirmed",
+            ["사용자에게 실제 사용하는 파일명을 요청하세요."],
+        )
+    if len(entrypoints) == 1:
+        return Check(
+            "entrypoint confirmation",
+            "pass",
+            "single entrypoint candidate found",
+            evidence,
+        )
+    return Check(
+        "entrypoint confirmation",
+        "warn",
+        "multiple entrypoint candidates found; user confirmation is required",
+        evidence + ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 확정하세요."],
+    )
 
 
 def check_sample_spec(project: Path, framework: str) -> Check:
@@ -559,6 +583,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             project_evidence + framework_evidence,
         )
     )
+    checks.append(check_entrypoint_confirmation(project, entrypoints))
     checks.append(check_required_dirs(project))
     checks.append(check_sample_spec(project, framework))
     checks.append(check_aiu_custom(project, entrypoints))
@@ -605,7 +630,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             ],
         )
     )
-    checks.append(check_ai_studio_env(project))
+    checks.append(check_ai_studio_env(project, code_settings))
 
     register_found, register_evidence = has_register_flow(entrypoints)
     checks.append(
@@ -659,6 +684,11 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         next_steps.append("Add or confirm mlflow dependency in the project environment.")
     if not artifacts:
         next_steps.append("Run training or provide a model artifact path.")
+    if not entrypoints:
+        next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.")
+    elif len(entrypoints) > 1:
+        next_steps.append("Entrypoint candidates: " + ", ".join(safe_relative(path, project) for path in entrypoints[:10]))
+        next_steps.append("여러 후보 중 실제 사용하는 실행 파일을 확정하세요.")
     missing_spec = sample_spec_missing(project)
     if missing_spec:
         sample_key = sample_key_for_framework(framework)

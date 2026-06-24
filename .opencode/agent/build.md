@@ -91,7 +91,19 @@ The first next action after folder copy must be environment validation. The seco
 
 ## Existing Model Flow
 
-If `model_found: true`, do not ask the user to choose a sample. Continue with the discovered model project path.
+If `model_found: true`, do not ask the user to choose a sample. Continue with the discovered model project path and use the model-found 7-step process:
+
+```text
+1. 실행 파일 확정
+2. 환경 검증
+3. 샘플 규격 확인/보충
+4. 환경 변수 입력/export
+5. 패키지 설치
+6. 로컬 학습 모델 실행
+7. 산출물 확인
+```
+
+The first Build step for an existing model is always confirming the actual training/model-creation entrypoint. Do not assume `run_model.py`. If candidates are ambiguous or missing, ask: `로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.`
 
 ## MLflow Tracking Guide
 

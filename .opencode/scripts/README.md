@@ -1,13 +1,13 @@
 # OpenCode MLflow Scripts
 
-이 폴더는 `.opencode/skills`의 MLflow 6단계 TOD 흐름을 보조하는 로컬 스크립트를 포함한다.
+이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 실행 파일 확정부터 시작하는 7단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
 
 ## Script Mapping
 
 ```text
-Step 1  프로젝트 구조 분석
+Step 1  프로젝트 구조 분석 / 실행 파일 확정
         validate_mlflow_project.py
         bootstrap_sample_project.py
 

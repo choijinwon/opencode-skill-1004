@@ -27,6 +27,7 @@ metadata:
 - Step 0에서 복사된 샘플 폴더를 실행 대상으로 사용한다.
 - 이 단계에서는 샘플 원본을 복사하지 않는다.
 - 학습 entrypoint 후보를 확인한다.
+- 기존 모델 프로젝트에서는 실행 전에 실제 사용하는 entrypoint를 먼저 확정한다.
   - `train.py`
   - `scripts/train.py`
   - `run_model.py`

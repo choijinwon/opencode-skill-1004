@@ -27,6 +27,11 @@ AI_STUDIO_ENV_KEYS = [
 ]
 
 MODEL_SETTING_FILES = ["runtest.py", "run_model.py"]
+ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "main.py", "app.py", "scripts/train.py"]
+SAMPLE_PROJECT_NAMES = {"sklearn_sample", "pytorch_sample", "tensorflow_sample"}
+MODEL_MARKERS = ["runtest.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
+ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
+ARTIFACT_DIRS = ["ai_studio", "save_model", "model", "artifacts", "saved_model"]
 
 SETTING_ALIASES = {
     "mlflow_tracking_url": {
@@ -148,6 +153,30 @@ def env_status(name: str) -> str:
 def dependency_files(project: Path) -> list[str]:
     names = ["requirements.txt", "pyproject.toml", "environment.yml", "environment.yaml"]
     return [name for name in names if (project / name).exists()]
+
+
+def has_model_project(project: Path) -> bool:
+    if any((project / name).exists() for name in MODEL_MARKERS):
+        return True
+    if find_entrypoint_candidates(project):
+        return True
+    if any((project / name).exists() for name in ARTIFACT_DIRS):
+        return True
+    return any(path.suffix in ARTIFACT_SUFFIXES for path in project.glob("*") if path.is_file())
+
+
+def is_sample_project(project: Path) -> bool:
+    return project.name in SAMPLE_PROJECT_NAMES
+
+
+def find_entrypoint_candidates(project: Path) -> list[Path]:
+    found = []
+    for name in ENTRYPOINTS:
+        candidate = project / name
+        if candidate.exists() and candidate.is_file():
+            found.append(candidate)
+    found.extend(sorted(path for path in project.glob("*.py") if path.is_file()))
+    return sorted(set(found))
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -289,18 +318,41 @@ def build_report(project: Path) -> EnvironmentReport:
     blocked_summary: list[str] = []
     failures: list[str] = []
     next_steps: list[str] = []
+    model_found = has_model_project(project)
+    entrypoint_candidates = find_entrypoint_candidates(project)
     setting_file = None
     if model_settings is not None:
         setting_file = Path(model_settings.path).name
-    entrypoint = setting_file or "run_model.py 또는 runtest.py"
-    tod_guide = [
-        "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
-        f"2. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json을 확인한다.",
-        f"3. 환경 변수 입력/export: {entrypoint}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-        "4. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
-        f"5. 로컬 학습 모델 실행: python {entrypoint}",
-        "6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
-    ]
+    entrypoint = setting_file
+    if entrypoint is None and len(entrypoint_candidates) == 1:
+        entrypoint = str(entrypoint_candidates[0].relative_to(project))
+    existing_model_flow = model_found and not is_sample_project(project)
+    if existing_model_flow:
+        entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
+        tod_guide = [
+            "1. 실행 파일 확정: run_model.py로 고정하지 말고 실제 로컬 학습/모델 생성 파일을 확정한다.",
+            "2. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
+            f"3. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json을 확인한다.",
+            f"4. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
+            "5. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
+            f"6. 로컬 학습 모델 실행: python {entrypoint_display}",
+            "7. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
+        ]
+        if entrypoint is None:
+            if entrypoint_candidates:
+                next_steps.append("Entrypoint candidates: " + ", ".join(str(path.relative_to(project)) for path in entrypoint_candidates))
+            next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.")
+            source_input_required = []
+    else:
+        entrypoint_display = setting_file or "run_model.py 또는 runtest.py"
+        tod_guide = [
+            "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
+            f"2. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json을 확인한다.",
+            f"3. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
+            "4. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
+            f"5. 로컬 학습 모델 실행: python {entrypoint_display}",
+            "6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
+        ]
     python_version_status = "set" if python_version == EXPECTED_PYTHON_VERSION else "version_mismatch"
 
     if python_version_status == "version_mismatch":
@@ -321,8 +373,11 @@ def build_report(project: Path) -> EnvironmentReport:
         next_steps.append(f"사용자가 직접 소스에 입력해야 하는 값: {required_names}.")
     setting_source = model_settings or ai_env
     if model_settings is None and not (project / "ai_studio.env").exists():
-        failures.append("missing_model_settings_file:runtest.py_or_run_model.py")
-        next_steps.append("Fill MLflow/AI Studio settings directly in runtest.py or run_model.py.")
+        failures.append("missing_model_settings_file:entrypoint_or_ai_studio_env")
+        if existing_model_flow and entrypoint is None:
+            next_steps.append("실행 파일 확정 후 해당 파일의 MLflow/AI Studio 설정 블록에 값을 입력하세요.")
+        else:
+            next_steps.append("Fill MLflow/AI Studio settings directly in the confirmed entrypoint file.")
     for item in setting_source.key_status:
         if item.status in {"missing", "empty"}:
             failures.append(f"missing_env:{item.name}")

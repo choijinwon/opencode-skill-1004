@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-project-analyze
-description: Use when the user asks "분석해줘", "MLflow 6단계 TOD", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/save_model.
+description: Use when the user asks "분석해줘", "MLflow 모델 프로세스", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/save_model.
 license: MIT
 compatibility: opencode
 metadata:
@@ -48,7 +48,7 @@ metadata:
 ```text
 이 워크스페이스 분석해줘
 현재 프로젝트 봐줘
-MLflow 6단계 TOD로 봐줘
+MLflow 모델 프로세스로 봐줘
 모델 있으면 진행하고 없으면 샘플로 시작해줘
 ```
 
@@ -118,12 +118,13 @@ inference_entrypoint
 model_artifact_path
 input_example_path
 next_action:
-  1. 환경 검증
-  2. 샘플 규격 확인/보충
-  3. 환경 변수 입력/export
-  4. 패키지 설치
-  5. 로컬 학습 모델 실행
-  6. 산출물 확인
+  1. 실행 파일 확정
+  2. 환경 검증
+  3. 샘플 규격 확인/보충
+  4. 환경 변수 입력/export
+  5. 패키지 설치
+  6. 로컬 학습 모델 실행
+  7. 산출물 확인
 ```
 
 모델이 발견된 경우 사용자에게 보여줄 가이드는 아래 방향으로 작성한다.
@@ -133,11 +134,13 @@ next_action:
 샘플은 사용하지 않고 기존 모델 프로젝트 기준으로 진행합니다.
 
 다음 단계:
-1. ai_studio.env 확인
-2. requirements.txt 또는 pyproject.toml 확인
-3. input_example.json 확인
-4. runtest.py, run_model.py 또는 train.py 실행 가능 여부 확인
-5. MLflow 기록 확인
+1. 실행 파일 확정: run_model.py로 고정하지 않고 실제 사용하는 파일명을 확인
+2. 환경 검증: Python 3.11.9, dependency, MLflow 확인
+3. 샘플 규격 확인/보충: 부족한 골격만 보충하고 기존 모델 파일은 덮어쓰지 않음
+4. 환경 변수 입력/export: 확정된 실행 파일 기준으로 직접 입력
+5. 패키지 설치
+6. 로컬 학습 모델 실행
+7. 산출물 확인: metrics/artifacts 기준
 ```
 
 모델이 발견되면 `.opencode/samples`는 참조하지 않는다.
@@ -318,6 +321,7 @@ next_action:
 - 누락되었거나 확인 필요한 파일 목록
 - framework 후보와 판단 근거
 - 학습 entrypoint 후보
+- 실행 파일 확정 필요 여부
 - 추론 entrypoint 후보
 - 모델 artifact 후보
 - `aiu_custom` 필요 여부
