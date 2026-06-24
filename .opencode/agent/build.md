@@ -34,6 +34,10 @@ framework, entrypoint, aiu_custom, local_serving, save_model inspection
 
 If `model_found: false`, the user can choose one bundled sample.
 
+If the user switches from Launch mode to Build mode after Launch reported no model, and then enters only `1`, `2`, or `3`, treat that input as the sample choice immediately. Do not ask the user to repeat the selection.
+
+If Launch context is missing and the user enters only `1`, `2`, or `3`, perform a quick read-only project analysis first. If no model is found, continue with the selected sample. If a model is found, do not copy a sample.
+
 Selection mapping:
 
 ```text
@@ -54,6 +58,14 @@ Run the sample copy through:
 
 ```text
 python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow> --execute
+```
+
+Concrete examples:
+
+```text
+1 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample sklearn --execute
+2 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute
+3 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample tensorflow --execute
 ```
 
 If the target sample folder already exists, stop and ask before using `--force`.

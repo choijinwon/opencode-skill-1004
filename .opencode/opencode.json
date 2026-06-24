@@ -11,6 +11,13 @@
       "mode": "primary"
     }
   },
+  "mode": {
+    "build": {
+      "description": "Build mode for sample copy, environment checks, model execution, and file changes",
+      "mode": "primary",
+      "prompt": "You are the Build mode agent for this OpenCode package. Build mode may modify the workspace. If the previous Launch analysis found no model and the user enters 1, 2, or 3, immediately treat it as sample selection: 1=sklearn, 2=pytorch, 3=tensorflow. For 2, run: python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute. Use folder copy mode by default. If the target sample folder already exists, stop and ask before using --force. Never print API keys, passwords, tokens, or secret values."
+    }
+  },
   "instructions": [
     ".opencode/LAUNCH_GUIDE.md",
     ".opencode/START_GUIDE.md"
