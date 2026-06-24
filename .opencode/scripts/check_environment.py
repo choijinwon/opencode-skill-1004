@@ -1,4 +1,5 @@
 import argparse
+import ast
 import importlib.metadata
 import json
 import os
@@ -23,6 +24,8 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+
+MODEL_SETTING_FILES = ["runtest.py", "run_model.py"]
 
 CORE_PACKAGES = [
     "mlflow",
@@ -67,6 +70,7 @@ class EnvironmentReport:
     packages: list[PackageStatus] = field(default_factory=list)
     env_vars: list[EnvVarStatus] = field(default_factory=list)
     ai_studio_env: EnvFileStatus | None = None
+    model_settings: EnvFileStatus | None = None
     blocked_summary: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
@@ -121,6 +125,44 @@ def ai_studio_env_status(project: Path) -> EnvFileStatus:
     return EnvFileStatus(str(path), statuses)
 
 
+def parse_python_string_assignments(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:
+        return values
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                values[target.id] = node.value.value
+    return values
+
+
+def model_settings_status(project: Path) -> EnvFileStatus | None:
+    for name in MODEL_SETTING_FILES:
+        path = project / name
+        if not path.exists():
+            continue
+        values = parse_python_string_assignments(path)
+        statuses = []
+        for key in AI_STUDIO_ENV_KEYS:
+            if key not in values:
+                status = "missing"
+            elif values[key] == "":
+                status = "empty"
+            else:
+                status = "set"
+            statuses.append(EnvVarStatus(key, status))
+        return EnvFileStatus(str(path), statuses)
+    return None
+
+
 def build_report(project: Path) -> EnvironmentReport:
     python_version = platform.python_version()
     deps = dependency_files(project)
@@ -131,6 +173,7 @@ def build_report(project: Path) -> EnvironmentReport:
 
     env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
     ai_env = ai_studio_env_status(project)
+    model_settings = model_settings_status(project)
     blocked_summary: list[str] = []
     failures: list[str] = []
     next_steps: list[str] = []
@@ -148,10 +191,11 @@ def build_report(project: Path) -> EnvironmentReport:
         next_steps.append("Install or activate an environment that includes mlflow.")
     if env_status("MLFLOW_TRACKING_URI") == "missing":
         next_steps.append("Confirm local or remote MLFLOW_TRACKING_URI before MLflow verification.")
-    if not (project / "ai_studio.env").exists():
-        failures.append("missing_env_file:ai_studio.env")
-        next_steps.append("Create ai_studio.env with required MLflow settings.")
-    for item in ai_env.key_status:
+    setting_source = model_settings or ai_env
+    if model_settings is None and not (project / "ai_studio.env").exists():
+        failures.append("missing_model_settings_file:runtest.py_or_run_model.py")
+        next_steps.append("Fill MLflow/AI Studio settings directly in runtest.py or run_model.py.")
+    for item in setting_source.key_status:
         if item.status in {"missing", "empty"}:
             failures.append(f"missing_env:{item.name}")
 
@@ -168,6 +212,7 @@ def build_report(project: Path) -> EnvironmentReport:
         packages=packages,
         env_vars=env_vars,
         ai_studio_env=ai_env,
+        model_settings=model_settings,
         blocked_summary=blocked_summary,
         failures=failures,
         next_steps=next_steps,
@@ -188,9 +233,13 @@ def print_text(report: EnvironmentReport):
     print("\nEnvironment variables:")
     for item in report.env_vars:
         print(f"- {item.name}: {item.status}")
-    if report.ai_studio_env:
+    if report.ai_studio_env and Path(report.ai_studio_env.path).exists():
         print(f"\nai_studio.env: {report.ai_studio_env.path}")
         for item in report.ai_studio_env.key_status:
+            print(f"- {item.name}: {item.status}")
+    if report.model_settings:
+        print(f"\nModel settings: {report.model_settings.path}")
+        for item in report.model_settings.key_status:
             print(f"- {item.name}: {item.status}")
     if report.blocked_summary:
         print("\n차단 항목 요약:")

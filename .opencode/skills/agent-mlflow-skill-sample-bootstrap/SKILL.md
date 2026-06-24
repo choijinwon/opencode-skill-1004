@@ -201,10 +201,10 @@ next_action:
 1. 환경 검증: python .opencode/scripts/check_environment.py --project <target_project_path>
 ```
 
-두 번째 다음 단계는 반드시 환경 변수 설정 안내다. `ai_studio.env` 필수 키 5개를 사용자가 직접 입력하도록 안내하고, secret 값은 출력하지 않는다.
+두 번째 다음 단계는 반드시 환경 변수 설정 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필수 값 5개를 사용자가 직접 입력하도록 안내하고, secret 값은 출력하지 않는다.
 
 ```text
-2. 환경 변수 설정: ai_studio.env에 MLflow/AI Studio 필수 키 5개를 직접 입력
+2. 환경 변수 설정: run_model.py 또는 runtest.py의 설정 블록에 MLflow/AI Studio 필수 값 5개를 직접 입력
 ```
 
 ## Safety

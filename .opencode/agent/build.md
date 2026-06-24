@@ -83,7 +83,7 @@ next_action:
   2. 환경 변수 설정
 ```
 
-The first next action after folder copy must be environment validation. The second next action must be guiding the user to fill the required `ai_studio.env` environment values directly.
+The first next action after folder copy must be environment validation. The second next action must be guiding the user to fill the required MLflow/AI Studio values directly in `run_model.py` or `runtest.py`.
 
 ## Existing Model Flow
 
@@ -91,7 +91,7 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 
 ## MLflow Tracking Guide
 
-For `runtest.py` and `run_model.py`, only guide the user to fill MLflow tracking settings directly in `ai_studio.env`. Do not generate, infer, or print secret values.
+For `runtest.py` and `run_model.py`, guide the user to fill MLflow tracking settings directly in the file's setting block. Do not generate, infer, or print secret values.
 
 Required keys:
 
@@ -103,7 +103,7 @@ mlflow_experiment_name       pytorch_sample by default for the PyTorch sample
 mlflow_register_model_name   pytorch_sample_model by default for the PyTorch sample
 ```
 
-Guide the user to write these keys in `ai_studio.env` directly:
+Guide the user to write these values directly in `run_model.py` or `runtest.py`:
 
 ```text
 mlflow_tracking_url=

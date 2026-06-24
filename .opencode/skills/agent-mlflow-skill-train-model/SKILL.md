@@ -44,7 +44,7 @@ metadata:
   - `mlflow_tracking_password`
   - `mlflow_experiment_name`
   - `mlflow_register_model_name`
-- MLflow tracking 설정은 사용자가 직접 `ai_studio.env`에 입력한다.
+- MLflow tracking 설정은 사용자가 직접 `run_model.py` 또는 `runtest.py`의 설정 블록에 입력한다.
   - `runtest.py` 또는 `run_model.py`는 tracking URL, username, password를 새로 만들거나 출력하지 않는다.
   - `mlflow_tracking_password`는 상태만 확인하고 값을 출력하지 않는다.
   - 안내에는 `mlflow_experiment_name=`, `mlflow_register_model_name=` 빈 값 형태를 포함한다.

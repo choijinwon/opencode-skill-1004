@@ -40,19 +40,19 @@ metadata:
   - `MLFLOW_EXPERIMENT_NAME`
   - `MLFLOW_EXPERIMENT_ID`
   - `MLFLOW_EXPERIMENT_PASSWORD`는 올바른 MLflow 인증 환경변수가 아니므로 사용하지 않는다.
-- `ai_studio.env` 파일과 필수 키를 확인한다.
+- `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록과 필수 값을 확인한다.
   - `mlflow_tracking_url`
   - `mlflow_tracking_username`
   - `mlflow_tracking_password`
   - `mlflow_experiment_name`
   - `mlflow_register_model_name`
-- `ai_studio.env` 작성 안내에는 다음 빈 값 형태를 포함한다.
+- 설정 블록 작성 안내에는 다음 빈 값 형태를 포함한다.
   - `mlflow_tracking_url=`
   - `mlflow_tracking_username=`
   - `mlflow_tracking_password=`
   - `mlflow_experiment_name=`
   - `mlflow_register_model_name=`
-- MLflow tracking 값은 사용자가 직접 `ai_studio.env`에 넣도록 안내한다.
+- MLflow tracking 값은 사용자가 직접 `run_model.py` 또는 `runtest.py`에 넣도록 안내한다.
   - `runtest.py` 또는 `run_model.py`에서 tracking URL, username, password를 자동 생성하거나 출력하지 않는다.
   - `mlflow_tracking_password` 값은 절대 출력하지 않는다.
   - `mflow_tracking_url` 오타가 있으면 `mlflow_tracking_url`로 수정하도록 안내한다.

@@ -129,7 +129,7 @@ mlflow_experiment_name=
 mlflow_register_model_name=
 ```
 
-`runtest.py` 또는 `run_model.py`에서 이 값들을 자동 생성하지 않는다. 사용자가 `ai_studio.env`에 직접 입력한다.
+`runtest.py` 또는 `run_model.py`에서 이 값들을 자동 생성하지 않는다. 사용자가 `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 직접 입력한다.
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.
 

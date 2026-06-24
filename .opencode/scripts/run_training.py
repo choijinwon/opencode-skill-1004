@@ -1,4 +1,5 @@
 import argparse
+import ast
 import json
 import subprocess
 import sys
@@ -20,6 +21,7 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+MODEL_SETTING_FILES = ["runtest.py", "run_model.py"]
 
 
 @dataclass
@@ -90,12 +92,39 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def parse_python_string_assignments(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:
+        return values
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                values[target.id] = node.value.value
+    return values
+
+
+def find_model_settings(project: Path) -> dict[str, str]:
+    for name in MODEL_SETTING_FILES:
+        path = project / name
+        if path.exists():
+            return parse_python_string_assignments(path)
+    return {}
+
+
 def missing_ai_studio_env(project: Path) -> list[str]:
     path = project / "ai_studio.env"
-    values = parse_env_file(path)
+    values = find_model_settings(project) or parse_env_file(path)
     missing = []
-    if not path.exists():
-        missing.append("ai_studio.env")
+    if not values:
+        missing.append("runtest.py_or_run_model.py_settings")
     for key in AI_STUDIO_ENV_KEYS:
         if key not in values or values[key] == "":
             missing.append(key)
