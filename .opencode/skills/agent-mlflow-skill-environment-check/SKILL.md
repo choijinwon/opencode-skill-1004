@@ -35,8 +35,11 @@ metadata:
 - MLflow version을 확인한다.
 - 환경 변수 설정 위치를 확인한다.
   - `MLFLOW_TRACKING_URI`
+  - `MLFLOW_TRACKING_USERNAME`
+  - `MLFLOW_TRACKING_PASSWORD`
   - `MLFLOW_EXPERIMENT_NAME`
   - `MLFLOW_EXPERIMENT_ID`
+  - `MLFLOW_EXPERIMENT_PASSWORD`는 올바른 MLflow 인증 환경변수가 아니므로 사용하지 않는다.
 - `ai_studio.env` 파일과 필수 키를 확인한다.
   - `mlflow_tracking_url`
   - `mlflow_tracking_username`
@@ -49,6 +52,7 @@ metadata:
   - `mflow_tracking_url` 오타가 있으면 `mlflow_tracking_url`로 수정하도록 안내한다.
   - PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 표시한다.
+  - `MLFLOW_TRACKING_PASSWORD`와 `mlflow_tracking_password` 값은 절대 출력하지 않는다.
 - 로컬/원격 MLflow 중 어떤 tracking target을 쓰는지 확인한다.
 
 ## Output
