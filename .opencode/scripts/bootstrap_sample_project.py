@@ -44,7 +44,7 @@ GENERATED_ROOT_DIRS = {
 }
 
 GENERATED_PATH_PREFIXES = {
-    ("artifacts", "ai_studio"),
+    ("artifacts", "aiu_studio"),
 }
 
 REQUIRED_PROJECT_DIRS = [

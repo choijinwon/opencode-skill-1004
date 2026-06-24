@@ -117,7 +117,7 @@ mlflow.db
 .DS_Store
 model/
 saved_model/
-artifacts/ai_studio/
+artifacts/aiu_studio/
 ```
 
 복사 후 아래 필수 폴더는 항상 복사된 샘플 폴더 안에 존재해야 한다. 샘플 원본에 없으면 빈 폴더로 생성한다.

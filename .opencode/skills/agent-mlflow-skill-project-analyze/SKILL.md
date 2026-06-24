@@ -235,7 +235,7 @@ tensorflow_sample/
 ```text
 model/
 saved_model/
-artifacts/ai_studio/
+artifacts/aiu_studio/
 .venv/
 __pycache__/
 mlruns/
