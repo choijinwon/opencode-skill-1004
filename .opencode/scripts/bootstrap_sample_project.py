@@ -173,7 +173,7 @@ def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bo
     return [
         f"1. 환경 검증: python .opencode/scripts/check_environment.py --project {target_project_path}",
         f"2. 선택한 샘플 폴더로 이동한다: {target_project_path}",
-        f"3. 환경 변수 입력: {entrypoint}의 MLflow/AI Studio 설정 블록에 필수 값 5개를 직접 입력한다.",
+        f"3. 환경 변수 입력: {entrypoint}의 MLflow/AI Studio 설정 블록에 필요한 값을 직접 입력한다.",
         f"4. 환경 변수 export: {entrypoint} 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export한다.",
         f"5. 해당 폴더에 사용자 모델 코드, 데이터, requirements.txt, {entrypoint}를 추가하거나 확인한다.",
         f"6. 로컬 학습/모델 실행: python {entrypoint}",

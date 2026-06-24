@@ -57,6 +57,8 @@ metadata:
   - `runtest.py` 또는 `run_model.py`에서 tracking URL, username, password를 자동 생성하거나 출력하지 않는다.
   - 사용자가 짧은 변수명 `tracking_url`, `username`, `password`로 입력해도 각각 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password`로 인식한다.
   - 설정 dict 또는 `os.environ["MLFLOW_TRACKING_URI"] = "..."` 형태로 직접 넣은 값도 입력 완료로 인식한다.
+  - `mlflow_tracking_url`이 비어 있으면 로컬 기본 tracking URI를 `file://<project>/ai_studio/artifacts`로 사용해 `mlruns/` 대신 `ai_studio/artifacts/<experiment_id>` 아래에 MLflow run을 만든다.
+  - 로컬 기본 tracking URI를 쓸 때는 `MLFLOW_ALLOW_FILE_STORE=true`도 함께 export한다.
   - `run_model.py`는 설정 블록 값을 `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_REGISTER_MODEL_NAME`으로 export한다.
   - `mlflow_tracking_password` 값은 절대 출력하지 않는다.
   - `mflow_tracking_url` 오타가 있으면 `mlflow_tracking_url`로 수정하도록 안내한다.

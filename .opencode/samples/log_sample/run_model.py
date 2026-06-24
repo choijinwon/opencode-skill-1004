@@ -5,6 +5,7 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent
 AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
+AI_STUDIO_ARTIFACTS_DIR = AI_STUDIO_DIR / "artifacts"
 
 # MLflow/AI Studio settings
 # 사용자가 아래 값을 직접 입력합니다. 비밀번호 값은 출력하지 마세요.
@@ -17,7 +18,6 @@ mlflow_register_model_name = "log_sample_model"
 
 def missing_mlflow_settings() -> list[str]:
     required = {
-        "mlflow_tracking_url": mlflow_tracking_url,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
         "mlflow_experiment_name": mlflow_experiment_name,
@@ -27,8 +27,9 @@ def missing_mlflow_settings() -> list[str]:
 
 
 def export_mlflow_environment() -> None:
+    AI_STUDIO_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     exports = {
-        "MLFLOW_TRACKING_URI": mlflow_tracking_url,
+        "MLFLOW_TRACKING_URI": mlflow_tracking_url or AI_STUDIO_ARTIFACTS_DIR.as_uri(),
         "MLFLOW_TRACKING_USERNAME": mlflow_tracking_username,
         "MLFLOW_TRACKING_PASSWORD": mlflow_tracking_password,
         "MLFLOW_EXPERIMENT_NAME": mlflow_experiment_name,
@@ -37,6 +38,8 @@ def export_mlflow_environment() -> None:
     for name, value in exports.items():
         if value:
             os.environ[name] = value
+    if not mlflow_tracking_url:
+        os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 
 
 def main() -> None:

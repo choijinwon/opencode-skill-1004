@@ -32,6 +32,7 @@ mlflow_register_model_name = "tensorflow_sample_model"
 ```
 
 `run_model.py` 실행 시 위 값은 `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_REGISTER_MODEL_NAME`으로 export됩니다.
+`mlflow_tracking_url`을 비워두면 로컬 기본값 `file://<sample>/ai_studio/artifacts`를 사용하므로 MLflow run은 `ai_studio/artifacts/<experiment_id>` 아래에 생성됩니다. experiment id가 1이면 `ai_studio/artifacts/1`이 됩니다. 이때 `MLFLOW_ALLOW_FILE_STORE=true`도 함께 설정합니다.
 
 주의: `mflow_tracking_url`이 아니라 `mlflow_tracking_url`을 사용합니다.
 

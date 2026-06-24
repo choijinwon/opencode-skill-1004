@@ -230,9 +230,9 @@ def model_settings_status(project: Path) -> EnvFileStatus | None:
         statuses = []
         for key in AI_STUDIO_ENV_KEYS:
             if key not in values:
-                status = "missing"
+                status = "local_default" if key == "mlflow_tracking_url" else "missing"
             elif values[key] == "":
-                status = "empty"
+                status = "local_default" if key == "mlflow_tracking_url" else "empty"
             else:
                 status = "set"
             statuses.append(EnvVarStatus(key, status))
@@ -252,6 +252,8 @@ def export_ready_status(project: Path) -> list[EnvVarStatus]:
                 status = "set"
             elif env_status(env_key) == "set":
                 status = "exported"
+            elif setting_key == "mlflow_tracking_url":
+                status = "local_default"
             else:
                 status = "missing"
             statuses.append(EnvVarStatus(env_key, status))
@@ -294,7 +296,7 @@ def build_report(project: Path) -> EnvironmentReport:
     tod_guide = [
         "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
         f"2. 샘플 폴더 이동: {project}",
-        f"3. 환경 변수 입력: {entrypoint}의 MLflow/AI Studio 설정 블록에 필수 값 5개를 직접 입력한다.",
+        f"3. 환경 변수 입력: {entrypoint}의 MLflow/AI Studio 설정 블록에 필요한 값을 직접 입력한다.",
         f"4. 환경 변수 export: {entrypoint} 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export한다.",
         "5. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
         f"6. 로컬 학습/모델 실행: python {entrypoint}",
@@ -312,7 +314,7 @@ def build_report(project: Path) -> EnvironmentReport:
     if package_version("mlflow") is None:
         failures.append("missing_dependency:mlflow")
         next_steps.append("Install or activate an environment that includes mlflow.")
-    tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported"} for item in export_ready)
+    tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported", "local_default"} for item in export_ready)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
         next_steps.append("Confirm local or remote MLFLOW_TRACKING_URI before MLflow verification.")
     if source_input_required:

@@ -206,10 +206,10 @@ next_action:
 1. 환경 검증: python .opencode/scripts/check_environment.py --project <target_project_path>
 ```
 
-세 번째 다음 단계는 반드시 환경 변수 입력 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필수 값 5개를 사용자가 직접 입력하도록 안내하고, secret 값은 출력하지 않는다.
+세 번째 다음 단계는 반드시 환경 변수 입력 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필요한 값을 사용자가 직접 입력하도록 안내하고, secret 값은 출력하지 않는다.
 
 ```text
-3. 환경 변수 입력: run_model.py 또는 runtest.py의 설정 블록에 MLflow/AI Studio 필수 값 5개를 직접 입력
+3. 환경 변수 입력: run_model.py 또는 runtest.py의 설정 블록에 MLflow/AI Studio 설정값 직접 입력
 4. 환경 변수 export: run_model.py 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export
 5. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
 6. 로컬 학습/모델 실행: python run_model.py 또는 python runtest.py

@@ -88,7 +88,7 @@ next_action:
   7. 산출물 확인
 ```
 
-The first next action after folder copy must be environment validation. The third next action must be guiding the user to fill the required MLflow/AI Studio values directly in `run_model.py` or `runtest.py`. The fourth next action must explain that `run_model.py` exports those values to `MLFLOW_*` environment variables during execution.
+The first next action after folder copy must be environment validation. The third next action must be guiding the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py`. The fourth next action must explain that `run_model.py` exports those values to `MLFLOW_*` environment variables during execution.
 
 ## Existing Model Flow
 

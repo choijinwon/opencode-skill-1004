@@ -141,6 +141,8 @@ mlflow_experiment_name -> MLFLOW_EXPERIMENT_NAME
 mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
+`mlflow_tracking_url`을 비워두면 샘플은 로컬 기본값 `file://<sample>/ai_studio/artifacts`를 사용한다. 이 경우 MLflow run은 프로젝트 루트의 `mlruns/`가 아니라 `ai_studio/artifacts/<experiment_id>` 아래에 생성된다. experiment id가 1이면 `ai_studio/artifacts/1`이 된다. 로컬 file store를 위해 `MLFLOW_ALLOW_FILE_STORE=true`도 함께 설정한다.
+
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.
 

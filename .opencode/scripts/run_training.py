@@ -191,6 +191,8 @@ def missing_ai_studio_env(project: Path) -> list[str]:
     if not values:
         missing.append("runtest.py_or_run_model.py_settings")
     for key in AI_STUDIO_ENV_KEYS:
+        if key == "mlflow_tracking_url":
+            continue
         if key not in values or values[key] == "":
             missing.append(key)
     return missing
