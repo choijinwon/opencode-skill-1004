@@ -132,7 +132,7 @@ def has_project_markers(path: Path) -> bool:
     }
     if any((path / name).exists() for name in marker_names):
         return True
-    direct_artifact_dirs = [path / "save_model", path / "artifacts", path / "model", path / "saved_model"]
+    direct_artifact_dirs = [path / "ai_studio", path / "save_model", path / "artifacts", path / "model", path / "saved_model"]
     if any(candidate.exists() for candidate in direct_artifact_dirs):
         return True
     return any(file_path.suffix.lower() in ARTIFACT_SUFFIXES for file_path in path.iterdir() if file_path.is_file())

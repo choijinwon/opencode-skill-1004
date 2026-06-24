@@ -29,7 +29,7 @@ metadata:
   - `aiu_custom/`, `aiu_custom/model_wrapper.py`, `aiu_custom/predict.py`
   - `local_serving/`
   - `save_model/`
-  - `artifacts/`, `model/`, `mlruns/`, `aiu_studio/`
+  - `artifacts/`, `model/`, `mlruns/`, `ai_studio/`
 - framework 후보를 근거와 함께 분류한다.
   - sklearn: `sklearn`, `.pkl`, `.joblib`, `.fit()`
   - PyTorch: `torch`, `.pt`, `.pth`, `state_dict`
@@ -101,7 +101,7 @@ MLflow 5단계로 봐줘
 추론 entrypoint 존재: predict.py, app.py, main.py
 필수 폴더 존재: aiu_custom/, local_serving/, save_model/
 모델 wrapper 존재: aiu_custom/model_wrapper.py, aiu_custom/predict.py
-모델 artifact 존재: save_model/, model/, artifacts/, saved_model/, .pkl, .joblib, .pt, .pth, .h5, .keras
+모델 artifact 존재: ai_studio/, save_model/, model/, artifacts/, saved_model/, .pkl, .joblib, .pt, .pth, .h5, .keras
 MLflow model 존재: MLmodel, python_model.pkl
 input example 존재: input_example.json
 ```
@@ -235,11 +235,11 @@ tensorflow_sample/
 ```text
 model/
 saved_model/
-artifacts/aiu_studio/
+artifacts/ai_studio/
 .venv/
 __pycache__/
 mlruns/
-aiu_studio/
+ai_studio/
 mlflow.db
 ```
 

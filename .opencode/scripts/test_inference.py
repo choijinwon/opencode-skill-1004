@@ -32,7 +32,7 @@ def find_input_example(project: Path) -> Path | None:
 
 
 def find_model_path(project: Path) -> Path | None:
-    for name in ["save_model", "model", "saved_model", "artifacts"]:
+    for name in ["ai_studio", "save_model", "model", "saved_model", "artifacts"]:
         candidate = project / name
         if candidate.exists():
             return candidate

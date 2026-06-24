@@ -34,7 +34,7 @@ IGNORED_NAMES = {
     "venv",
     "env",
     "mlruns",
-    "aiu_studio",
+    "ai_studio",
     "mlflow.db",
 }
 
@@ -44,7 +44,7 @@ GENERATED_ROOT_DIRS = {
 }
 
 GENERATED_PATH_PREFIXES = {
-    ("artifacts", "aiu_studio"),
+    ("artifacts", "ai_studio"),
 }
 
 REQUIRED_PROJECT_DIRS = [
@@ -177,7 +177,7 @@ def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bo
         f"4. 환경 변수 export: {entrypoint} 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export한다.",
         f"5. 해당 폴더에 사용자 모델 코드, 데이터, requirements.txt, {entrypoint}를 추가하거나 확인한다.",
         f"6. 로컬 학습/모델 실행: python {entrypoint}",
-        "7. save_model/model_info.json 또는 MLflow artifact 생성 여부를 확인한다.",
+        "7. ai_studio/model_info.json 또는 MLflow artifact 생성 여부를 확인한다.",
         "8. local_serving/ 또는 aiu_custom/predict.py 기준으로 추론 테스트를 수행한다.",
         "9. MLflow UI에서 traces, chat-sessions, prompts, judges, datasets 기록을 확인한다.",
         f"선택 샘플: {sample_key}",

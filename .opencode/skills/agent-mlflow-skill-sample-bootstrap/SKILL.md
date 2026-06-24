@@ -112,12 +112,12 @@ save_model/
 .venv/
 __pycache__/
 mlruns/
-aiu_studio/
+ai_studio/
 mlflow.db
 .DS_Store
 model/
 saved_model/
-artifacts/aiu_studio/
+artifacts/ai_studio/
 ```
 
 복사 후 아래 필수 폴더는 항상 복사된 샘플 폴더 안에 존재해야 한다. 샘플 원본에 없으면 빈 폴더로 생성한다.
@@ -213,7 +213,7 @@ next_action:
 4. 환경 변수 export: run_model.py 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export
 5. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
 6. 로컬 학습/모델 실행: python run_model.py 또는 python runtest.py
-7. 산출물 확인: save_model/model_info.json 또는 MLflow artifact 생성 확인
+7. 산출물 확인: ai_studio/model_info.json 또는 MLflow artifact 생성 확인
 ```
 
 ## Safety

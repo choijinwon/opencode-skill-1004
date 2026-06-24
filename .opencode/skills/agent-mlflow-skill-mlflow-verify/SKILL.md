@@ -76,4 +76,4 @@ metadata:
 
 - 인증 정보는 출력하지 않는다.
 - remote registry에 등록/삭제/alias 변경은 사용자가 명확히 요청한 경우에만 수행한다.
-- artifact root가 sample 내부인지 별도 `aiu_studio` 경로인지 구분해서 설명한다.
+- artifact root가 sample 내부인지 별도 `ai_studio` 경로인지 구분해서 설명한다.

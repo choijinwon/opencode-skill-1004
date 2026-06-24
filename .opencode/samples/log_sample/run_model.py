@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
-SAVE_MODEL_DIR = PROJECT_DIR / "save_model"
+AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
 
 # MLflow/AI Studio settings
 # 사용자가 아래 값을 직접 입력합니다. 비밀번호 값은 출력하지 마세요.
@@ -49,17 +49,17 @@ def main() -> None:
         print("비밀번호 값은 출력하지 않습니다.")
     export_mlflow_environment()
 
-    SAVE_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    AI_STUDIO_DIR.mkdir(parents=True, exist_ok=True)
     model_info = {
         "sample": "log",
         "status": "template_ready",
         "next_step": "Replace this template with your log model loading or training code.",
     }
-    (SAVE_MODEL_DIR / "model_info.json").write_text(
+    (AI_STUDIO_DIR / "model_info.json").write_text(
         json.dumps(model_info, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print(f"prepared sample model folder: {SAVE_MODEL_DIR}")
+    print(f"prepared AI Studio artifact folder: {AI_STUDIO_DIR}")
 
 
 if __name__ == "__main__":
