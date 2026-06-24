@@ -84,6 +84,7 @@ class EnvironmentReport:
     blocked_summary: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
+    tod_guide: list[str] = field(default_factory=list)
 
 
 def package_version(name: str) -> str | None:
@@ -207,6 +208,17 @@ def build_report(project: Path) -> EnvironmentReport:
     blocked_summary: list[str] = []
     failures: list[str] = []
     next_steps: list[str] = []
+    setting_file = None
+    if model_settings is not None:
+        setting_file = Path(model_settings.path).name
+    entrypoint = setting_file or "run_model.py 또는 runtest.py"
+    tod_guide = [
+        "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
+        f"2. 샘플 폴더 이동: {project}",
+        f"3. 환경 변수 입력: {entrypoint}의 MLflow/AI Studio 설정 블록에 필수 값 5개를 직접 입력한다.",
+        f"4. 환경 변수 export: {entrypoint} 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export한다.",
+        f"5. 모델 실행: {entrypoint} 기준으로 모델 저장 또는 MLflow artifact 생성을 확인한다.",
+    ]
     python_version_status = "set" if python_version == EXPECTED_PYTHON_VERSION else "version_mismatch"
 
     if python_version_status == "version_mismatch":
@@ -248,6 +260,7 @@ def build_report(project: Path) -> EnvironmentReport:
         blocked_summary=blocked_summary,
         failures=failures,
         next_steps=next_steps,
+        tod_guide=tod_guide,
     )
 
 
@@ -277,6 +290,10 @@ def print_text(report: EnvironmentReport):
         print("\nEnvironment export readiness:")
         for item in report.export_ready:
             print(f"- {item.name}: {item.status}")
+    if report.tod_guide:
+        print("\nTOD Guide:")
+        for step in report.tod_guide:
+            print(f"- {step}")
     if report.blocked_summary:
         print("\n차단 항목 요약:")
         for index, item in enumerate(report.blocked_summary, start=1):

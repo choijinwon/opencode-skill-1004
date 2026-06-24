@@ -74,6 +74,12 @@ metadata:
 - MLflow 설치/version 상태
 - 환경 변수 설정 상태
 - 환경 변수 export 준비 상태
+- 체크 단계 TOD Guide
+  - `1. 환경 검증`
+  - `2. 샘플 폴더 이동`
+  - `3. 환경 변수 입력`
+  - `4. 환경 변수 export`
+  - `5. 모델 실행`
 - `ai_studio.env` 필수 키 상태
 - 로컬/원격 tracking target 판단
 - 실행 전 차단 항목
