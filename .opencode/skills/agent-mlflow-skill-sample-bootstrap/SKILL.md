@@ -196,7 +196,7 @@ next_action:
   3. 환경 변수 입력
   4. 환경 변수 export
   5. 패키지 설치
-  6. 로컬 학습/모델 실행
+  6. 로컬 학습 모델 실행
   7. 산출물 확인
 ```
 
@@ -212,7 +212,7 @@ next_action:
 3. 환경 변수 입력: run_model.py 또는 runtest.py의 설정 블록에 MLflow/AI Studio 설정값 직접 입력
 4. 환경 변수 export: run_model.py 실행 시 설정 블록 값을 MLFLOW_* 환경변수로 export
 5. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
-6. 로컬 학습/모델 실행: python run_model.py 또는 python runtest.py
+6. 로컬 학습 모델 실행: python run_model.py 또는 python runtest.py
 7. 산출물 확인: ai_studio/model_info.json 또는 MLflow artifact 생성 확인
 ```
 

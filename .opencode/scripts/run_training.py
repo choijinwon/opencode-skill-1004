@@ -66,6 +66,12 @@ ALIAS_TO_SETTING = {
 
 
 @dataclass
+class EnvVarStatus:
+    name: str
+    status: str
+
+
+@dataclass
 class TrainingReport:
     project_path: str
     model_found: bool
@@ -78,6 +84,7 @@ class TrainingReport:
     artifacts: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
+    process_checklist: list[EnvVarStatus] = field(default_factory=list)
 
 
 def has_model_project(project: Path) -> bool:
@@ -198,6 +205,10 @@ def missing_ai_studio_env(project: Path) -> list[str]:
     return missing
 
 
+def checklist_status(condition: bool) -> str:
+    return "done" if condition else "pending"
+
+
 def run_command(cmd: list[str], cwd: Path) -> int:
     result = subprocess.run(cmd, cwd=cwd)
     return result.returncode
@@ -253,6 +264,15 @@ def main():
     if args.execute and not artifacts:
         failures.append("artifact_not_created")
 
+    process_checklist = [
+        EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
+        EnvVarStatus("2. 샘플 폴더 확인", checklist_status(model_found)),
+        EnvVarStatus("3. 환경 변수 입력", "done" if not missing_env else "needs_input"),
+        EnvVarStatus("4. 패키지 설치", "manual_check"),
+        EnvVarStatus("5. 로컬 학습 모델 실행", "done" if args.execute and return_code == 0 else "pending"),
+        EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),
+    ]
+
     report = TrainingReport(
         project_path=str(project),
         model_found=model_found,
@@ -265,6 +285,7 @@ def main():
         artifacts=artifacts,
         failures=failures,
         next_steps=next_steps,
+        process_checklist=process_checklist,
     )
 
     if args.json:
@@ -278,6 +299,9 @@ def main():
         print(f"Command: {' '.join(report.command) if report.command else 'none'}")
         print(f"Executed: {report.executed}")
         print(f"Return code: {report.return_code}")
+        print("Process checklist:")
+        for item in report.process_checklist:
+            print(f"- {item.name}: {item.status}")
         print("Artifacts:")
         for artifact in report.artifacts:
             print(f"- {artifact}")
