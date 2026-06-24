@@ -109,7 +109,6 @@ metadata:
 sklearn    -> .opencode/samples/sklearn_sample
 pytorch    -> .opencode/samples/pytorch_sample
 tensorflow -> .opencode/samples/tensorflow_sample
-log        -> .opencode/samples/log_sample
 ```
 
 선택형 샘플 폴더가 복사되지 않았으면 이 단계에서 임의로 복사하지 않는다. `sample_bootstrap_required`로 분류하고 Step 0으로 돌아가 사용자의 샘플 선택을 받는다.

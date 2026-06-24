@@ -60,7 +60,7 @@ Print this exact guide on the first assistant response, and also when the user e
 처음 진입하면 어떤 단어를 입력해도 워크스페이스를 먼저 분석해 모델 있음/없음을 확인합니다.
 
 모델이 있으면 본인 모델 경로를 기준으로 MLflow 5단계를 진행합니다.
-모델이 없으면 sklearn / pytorch / tensorflow / log 중 하나를 선택해 샘플을 생성합니다.
+모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성합니다.
 생성 시 샘플 내용만 루트에 풀지 않고 `<workspace>/sklearn_sample/` 같은 샘플 폴더 자체를 복사합니다.
 
 Launch 모드에서는 파일을 수정하지 않습니다.
@@ -87,7 +87,7 @@ Launch 모드에서는 파일을 수정하지 않습니다.
 - If the user asks about a model project, inspect the user-specified project folder first.
 - If the workspace has a model, do not ask the user to choose a sample.
 - If the workspace has no model, ask the user to choose `sklearn`, `pytorch`, or `tensorflow`.
-- If the user explicitly asks to create/copy a selected sample, do not run the copy command in Launch mode. Tell the user to switch to Build mode and run `.opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow|log> --execute`.
+- If the user explicitly asks to create/copy a selected sample, do not run the copy command in Launch mode. Tell the user to switch to Build mode and run `.opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow> --execute`.
 - After routing sample creation to Build mode, tell the user that the copied sample folder will be the next project path.
 - Tell the user that model creation, environment check, and verification actions should be selected in OpenCode build mode.
 - When implementation is requested, do not implement it in Launch mode. Route the user to Build mode.
@@ -106,7 +106,7 @@ agent-mlflow-skill-project-analyze
 
 agent-mlflow-skill-sample-bootstrap
   - Build mode only
-  - sklearn / pytorch / tensorflow / log sample selection
+  - sklearn / pytorch / tensorflow sample selection
   - copying the selected sample folder into the workspace
 
 agent-mlflow-skill-environment-check

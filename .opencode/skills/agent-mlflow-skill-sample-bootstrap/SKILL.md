@@ -13,7 +13,7 @@ metadata:
 
 ## When To Use
 
-- 사용자가 "현재 프로젝트에 아무것도 없다", "샘플을 폴더째 가져오고 싶다", "샘플 4개 중 선택해서 시작하고 싶다"고 요청할 때
+- 사용자가 "현재 프로젝트에 아무것도 없다", "샘플을 폴더째 가져오고 싶다", "샘플 3개 중 선택해서 시작하고 싶다"고 요청할 때
 - 모델 프로젝트 폴더에 `.opencode`만 있고 실제 모델 코드가 없을 때
 - 폐쇄망 기본 모델 샘플을 빠르게 워크스페이스 아래 별도 폴더로 구성해야 할 때
 - Project Analyze 결과에서 `model_found: false`가 나온 뒤 사용자가 `sklearn`, `pytorch`, `tensorflow`, `1번`, `2번`, `3번`처럼 선택했을 때
@@ -28,7 +28,6 @@ metadata:
 1, 1번, 첫 번째, sklearn, 사이킷런
 2, 2번, 두 번째, pytorch, torch, 파이토치
 3, 3번, 세 번째, tensorflow, tf, keras, 텐서플로우, 케라스
-4, 4번, 네 번째, log, 로그
 ```
 
 선택 매핑:
@@ -37,14 +36,13 @@ metadata:
 1 | 1번 | 첫 번째 | sklearn | 사이킷런 -> sklearn
 2 | 2번 | 두 번째 | pytorch | torch | 파이토치 -> pytorch
 3 | 3번 | 세 번째 | tensorflow | tf | keras | 텐서플로우 | 케라스 -> tensorflow
-4 | 4번 | 네 번째 | log | 로그 -> log
 ```
 
 선택이 모호하면 복사하지 말고 다시 선택을 요청한다.
 
 ## Selectable Samples
 
-사용자에게 아래 4개 중 하나를 선택하게 한다.
+사용자에게 아래 3개 중 하나를 선택하게 한다.
 
 ```text
 1. sklearn
@@ -58,10 +56,6 @@ metadata:
 3. tensorflow
    샘플 폴더: .opencode/samples/tensorflow_sample
    목적: 폐쇄망 TensorFlow/Keras 모델 프로젝트 기본 구조
-
-4. log
-   샘플 폴더: .opencode/samples/log_sample
-   목적: 폐쇄망 로그 모델 프로젝트 기본 구조
 ```
 
 ## Workspace Rule
@@ -72,7 +66,6 @@ metadata:
 <workspace-root>/sklearn_sample/
 <workspace-root>/pytorch_sample/
 <workspace-root>/tensorflow_sample/
-<workspace-root>/log_sample/
 ```
 
 워크스페이스에 기존 파일이 있어도 대상 샘플 폴더가 없으면 복사할 수 있다. 단, 같은 이름의 샘플 폴더가 이미 있으면 기본적으로 중단한다.
@@ -149,7 +142,6 @@ python .opencode/scripts/bootstrap_sample_project.py --list
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample pytorch
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample tensorflow
-python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample log
 ```
 
 실제 폴더 복사:
@@ -174,7 +166,6 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 1. sklearn - sklearn 모델
 2. pytorch - PyTorch 모델
 3. tensorflow - TensorFlow/Keras 모델
-4. log - 로그 모델
 
 원하는 샘플 번호 또는 이름을 알려주세요.
 ```

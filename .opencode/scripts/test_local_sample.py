@@ -13,7 +13,6 @@ SAMPLE_PATHS = {
     "sklearn": "sklearn_sample",
     "pytorch": "pytorch_sample",
     "tensorflow": "tensorflow_sample",
-    "log": "log_sample",
 }
 DEFAULT_SAMPLES = list(SAMPLE_PATHS)
 

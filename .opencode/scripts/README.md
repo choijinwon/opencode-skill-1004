@@ -54,7 +54,6 @@ python .opencode/scripts/bootstrap_sample_project.py --list
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample pytorch
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample tensorflow
-python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample log
 ```
 
 실제 폴더 복사:

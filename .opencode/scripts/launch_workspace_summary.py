@@ -94,7 +94,7 @@ def main() -> int:
         print("  - 실제 분석/환경 검증/모델 실행은 OpenCode 빌드모드에서 선택해주세요.")
         print("  - 추천 요청: 내 모델 경로 기준으로 MLflow 5단계 분석해줘.")
     else:
-        print("  - 모델이 없으면 sklearn / pytorch / tensorflow / log 중 하나를 선택해 샘플을 생성할 수 있습니다.")
+        print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
         print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode 빌드모드에서 선택해주세요.")
         print("  - 추천 요청: 모델이 없으니 sklearn 샘플로 생성해줘.")
 

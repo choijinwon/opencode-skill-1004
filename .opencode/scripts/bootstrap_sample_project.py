@@ -25,11 +25,6 @@ SAMPLES = {
         "label": "TensorFlow/Keras 모델",
         "description": "폐쇄망에서 사용자가 TensorFlow/Keras 모델 코드와 데이터를 넣는 기본 샘플",
     },
-    "log": {
-        "path": "log_sample",
-        "label": "로그 모델",
-        "description": "폐쇄망에서 사용자가 로그 기반 모델 코드와 데이터를 넣는 기본 샘플",
-    },
 }
 
 IGNORED_NAMES = {

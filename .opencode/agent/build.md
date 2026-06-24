@@ -34,9 +34,9 @@ framework, entrypoint, aiu_custom, local_serving, save_model inspection
 
 If `model_found: false`, the user can choose one bundled sample.
 
-If the user switches from Launch mode to Build mode after Launch reported no model, and then enters only `1`, `2`, `3`, or `4`, treat that input as the sample choice immediately. Do not ask the user to repeat the selection.
+If the user switches from Launch mode to Build mode after Launch reported no model, and then enters only `1`, `2`, or `3`, treat that input as the sample choice immediately. Do not ask the user to repeat the selection.
 
-If Launch context is missing and the user enters only `1`, `2`, `3`, or `4`, perform a quick read-only project analysis first. If no model is found, continue with the selected sample. If a model is found, do not copy a sample.
+If Launch context is missing and the user enters only `1`, `2`, or `3`, perform a quick read-only project analysis first. If no model is found, continue with the selected sample. If a model is found, do not copy a sample.
 
 Selection mapping:
 
@@ -44,7 +44,6 @@ Selection mapping:
 1 | 1번 | 첫 번째 | sklearn | 사이킷런 -> sklearn
 2 | 2번 | 두 번째 | pytorch | torch | 파이토치 -> pytorch
 3 | 3번 | 세 번째 | tensorflow | tf | keras | 텐서플로우 | 케라스 -> tensorflow
-4 | 4번 | 네 번째 | log | 로그 -> log
 ```
 
 When the user selects a sample, use `agent-mlflow-skill-sample-bootstrap` and copy the selected sample folder into the workspace. The default copy mode is folder mode:
@@ -53,13 +52,12 @@ When the user selects a sample, use `agent-mlflow-skill-sample-bootstrap` and co
 <workspace-root>/sklearn_sample/
 <workspace-root>/pytorch_sample/
 <workspace-root>/tensorflow_sample/
-<workspace-root>/log_sample/
 ```
 
 Run the sample copy through:
 
 ```text
-python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow|log> --execute
+python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow> --execute
 ```
 
 Concrete examples:
@@ -68,7 +66,6 @@ Concrete examples:
 1 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample sklearn --execute
 2 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute
 3 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample tensorflow --execute
-4 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample log --execute
 ```
 
 If the target sample folder already exists, stop and ask before using `--force`.
