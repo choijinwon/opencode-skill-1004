@@ -747,6 +747,7 @@ def main():
     parser.add_argument("--project", help="model project path. If omitted, the script auto-selects a candidate.")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON output")
     parser.add_argument("--no-write-check", action="store_true", help="skip temporary write permission check")
+    parser.add_argument("--strict-exit", action="store_true", help="return non-zero when checks contain warn/block statuses")
     args = parser.parse_args()
 
     project, reason = select_project(args.project)
@@ -756,10 +757,11 @@ def main():
     else:
         print_text(report)
 
-    if any(check.status == "block" for check in report.checks):
-        return 2
-    if any(check.status == "warn" for check in report.checks):
-        return 1
+    if args.strict_exit:
+        if any(check.status == "block" for check in report.checks):
+            return 2
+        if any(check.status == "warn" for check in report.checks):
+            return 1
     return 0
 
 

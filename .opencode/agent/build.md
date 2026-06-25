@@ -18,6 +18,7 @@ If the user arrived here by switching from the Launch tab to the Build tab, do n
 - Never print API keys, passwords, tokens, or secret values.
 - If a secret-like field must be discussed, report only `set`, `empty`, or `missing`.
 - Prefer local and closed-network assumptions unless the user explicitly asks for external network use.
+- In closed-network/offline mode, never create or open GitHub issues, crash reports, telemetry reports, or external bug-report URLs. Treat environment-check problems as report findings and continue the chat.
 - If the task is destructive or overwrites existing project files, ask for confirmation first.
 
 ## First Build Step
