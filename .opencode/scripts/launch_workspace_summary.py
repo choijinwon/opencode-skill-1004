@@ -10,7 +10,7 @@ MODEL_HINTS = [
     "train.py",
     "predict.py",
     "aiu_custom/",
-    "save_model/",
+    "saved_model/",
     "MLmodel",
     "python_model.pkl",
 ]

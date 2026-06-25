@@ -37,7 +37,7 @@ OpenCode Chatbot
   +-- ai_studio.env
   +-- aiu_custom/
   +-- local_serving/
-  +-- save_model/
+  +-- saved_model/
   +-- input_example.json
   +-- train.py 또는 run_model.py
   |
@@ -85,7 +85,7 @@ tensorflow_sample/
 ├── ai_studio.env
 ├── aiu_custom/
 ├── local_serving/
-├── save_model/
+├── saved_model/
 ├── input_example.json
 └── train.py 또는 run_model.py
 ```
@@ -95,7 +95,7 @@ tensorflow_sample/
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 필수 파일:
@@ -204,7 +204,7 @@ Step 3 Train Model
   |
   |-- 기존 프로젝트 학습 또는 export
   |-- 샘플 기반 모델 생성
-  |-- save_model/ 산출물 확인
+  |-- saved_model/ 산출물 확인
 
 Step 4 Inference Test
   |
@@ -250,7 +250,7 @@ Python / dependency / ai_studio.env / MLflow 설정 확인
 Step 3 학습 또는 export
   |
   v
-save_model/ 산출물 생성
+saved_model/ 산출물 생성
   |
   v
 Step 4 추론 테스트
@@ -286,7 +286,7 @@ ModelWrapper 제공
 mlflow.pyfunc.PythonModel 상속
 load_context 구현
 predict 구현
-save_model/ 산출물 로드
+saved_model/ 산출물 로드
 ```
 
 ### local_serving/
@@ -301,7 +301,7 @@ input_example.json 기반 요청 테스트
 AI Studio endpoint 전환 전 로컬 검증
 ```
 
-### save_model/
+### saved_model/
 
 학습 또는 export 결과물을 저장한다.
 
@@ -368,7 +368,7 @@ Step 3 Train Model
 기존 모델 프로젝트 실행 준비
 샘플 기반 모델 생성 준비
 --execute 명시 시 실제 실행
-save_model/ 산출물 확인
+saved_model/ 산출물 확인
 ai_studio.env 필수 키 확인
 ```
 
@@ -464,7 +464,7 @@ AI Studio에서는 이 구조를 다음 화면으로 옮길 수 있다.
   -> Python, dependency, MLflow 설정 확인
 
 학습 실행 화면
-  -> train/export 실행 및 save_model 산출물 확인
+  -> train/export 실행 및 saved_model 산출물 확인
 
 추론 테스트 화면
   -> input_example 기반 predict 검증
@@ -482,7 +482,7 @@ MLflow 기록 화면
 필수 폴더가 있는가?
 ai_studio.env 필수 키가 있는가?
 학습 또는 export가 가능한가?
-save_model/에 모델 산출물이 생성되는가?
+saved_model/에 모델 산출물이 생성되는가?
 input_example 기반 추론이 가능한가?
 MLflow에 run/model/artifact 기록이 남는가?
 ```

@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-project-analyze
-description: Use when the user asks "분석해줘", "MLflow 모델 프로세스", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/save_model.
+description: Use when the user asks "분석해줘", "MLflow 모델 프로세스", "모델 있음/없음", "워크스페이스 분석", or project structure analysis; analyzes framework, entrypoint, artifact, config, input example, aiu_custom/local_serving/saved_model.
 license: MIT
 compatibility: opencode
 metadata:
@@ -16,7 +16,7 @@ metadata:
 - 사용자가 지정한 모델 프로젝트 폴더의 ML 프로젝트 구조를 분석해 달라고 요청할 때
 - 학습, 추론, MLflow 등록 전에 어떤 파일이 있는지 확인해야 할 때
 - 프로젝트가 sklearn, PyTorch, TensorFlow, HuggingFace, custom pyfunc 중 무엇에 가까운지 판단해야 할 때
-- `aiu_custom`, `local_serving`, `save_model`, `runtest.py`, `run_model.py`, `input_example.json` 같은 구성 요소가 필요한지 확인해야 할 때
+- `aiu_custom`, `local_serving`, `saved_model`, `runtest.py`, `run_model.py`, `input_example.json` 같은 구성 요소가 필요한지 확인해야 할 때
 - 사용자가 지정한 모델 프로젝트 폴더에 모델 프로젝트가 없어서 `.opencode/samples` 아래 샘플 3개 중 하나를 선택해 폴더째 복사해야 할 때
 
 ## Guidance Checks
@@ -28,7 +28,7 @@ metadata:
   - `config.json`, `.env.example`, `input_example.json`
   - `aiu_custom/`, `aiu_custom/model_wrapper.py`, `aiu_custom/predict.py`
   - `local_serving/`
-  - `save_model/`
+  - `saved_model/`
   - `artifacts/`, `model/`, `mlruns/`, `ai_studio/`
 - framework 후보를 근거와 함께 분류한다.
   - sklearn: `sklearn`, `.pkl`, `.joblib`, `.fit()`
@@ -71,7 +71,7 @@ MLflow 모델 프로세스로 봐줘
 - runtest.py, run_model.py, train.py, predict.py
 - aiu_custom/
 - local_serving/
-- save_model/
+- saved_model/
 - input_example.json
 - MLmodel, python_model.pkl
 - .pkl, .joblib, .pt, .pth, .h5, .keras, .onnx, .safetensors
@@ -100,9 +100,9 @@ MLflow 모델 프로세스로 봐줘
 학습 entrypoint 존재: train.py, scripts/train.py
 실행/등록 entrypoint 존재: runtest.py, run_model.py
 추론 entrypoint 존재: predict.py, app.py, main.py
-필수 폴더 존재: aiu_custom/, local_serving/, save_model/
+필수 폴더 존재: aiu_custom/, local_serving/, saved_model/
 모델 wrapper 존재: aiu_custom/model_wrapper.py, aiu_custom/predict.py
-모델 artifact 존재: ai_studio/, save_model/, model/, artifacts/, saved_model/, .pkl, .joblib, .pt, .pth, .h5, .keras
+모델 artifact 존재: ai_studio/, saved_model/, model/, artifacts/, .pkl, .joblib, .pt, .pth, .h5, .keras
 MLflow model 존재: MLmodel, python_model.pkl
 input example 존재: input_example.json
 ```
@@ -154,7 +154,7 @@ aiu_custom/
 aiu_custom/predict.py 또는 aiu_custom/model_wrapper.py
 local_serving/
 local_serving/serve.py
-save_model/
+saved_model/
 requirements.txt
 input_example.json
 run_model.py 또는 runtest.py 또는 train.py
@@ -227,7 +227,7 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 아래 폴더는 사용자가 폐쇄망 모델을 직접 넣는 기본 슬롯이며, 워크스페이스에 모델이 없을 때 선택형 폴더 복사 대상으로 사용한다.
@@ -257,7 +257,7 @@ tensorflow_sample/
 ```text
 <model-project-folder>/<sample-folder>/aiu_custom/
 <model-project-folder>/<sample-folder>/local_serving/
-<model-project-folder>/<sample-folder>/save_model/
+<model-project-folder>/<sample-folder>/saved_model/
 <model-project-folder>/<sample-folder>/run_model.py
 <model-project-folder>/<sample-folder>/requirements.txt
 <model-project-folder>/<sample-folder>/input_example.json
@@ -281,7 +281,7 @@ mlflow.db
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 복사는 `agent-mlflow-skill-sample-bootstrap` 스킬과 아래 스크립트를 기준으로 한다.
@@ -300,7 +300,7 @@ selected_sample
 sample_source_path
 target_project_path
 copy_mode: folder
-required_dirs: aiu_custom, local_serving, save_model
+required_dirs: aiu_custom, local_serving, saved_model
 next_action:
   1. 환경 검증
   2. 샘플 규격 확인/보충
@@ -325,7 +325,7 @@ next_action:
 - 추론 entrypoint 후보
 - 모델 artifact 후보
 - `aiu_custom` 필요 여부
-- 필수 폴더 존재 여부: `aiu_custom/`, `local_serving/`, `save_model/`
+- 필수 폴더 존재 여부: `aiu_custom/`, `local_serving/`, `saved_model/`
 - 다음 단계: `agent-mlflow-skill-environment-check`
 
 ## Safety

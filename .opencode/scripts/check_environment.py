@@ -31,7 +31,7 @@ ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "main.py", "app.py", "s
 SAMPLE_PROJECT_NAMES = {"sklearn_sample", "pytorch_sample", "tensorflow_sample"}
 MODEL_MARKERS = ["runtest.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
-ARTIFACT_DIRS = ["ai_studio", "save_model", "model", "artifacts", "saved_model"]
+ARTIFACT_DIRS = ["ai_studio", "saved_model", "model", "artifacts"]
 
 SETTING_ALIASES = {
     "mlflow_tracking_url": {
@@ -332,7 +332,7 @@ def build_report(project: Path) -> EnvironmentReport:
         tod_guide = [
             "1. 실행 파일 확정: run_model.py로 고정하지 말고 실제 로컬 학습/모델 생성 파일을 확정한다.",
             "2. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
-            f"3. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json을 확인한다.",
+            f"3. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
             f"4. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
             "5. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
             f"6. 로컬 학습 모델 실행: python {entrypoint_display}",
@@ -347,7 +347,7 @@ def build_report(project: Path) -> EnvironmentReport:
         entrypoint_display = setting_file or "run_model.py 또는 runtest.py"
         tod_guide = [
             "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
-            f"2. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json을 확인한다.",
+            f"2. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
             f"3. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
             "4. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
             f"5. 로컬 학습 모델 실행: python {entrypoint_display}",

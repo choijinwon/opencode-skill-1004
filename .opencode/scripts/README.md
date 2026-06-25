@@ -42,7 +42,7 @@ python .opencode/scripts/validate_mlflow_project.py --project <model-project-fol
 
 모델 프로젝트 폴더에 실행 가능한 모델이 없을 때, 샘플 3개 중 하나를 선택해 워크스페이스 아래로 샘플 폴더째 복사한다.
 
-선택 가능한 샘플은 원본에 `aiu_custom/`, `local_serving/`, `save_model/` 기본 폴더가 있어야 한다.
+선택 가능한 샘플은 원본에 `aiu_custom/`, `local_serving/`, `saved_model/` 기본 폴더가 있어야 한다.
 
 샘플 목록:
 
@@ -70,9 +70,9 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample pytorch --scaffold-existing --execute
 ```
 
-복사 대상은 소스 구조 중심이며 `.venv/`, `__pycache__/`, `model/`, `saved_model/`, `artifacts/ai_studio/`, `mlruns/`, `ai_studio/`, `mlflow.db` 같은 생성 산출물은 제외한다.
+복사 대상은 소스 구조 중심이며 `.venv/`, `__pycache__/`, `model/`, `artifacts/ai_studio/`, `mlruns/`, `ai_studio/`, `mlflow.db` 같은 생성 산출물은 제외한다.
 
-복사 후 `aiu_custom/`, `local_serving/`, `save_model/` 필수 폴더는 항상 복사된 샘플 폴더 안에 보장한다.
+복사 후 `aiu_custom/`, `local_serving/`, `saved_model/` 필수 폴더는 항상 복사된 샘플 폴더 안에 보장한다.
 
 복사 후 다음 단계는 아래 순서로 안내한다.
 

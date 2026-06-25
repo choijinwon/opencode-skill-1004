@@ -86,7 +86,7 @@ metadata:
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 기본 폴더가 없는 샘플은 선택형 폴더 복사 대상으로 사용하지 않는다.
@@ -98,7 +98,7 @@ save_model/
 ```text
 <workspace-root>/<sample-folder>/aiu_custom/
 <workspace-root>/<sample-folder>/local_serving/
-<workspace-root>/<sample-folder>/save_model/
+<workspace-root>/<sample-folder>/saved_model/
 <workspace-root>/<sample-folder>/run_model.py
 <workspace-root>/<sample-folder>/requirements.txt
 <workspace-root>/<sample-folder>/input_example.json
@@ -116,7 +116,6 @@ ai_studio/
 mlflow.db
 .DS_Store
 model/
-saved_model/
 artifacts/ai_studio/
 ```
 
@@ -125,7 +124,7 @@ artifacts/ai_studio/
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 ## Existing Model Scaffold Rule
@@ -220,7 +219,7 @@ next_action:
 세 번째 다음 단계는 반드시 환경 변수 입력/export 안내다. `run_model.py` 또는 `runtest.py`의 MLflow/AI Studio 설정 블록에 필요한 값을 사용자가 직접 입력하도록 안내하고, 실행 시 `MLFLOW_*` 환경변수로 export된다는 점을 함께 안내한다. secret 값은 출력하지 않는다.
 
 ```text
-2. 샘플 규격 확인/보충: aiu_custom/, local_serving/, save_model/, requirements.txt, input_example.json 확인
+2. 샘플 규격 확인/보충: aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json 확인
 3. 환경 변수 입력/export: run_model.py 또는 runtest.py 설정 블록 값 직접 입력 및 실행 시 MLFLOW_* export
 4. 패키지 설치: requirements.txt 기준으로 필요한 패키지 설치
 5. 로컬 학습 모델 실행: python run_model.py 또는 python runtest.py

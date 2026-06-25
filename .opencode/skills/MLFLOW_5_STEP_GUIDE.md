@@ -61,7 +61,7 @@ ML 개발자가 챗봇을 통해 다음 작업을 순서대로 수행할 수 있
 3. tensorflow - .opencode/samples/tensorflow_sample
 ```
 
-다른 샘플은 임의로 선택하지 않는다. 선택형 샘플은 `aiu_custom/`, `local_serving/`, `save_model/` 기본 폴더가 원본에 있어야 한다.
+다른 샘플은 임의로 선택하지 않는다. 선택형 샘플은 `aiu_custom/`, `local_serving/`, `saved_model/` 기본 폴더가 원본에 있어야 한다.
 
 아래 폴더는 폐쇄망에서 사용자가 직접 모델 코드와 데이터를 넣는 기본 모델 슬롯이며, 워크스페이스에 모델이 없을 때 선택해서 폴더째 복사한다.
 
@@ -78,7 +78,7 @@ tensorflow_sample/
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 ```
 
 아래 폴더는 필수가 아니다.
@@ -174,7 +174,7 @@ aiu_custom/
 aiu_custom/model_wrapper.py
 aiu_custom/predict.py
 local_serving/
-save_model/
+saved_model/
 MLmodel
 python_model.pkl
 ```
@@ -197,7 +197,7 @@ python_model.pkl
 필수 폴더
   - aiu_custom/
   - local_serving/
-  - save_model/
+  - saved_model/
 
 pyfunc wrapper
   - aiu_custom/model_wrapper.py
@@ -224,7 +224,7 @@ inference_entrypoint: predict.py | aiu_custom/model_wrapper.py | local_serving/ 
 required_dirs:
   aiu_custom: set | missing
   local_serving: set | missing
-  save_model: set | missing
+  saved_model: set | missing
 input_example_path: input_example.json | null
 next_action:
   1. 환경 검증
@@ -378,7 +378,7 @@ model_found: true
 3. ai_studio.env 필수 키를 확인한다.
 4. prepare-only, dry run, smoke test가 있으면 먼저 실행한다.
 5. 실제 학습 또는 모델 export를 실행한다.
-6. save_model/에 모델 산출물이 생성되는지 확인한다.
+6. saved_model/에 모델 산출물이 생성되는지 확인한다.
 7. Step 4에 model path와 input_example path를 넘긴다.
 ```
 
@@ -402,7 +402,7 @@ selected_sample: sklearn | pytorch | tensorflow
 4. ai_studio.env 필수 키를 확인한다.
 5. prepare-only 또는 smoke test가 있으면 먼저 실행한다.
 6. 로컬 학습 또는 모델 export를 실행한다.
-7. save_model/에 모델 산출물이 생성되는지 확인한다.
+7. saved_model/에 모델 산출물이 생성되는지 확인한다.
 8. Step 4에 model path와 input_example path를 넘긴다.
 ```
 
@@ -411,11 +411,11 @@ selected_sample: sklearn | pytorch | tensorflow
 ```text
 aiu_custom/
 local_serving/
-save_model/
+saved_model/
 input_example.json
 ```
 
-`save_model/`에는 학습 또는 export 결과물이 있어야 한다.
+`saved_model/`에는 학습 또는 export 결과물이 있어야 한다.
 
 ### Step 3 출력
 
@@ -425,7 +425,7 @@ input_example.json
 선택된 학습 entrypoint
 선택된 샘플 이름과 프로젝트 루트
 학습 실행 방식
-생성된 save_model 산출물
+생성된 saved_model 산출물
 생성되지 않은 필수 산출물
 학습 로그 요약
 다음 단계
@@ -467,7 +467,7 @@ agent-mlflow-skill-inference-test
   - predict.py
 
 모델 경로
-  - save_model/
+  - saved_model/
 
 테스트 입력
   - input_example.json
@@ -480,7 +480,7 @@ ModelWrapper 클래스 존재
 mlflow.pyfunc.PythonModel 상속
 load_context 구현
 predict 구현
-save_model/ 참조 경로 정상
+saved_model/ 참조 경로 정상
 ```
 
 ### Step 4 출력
@@ -597,10 +597,10 @@ Step 5  MLflow Run/Model 기록 확인
 
 ```text
 이 모델 프로젝트 폴더는 어떤 ML 프로젝트인가?
-필수 폴더 aiu_custom/local_serving/save_model이 있는가?
+필수 폴더 aiu_custom/local_serving/saved_model이 있는가?
 ai_studio.env 필수 키가 준비되었는가?
 현재 환경에서 실행 가능한가?
-학습 또는 export 후 save_model/에 모델이 생성되는가?
+학습 또는 export 후 saved_model/에 모델이 생성되는가?
 생성된 모델은 실제로 추론 가능한가?
 MLflow에 run/model/artifact 기록이 남는가?
 ```

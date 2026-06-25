@@ -10,7 +10,7 @@
 aiu_custom/
 local_serving/
 ai_studio/
-save_model/
+saved_model/
 run_model.py
 input_example.json
 requirements.txt

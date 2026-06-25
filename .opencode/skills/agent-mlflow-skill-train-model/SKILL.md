@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-train-model
-description: Use when the user asks "학습 실행", "모델 생성", "runtest.py", "run_model.py", "save_model 확인", "artifact 생성", or train model; checks local training entrypoint, model artifact creation, config, and input example.
+description: Use when the user asks "학습 실행", "모델 생성", "runtest.py", "run_model.py", "saved_model 확인", "artifact 생성", or train model; checks local training entrypoint, model artifact creation, config, and input example.
 license: MIT
 compatibility: opencode
 metadata:
@@ -93,7 +93,7 @@ metadata:
 ```text
 1. selected_sample 값을 확인한다. 허용값은 sklearn, pytorch, tensorflow이다.
 2. target_project_path를 확인한다.
-3. 복사된 샘플 폴더에 aiu_custom/, local_serving/, save_model/이 있는지 확인한다.
+3. 복사된 샘플 폴더에 aiu_custom/, local_serving/, saved_model/이 있는지 확인한다.
 4. requirements/config/input_example을 확인한다.
 5. `ai_studio.env` 필수 키가 모두 준비되었는지 확인한다.
 6. prepare-only 또는 smoke test가 있으면 먼저 실행 가능성을 검증한다.
@@ -122,10 +122,9 @@ tensorflow -> .opencode/samples/tensorflow_sample
 aiu_custom/
 local_serving/
 ai_studio/
-save_model/
+saved_model/
 model/
 artifacts/
-saved_model/
 MLmodel
 python_model.pkl
 framework native model file

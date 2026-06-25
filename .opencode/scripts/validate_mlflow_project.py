@@ -30,6 +30,16 @@ ENTRYPOINT_NAMES = [
     "train.py",
 ]
 
+TRAINING_ENTRYPOINT_NAMES = [
+    "register_model.py",
+    "runtest.py",
+    "run_model.py",
+    "main.py",
+    "app.py",
+    "train.py",
+    "scripts/train.py",
+]
+
 CONFIG_NAMES = [
     "ai_studio.env",
     "config.json",
@@ -59,7 +69,7 @@ ARTIFACT_SUFFIXES = [
 ]
 
 ARTIFACT_DIR_HINTS = [
-    "save_model",
+    "saved_model",
     "saved_model.pb",
     "variables",
     "tokenizer.json",
@@ -70,7 +80,7 @@ ARTIFACT_DIR_HINTS = [
 REQUIRED_DIRS = [
     "aiu_custom",
     "local_serving",
-    "save_model",
+    "saved_model",
 ]
 
 SAMPLE_SPEC_FILES = [
@@ -137,7 +147,7 @@ def has_project_markers(path: Path) -> bool:
     }
     if any((path / name).exists() for name in marker_names):
         return True
-    direct_artifact_dirs = [path / "ai_studio", path / "save_model", path / "artifacts", path / "model", path / "saved_model"]
+    direct_artifact_dirs = [path / "ai_studio", path / "saved_model", path / "artifacts", path / "model"]
     if any(candidate.exists() for candidate in direct_artifact_dirs):
         return True
     return any(file_path.suffix.lower() in ARTIFACT_SUFFIXES for file_path in path.iterdir() if file_path.is_file())
@@ -315,6 +325,12 @@ def find_entrypoints(project: Path) -> list[Path]:
     return sorted(set(found))
 
 
+def find_training_entrypoints(project: Path) -> list[Path]:
+    found = [project / name for name in TRAINING_ENTRYPOINT_NAMES if (project / name).exists()]
+    found.extend(path for path in project.glob("*.py") if path.is_file())
+    return sorted(set(found))
+
+
 def check_aiu_custom(project: Path, entrypoints: list[Path]) -> Check:
     # AI Studio style pyfunc registration depends on aiu_custom being shipped
     # with the model project because mlflow.pyfunc.log_model uses it through
@@ -421,7 +437,7 @@ def sample_spec_missing(project: Path) -> list[str]:
     for name in SAMPLE_SPEC_FILES:
         if not (project / name).exists():
             missing.append(name)
-    if not find_entrypoints(project):
+    if not find_training_entrypoints(project):
         missing.append("training entrypoint")
     if not ((project / "aiu_custom" / "predict.py").exists() or (project / "aiu_custom" / "model_wrapper.py").exists()):
         missing.append("aiu_custom/predict.py")
@@ -567,6 +583,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     artifacts = find_artifacts(project)
     framework, framework_evidence = detect_framework(project, requirements_text, artifacts)
     entrypoints = find_entrypoints(project)
+    training_entrypoints = find_training_entrypoints(project)
     config_file = find_first_existing(project, CONFIG_NAMES)
     input_example_file = find_first_existing(project, INPUT_EXAMPLE_NAMES)
 
@@ -583,7 +600,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             project_evidence + framework_evidence,
         )
     )
-    checks.append(check_entrypoint_confirmation(project, entrypoints))
+    checks.append(check_entrypoint_confirmation(project, training_entrypoints))
     checks.append(check_required_dirs(project))
     checks.append(check_sample_spec(project, framework))
     checks.append(check_aiu_custom(project, entrypoints))
@@ -684,10 +701,10 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         next_steps.append("Add or confirm mlflow dependency in the project environment.")
     if not artifacts:
         next_steps.append("Run training or provide a model artifact path.")
-    if not entrypoints:
+    if not training_entrypoints:
         next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.")
-    elif len(entrypoints) > 1:
-        next_steps.append("Entrypoint candidates: " + ", ".join(safe_relative(path, project) for path in entrypoints[:10]))
+    elif len(training_entrypoints) > 1:
+        next_steps.append("Entrypoint candidates: " + ", ".join(safe_relative(path, project) for path in training_entrypoints[:10]))
         next_steps.append("여러 후보 중 실제 사용하는 실행 파일을 확정하세요.")
     missing_spec = sample_spec_missing(project)
     if missing_spec:

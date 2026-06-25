@@ -27,7 +27,7 @@ Use `agent-mlflow-skill-project-analyze` for:
 ```text
 workspace analysis
 model exists / model missing decision
-framework, entrypoint, aiu_custom, local_serving, save_model inspection
+framework, entrypoint, aiu_custom, local_serving, saved_model inspection
 ```
 
 ## Sample Selection
@@ -87,7 +87,7 @@ next_action:
   6. 산출물 확인
 ```
 
-The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `save_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables.
+The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `saved_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables.
 
 ## Existing Model Flow
 
@@ -155,7 +155,7 @@ agent-mlflow-skill-environment-check
   - Python, dependency, MLflow, ai_studio.env, environment variable checks
 
 agent-mlflow-skill-train-model
-  - local training, runtest.py or run_model.py, model artifact creation, save_model checks
+  - local training, runtest.py or run_model.py, model artifact creation, saved_model checks
 
 agent-mlflow-skill-inference-test
   - input_example.json, predict.py, aiu_custom, local_serving inference tests

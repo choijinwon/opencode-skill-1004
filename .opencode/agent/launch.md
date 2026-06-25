@@ -102,7 +102,7 @@ Use these skills by name when the user request matches:
 agent-mlflow-skill-project-analyze
   - workspace analysis
   - model exists / model missing decision
-  - framework, entrypoint, aiu_custom, local_serving, save_model inspection
+  - framework, entrypoint, aiu_custom, local_serving, saved_model inspection
 
 agent-mlflow-skill-sample-bootstrap
   - Build mode only
@@ -113,7 +113,7 @@ agent-mlflow-skill-environment-check
   - Python, dependency, MLflow, ai_studio.env, environment variable checks
 
 agent-mlflow-skill-train-model
-  - local training, runtest.py or run_model.py, model artifact creation, save_model checks
+  - local training, runtest.py or run_model.py, model artifact creation, saved_model checks
 
 agent-mlflow-skill-inference-test
   - input_example.json, predict.py, aiu_custom, local_serving inference tests
