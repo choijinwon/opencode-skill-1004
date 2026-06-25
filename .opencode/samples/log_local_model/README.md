@@ -1,4 +1,4 @@
-# log_sample
+# log_local_model
 
 폐쇄망에서 사용자가 로그 기반 모델 또는 로그 처리 샘플을 넣는 기본 폴더입니다.
 
@@ -27,8 +27,8 @@ requirements.txt
 mlflow_tracking_url = ""          # tracking 서버 URL
 mlflow_tracking_username = ""     # 사용자명
 mlflow_tracking_password = ""     # 비밀번호, 출력 금지
-mlflow_experiment_name = "log_sample"
-mlflow_register_model_name = "log_sample_model"
+mlflow_experiment_name = "log_local_model"
+mlflow_register_model_name = "log_local_model"
 ```
 
 `run_model.py` 실행 시 위 값은 `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_REGISTER_MODEL_NAME`으로 export됩니다.

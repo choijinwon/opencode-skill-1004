@@ -35,8 +35,8 @@ AI_STUDIO_METRICS_DIR = AI_STUDIO_DIR / "metrics"
 mlflow_tracking_url = ""
 mlflow_tracking_username = ""
 mlflow_tracking_password = ""
-mlflow_experiment_name = "log_sample"
-mlflow_register_model_name = "log_sample_model"
+mlflow_experiment_name = "log_local_model"
+mlflow_register_model_name = "log_local_model"
 
 
 def missing_mlflow_settings() -> list[str]:
@@ -102,7 +102,7 @@ def log_mlflow_outputs(summary_path: Path) -> None:
     try:
         mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
         mlflow.set_experiment(mlflow_experiment_name)
-        with mlflow.start_run(run_name="log_sample_local_training") as run:
+        with mlflow.start_run(run_name="log_local_model_local_training") as run:
             mlflow.log_param("sample", "log")
             mlflow.log_metric("sample_log_count", 3)
             mlflow.log_metric("sample_success_rate", 1.0)
