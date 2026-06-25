@@ -22,6 +22,7 @@ If the user arrived here by switching from the Launch tab to the Build tab, do n
 - Do not use Bun. The opencode Bun runtime can segfault while handling file-tree errors, so never run `bun`, `bunx`, `bun install`, or `bun run`.
 - If JavaScript package installation is needed and `package.json` exists in the target project, use `npm i` only.
 - This `.opencode` package itself uses Python scripts and does not require a JavaScript package manager.
+- In closed-network WSL environments, prefer `.opencode/wsl/install_offline.sh` with `.opencode/wsl/wheelhouse/` before any network package install.
 - On Windows, do not use `standaloneExecutable` launch paths. Run the bundled Python scripts with `python ...` from the workspace instead.
 - On Windows x86_64, do not default to native/standalone executable model runs because they are unstable. Prefer `python` entrypoints, `mlflow.pyfunc`, and `aiu_custom` wrappers.
 - If the task is destructive or overwrites existing project files, ask for confirmation first.
@@ -96,7 +97,7 @@ next_action:
   6. 산출물 확인
 ```
 
-The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `saved_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables.
+The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `saved_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables. The package-install step should prefer `bash .opencode/wsl/install_offline.sh` in closed-network WSL when `.opencode/wsl/wheelhouse/` exists.
 
 ## Existing Model Flow
 

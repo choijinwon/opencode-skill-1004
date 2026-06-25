@@ -113,5 +113,9 @@ metadata:
 - opencode Bun 런타임 환경에서 파일 트리 오류 처리 중 세그멘테이션 폴트가 발생할 수 있으므로 Bun 런타임은 사용하지 않는다. `bun`, `bunx`, `bun install`, `bun run`을 절대 실행하지 않는다.
 - JavaScript 패키지 설치가 필요하고 대상 프로젝트에 `package.json`이 있으면 `npm i`만 사용한다.
 - Python 샘플/모델 의존성은 `requirements.txt` 기준으로 `python -m pip install -r requirements.txt`를 사용한다.
+- 폐쇄망 WSL에서는 네트워크 설치보다 `.opencode/wsl/wheelhouse/` 기반 오프라인 설치를 우선한다.
+  - wheelhouse가 있으면 `bash .opencode/wsl/install_offline.sh`
+  - wheelhouse가 없으면 온라인 WSL에서 `bash .opencode/wsl/download_wheels.sh`로 먼저 준비
+  - 고정 버전 목록은 `.opencode/wsl/requirements-ai-studio.txt`
 - Windows에서는 `standaloneExecutable` 경로를 사용하지 않고 워크스페이스 기준 `python ...` 명령으로 스크립트를 직접 실행한다.
 - Windows x86_64에서는 native/standalone executable 모델 실행을 기본 경로로 안내하지 않는다. Python entrypoint, `mlflow.pyfunc`, `aiu_custom` wrapper 기반 검증을 우선한다.

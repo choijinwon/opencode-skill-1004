@@ -253,7 +253,7 @@ def build_tod_guide(target_project_path: Path, has_runtest: bool) -> list[str]:
         f"1. 환경 검증: python .opencode/scripts/check_environment.py --project {target_project_path}",
         f"2. 샘플 규격 확인/보충: {target_project_path}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
         f"3. 환경 변수 입력/export: {entrypoint}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-        "4. 패키지 설치: package.json이 있으면 npm i, Python 샘플은 requirements.txt 기준 pip 설치를 사용한다.",
+        "4. 패키지 설치: 폐쇄망 WSL은 bash .opencode/wsl/install_offline.sh를 우선 사용하고, wheelhouse가 없으면 온라인 WSL에서 bash .opencode/wsl/download_wheels.sh로 먼저 준비한다.",
         f"5. 로컬 학습 모델 실행: python {entrypoint}",
         "6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
     ]
