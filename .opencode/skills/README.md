@@ -5,24 +5,37 @@
 ## Workflow
 
 ```text
-1. Project Analyze
+01. Project Analyze
    model_found: true | false 결정
 
-2. Sample Bootstrap
+02. Sample Bootstrap
    모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택
 
-3. Environment Check
+03. Environment Check
    Python 3.11.9, dependency, MLflow, 설정 상태 확인
 
-4. Train Model
+04. Train Model
    실제 entrypoint로 로컬 학습/모델 생성 실행
 
-5. Inference Test
+05. Inference Test
    input_example 기반 predict contract와 schema 확인
 
-6. MLflow Verify
+06. MLflow Verify
    run, metrics, artifact, registry 상태 확인
 ```
+
+## Folder Order
+
+```text
+01-agent-mlflow-skill-project-analyze
+02-agent-mlflow-skill-sample-bootstrap
+03-agent-mlflow-skill-environment-check
+04-agent-mlflow-skill-train-model
+05-agent-mlflow-skill-inference-test
+06-agent-mlflow-skill-mlflow-verify
+```
+
+폴더명은 순서 표시용입니다. 각 `SKILL.md`의 `name:` 값은 기존 호출 호환성을 위해 변경하지 않습니다.
 
 ## Common UI Pattern
 
