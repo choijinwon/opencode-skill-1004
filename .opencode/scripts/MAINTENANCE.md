@@ -1,0 +1,370 @@
+# Scripts Maintenance Guide
+
+이 문서는 `.opencode/scripts` 코드를 유지보수하는 사람을 위한 설명서입니다. 사용법은 `README.md`, 운영 속도 기준은 `.opencode/performance/CLOSED_NETWORK_SPEED.md`를 봅니다.
+
+## Design Rule
+
+```text
+Launch mode  -> 읽기/분석/안내만 수행
+Build mode   -> 복사/수정/설치/실행 가능
+scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
+```
+
+공통 원칙:
+
+- secret 값은 출력하지 않습니다. password/token은 `set`, `missing`, `empty` 상태만 보여줍니다.
+- 사용자가 만든 모델 파일은 덮어쓰지 않습니다. 덮어쓰기는 `--force`처럼 명시된 경우만 허용합니다.
+- Windows/WSL 폐쇄망을 우선 고려합니다.
+- Bun은 사용하지 않습니다.
+- Python 기준 버전은 `3.11.9`입니다.
+
+## Script Overview
+
+```text
+doctor.py
+  전체 워크플로우 상태를 한 화면에서 점검합니다.
+  유지보수자가 가장 먼저 봐야 하는 종합 진단 진입점입니다.
+
+validate_mlflow_project.py
+  모델 프로젝트를 깊게 분석합니다.
+  모델 있음/없음, 프레임워크 후보, entrypoint 후보, 샘플 규격 누락을 판단합니다.
+
+bootstrap_sample_project.py
+  sklearn/pytorch/tensorflow 샘플을 워크스페이스에 복사합니다.
+  기존 모델이 있으면 --scaffold-existing으로 부족한 골격만 보충합니다.
+
+check_environment.py
+  Python, dependency, MLflow 설정, 소스 내 필수 설정값을 확인합니다.
+  환경 변수 값과 소스 설정값을 set/missing/empty 상태로 표시합니다.
+
+run_training.py
+  확정된 entrypoint를 실제 실행하거나 실행 전 상태를 점검합니다.
+  모델 산출물과 ai_studio 출력 폴더를 확인합니다.
+
+test_inference.py
+  input_example.json 기반으로 추론 계약을 검증합니다.
+  mlflow.pyfunc 또는 aiu_custom wrapper 경로를 사용합니다.
+
+verify_mlflow.py
+  MLflow tracking server의 experiment, run, artifact, registry 상태를 확인합니다.
+
+response_speed_check.py
+  폐쇄망 OpenCode 응답 지연 원인을 진단합니다.
+  대형 폴더, 대형 파일, ignore 패턴 누락을 확인합니다.
+
+apply_index_ignore.py
+  .ignore, .rgignore, .gitignore에 폐쇄망 인덱싱 제외 규칙을 적용합니다.
+
+launch_workspace_summary.py
+  Launch 모드 첫 진입에서 가볍게 workspace 상태를 요약합니다.
+  무거운 분석 대신 validate_mlflow_project.py 실행 결과를 짧게 보여줍니다.
+
+test_local_sample.py
+  번들 샘플을 로컬 venv에서 테스트합니다.
+  오프라인 QA에서는 --skip-install을 사용할 수 있습니다.
+```
+
+## doctor.py
+
+책임:
+
+- OpenCode 패키지 상태를 확인합니다.
+- 01~06 스킬 폴더가 순서대로 있는지 확인합니다.
+- Python 3.11.9 여부를 확인합니다.
+- 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
+- 샘플 규격 폴더/파일 누락을 찾습니다.
+- MLflow 필수 5개 설정값을 소스 또는 환경 변수에서 확인합니다.
+- 산출물 후보를 확인합니다.
+
+주요 수정 위치:
+
+```text
+EXPECTED_PYTHON_VERSION    Python 기준 버전
+SKILL_FOLDERS              스킬 폴더 순서
+SAMPLE_SPEC_DIRS           필수 폴더
+SAMPLE_SPEC_FILES          필수 파일
+ENTRYPOINT_CANDIDATES      실행 파일 후보
+MLFLOW_SOURCE_KEYS         필수 MLflow 소스 키
+SETTING_ALIASES            사용자가 다르게 쓴 설정명 허용 목록
+```
+
+주의:
+
+- `mlflow_tracking_password` 값은 절대 evidence에 그대로 넣지 않습니다.
+- `.opencode/` 내부 샘플은 사용자 모델 산출물로 오인하지 않도록 스캔에서 제외합니다.
+- `--strict-exit`은 QA 자동화용입니다. 일반 사용 흐름에서는 기본 exit code 0을 유지합니다.
+
+## validate_mlflow_project.py
+
+책임:
+
+- 프로젝트 후보를 선택합니다.
+- requirements, entrypoint, artifact, config, input_example을 분석합니다.
+- 프레임워크 후보를 보수적으로 추정합니다.
+- 샘플 규격 부족분을 `next_steps`로 안내합니다.
+
+주요 수정 위치:
+
+```text
+SAMPLE_PRIORITY            모델이 없을 때 샘플 우선순위
+ENTRYPOINT_NAMES           일반 실행 파일 후보
+TRAINING_ENTRYPOINT_NAMES  로컬 학습/모델 생성 실행 후보
+REQUIRED_DIRS              필수 샘플 폴더
+SAMPLE_SPEC_FILES          필수 샘플 파일
+AI_STUDIO_ENV_KEYS         필수 설정 키
+ARTIFACT_SUFFIXES          모델 파일 확장자
+```
+
+주의:
+
+- `select_project()`는 명시 경로를 최우선으로 둡니다.
+- `score_project()`는 품질 점수가 아니라 후보 선택용 힌트입니다.
+- `write_permission_check()`는 임시 파일만 만들고 삭제합니다.
+
+## bootstrap_sample_project.py
+
+책임:
+
+- 번들 샘플 목록을 보여줍니다.
+- 샘플을 폴더째 복사합니다.
+- 기존 모델에는 부족한 scaffold만 보충합니다.
+- 생성 산출물과 캐시는 복사하지 않습니다.
+
+주요 수정 위치:
+
+```text
+SAMPLES                    선택 가능한 샘플 3개
+IGNORED_NAMES              복사 제외 이름
+GENERATED_ROOT_DIRS        복사 제외 생성 폴더
+REQUIRED_PROJECT_DIRS      샘플에 반드시 있어야 할 폴더
+SCAFFOLD_ROOT_NAMES        기존 모델에 보충 가능한 루트 항목
+build_tod_guide()          복사 후 사용자에게 보여줄 TOD 단계
+```
+
+주의:
+
+- 기본 복사 모드는 `folder`입니다. 루트에 파일을 흩뿌리지 않습니다.
+- `runtest.py`가 이미 있으면 `run_model.py`는 굳이 복사하지 않습니다.
+- Windows 호환성을 위해 `shutil.copyfile()`을 사용합니다.
+- `--force` 없이 기존 파일을 덮어쓰지 않습니다.
+
+## check_environment.py
+
+책임:
+
+- Python 버전, venv, dependency 파일, 설치 패키지를 확인합니다.
+- 환경 변수 `MLFLOW_*` 상태를 확인합니다.
+- `run_model.py` 또는 `runtest.py` 안의 설정 블록을 AST로 파싱합니다.
+- 사용자가 직접 소스에 입력해야 하는 값만 알려줍니다.
+
+주요 수정 위치:
+
+```text
+ENV_KEYS                   확인할 MLFLOW 환경 변수
+AI_STUDIO_ENV_KEYS         소스 설정 필수 키 5개
+MODEL_SETTING_FILES        설정을 읽을 파일 우선순위
+ENTRYPOINTS                실행 파일 후보
+SETTING_ALIASES            설정명 alias
+CORE_PACKAGES              설치 여부를 확인할 핵심 패키지
+EXPECTED_PYTHON_VERSION    Python 기준 버전
+```
+
+주의:
+
+- `ai_studio.env`는 보조 확인용입니다. 현재 흐름은 소스 직접 입력을 우선합니다.
+- AST 파싱은 문자열 literal만 안전하게 읽습니다. 동적 표현식은 값을 추론하지 않습니다.
+- password는 값이 있어도 `set`만 출력합니다.
+
+## run_training.py
+
+책임:
+
+- entrypoint 후보를 찾습니다.
+- 실행 전 체크리스트를 만듭니다.
+- `--execute`가 있을 때만 실제 학습/모델 생성 명령을 실행합니다.
+- 실행 후 모델 산출물과 AI Studio 산출물 여부를 확인합니다.
+
+주요 수정 위치:
+
+```text
+ENTRYPOINTS                실행 파일 후보
+REQUIRED_DIRS              실행 전 확인할 샘플 폴더
+ARTIFACT_DIRS              산출물 폴더 후보
+MLFLOW_OUTPUT_DIRS         MLflow/AI Studio 출력 폴더 후보
+AI_STUDIO_ENV_KEYS         실행 전 필요한 설정 키
+MODEL_SETTING_FILES        설정 파일 후보
+```
+
+주의:
+
+- 실행 파일이 여러 개이면 사용자 확정을 요청해야 합니다.
+- `--execute`가 없으면 실제 명령을 실행하지 않습니다.
+- `build_command()`는 `--prepare-only` 옵션이 있을 때만 추가합니다.
+
+## test_inference.py
+
+책임:
+
+- `input_example.json`을 읽습니다.
+- 모델 경로를 찾습니다.
+- `mlflow.pyfunc` 또는 `aiu_custom.predict.ModelWrapper`로 추론을 시도합니다.
+- 결과가 JSON 직렬화 가능한지 확인합니다.
+
+주요 수정 위치:
+
+```text
+find_input_example()       입력 예시 파일 후보
+find_model_path()          모델 경로 후보
+run_pyfunc()               MLflow pyfunc 추론
+run_aiu_custom()           aiu_custom wrapper 추론
+```
+
+주의:
+
+- `--execute`가 없으면 실제 추론을 실행하지 않는 방향을 유지합니다.
+- 외부 서버 호출은 하지 않습니다.
+- 실패 원인은 `failures`에 누적합니다.
+
+## verify_mlflow.py
+
+책임:
+
+- MLflow tracking server에 연결합니다.
+- experiment/run/artifact를 확인합니다.
+- registered model과 model version을 확인합니다.
+
+주요 수정 위치:
+
+```text
+list_artifacts()           run artifact 재귀 조회
+main()                     CLI 인자와 MLflow client 호출
+```
+
+주의:
+
+- MLflow 패키지가 없을 수 있으므로 import 실패를 친절히 안내해야 합니다.
+- credential 값은 출력하지 않습니다.
+- 폐쇄망에서는 tracking server URL이 내부망인지 사용자가 직접 확인합니다.
+
+## response_speed_check.py
+
+책임:
+
+- OpenCode 응답/인덱싱 지연 원인을 찾습니다.
+- ignore 패턴이 적용되어 있는지 확인합니다.
+- 무거운 폴더와 큰 파일 후보를 보여줍니다.
+
+주요 수정 위치:
+
+```text
+EXPECTED_IGNORE_PATTERNS   반드시 들어가야 하는 ignore 패턴
+SLOW_DIR_NAMES             느려질 수 있는 폴더명
+LARGE_SUFFIXES             대형 파일로 볼 확장자
+scan_workspace()           파일 트리 스캔 정책
+```
+
+주의:
+
+- `.opencode/samples/` 내부 샘플은 불필요한 경고에서 제외합니다.
+- 기본 exit code는 fail이 있을 때만 1입니다.
+- 대용량 파일 내용을 읽지 말고 stat만 사용합니다.
+
+## apply_index_ignore.py
+
+책임:
+
+- `.ignore`, `.rgignore`, `.gitignore`에 관리 블록을 추가/갱신합니다.
+- 폐쇄망 OpenCode 인덱싱 범위를 줄입니다.
+
+주요 수정 위치:
+
+```text
+PATTERNS                   인덱싱 제외 패턴
+TARGET_FILES               갱신할 ignore 파일 목록
+managed_block()            관리 블록 생성
+replace_or_append()        기존 관리 블록 교체 정책
+```
+
+주의:
+
+- 관리 블록 밖의 사용자 ignore 내용은 보존합니다.
+- 패턴을 추가하면 `.opencode/indexing/closed-network.ignore`도 같이 맞춥니다.
+
+## launch_workspace_summary.py
+
+책임:
+
+- Launch 모드에서 빠르게 workspace를 요약합니다.
+- 가능하면 `validate_mlflow_project.py --json` 결과를 짧게 변환합니다.
+- 실패해도 채팅이 중단되지 않도록 안내만 출력합니다.
+
+주요 수정 위치:
+
+```text
+MODEL_HINTS                모델 있음/없음 가벼운 힌트
+main()                     validate_mlflow_project.py 호출과 fallback 출력
+```
+
+주의:
+
+- Launch 모드는 읽기 전용입니다. 이 파일에서 복사/수정/설치/실행을 추가하지 않습니다.
+- 무거운 전체 스캔을 넣지 않습니다.
+
+## test_local_sample.py
+
+책임:
+
+- 번들 샘플을 venv에서 테스트합니다.
+- requirements 설치, prepare/register, run_model 실행을 검증합니다.
+
+주요 수정 위치:
+
+```text
+SAMPLE_PATHS               테스트할 샘플 폴더
+python_in_venv()           Windows/POSIX venv python 경로
+ensure_venv()              venv 생성/재생성
+test_sample()              샘플별 테스트 순서
+```
+
+주의:
+
+- 폐쇄망 QA에서는 `--skip-install`을 사용합니다.
+- Python 버전이 `3.11.9`가 아니면 실패하도록 유지합니다.
+- 네트워크 설치가 필요한 상황에서는 WSL wheelhouse 흐름을 우선 안내합니다.
+
+## Change Checklist
+
+코드 수정 후 아래를 확인합니다.
+
+```text
+python -m py_compile .opencode/scripts/*.py
+python -m json.tool .opencode/opencode.json
+python .opencode/scripts/doctor.py --workspace . --project .opencode/samples/pytorch_sample --entrypoint run_model.py
+python .opencode/scripts/response_speed_check.py --project .
+```
+
+샘플 복사 로직을 바꿨다면 추가로 확인합니다.
+
+```text
+python .opencode/scripts/bootstrap_sample_project.py --list
+python .opencode/scripts/bootstrap_sample_project.py --project /tmp/opencode-sample-qa --sample pytorch
+```
+
+## Common Failure Meaning
+
+```text
+warn:
+  진행은 가능하지만 사용자 확인 또는 호환성 확인이 필요합니다.
+
+fail/block:
+  현재 단계 진행 전 수정이 필요합니다.
+
+missing:
+  파일, 폴더, 값이 없습니다.
+
+empty:
+  키는 있지만 값이 빈 문자열입니다.
+
+set:
+  값이 있습니다. secret 값 자체는 출력하지 않습니다.
+```

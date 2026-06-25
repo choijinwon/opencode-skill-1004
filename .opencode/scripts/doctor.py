@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""One-page maintenance and QA diagnostic for the OpenCode MLflow workflow.
+
+This script intentionally stays stdlib-only so it can run on closed-network
+Windows/WSL machines before dependencies are installed. It summarizes package
+health, sample scaffold status, MLflow setting status, and output artifacts.
+"""
 from __future__ import annotations
 
 import argparse

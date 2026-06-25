@@ -4,6 +4,8 @@
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
 
+유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.
+
 ## Script Mapping
 
 ```text
