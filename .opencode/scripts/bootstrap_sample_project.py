@@ -82,6 +82,7 @@ class BootstrapReport:
     copied: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
+    tod_guide: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
 
 
@@ -246,7 +247,7 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
     return target_root, copied, skipped
 
 
-def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bool) -> list[str]:
+def build_tod_guide(target_project_path: Path, has_runtest: bool) -> list[str]:
     entrypoint = "runtest.py" if has_runtest else "run_model.py"
     return [
         f"1. 환경 검증: python .opencode/scripts/check_environment.py --project {target_project_path}",
@@ -255,6 +256,13 @@ def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bo
         "4. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
         f"5. 로컬 학습 모델 실행: python {entrypoint}",
         "6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
+    ]
+
+
+def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bool) -> list[str]:
+    tod_guide = build_tod_guide(target_project_path, has_runtest)
+    return [
+        tod_guide[0],
         f"선택 샘플: {sample_key}",
     ]
 
@@ -325,6 +333,12 @@ def main():
         except Exception as exc:
             failures.append(str(exc))
 
+    has_runtest = bool(
+        not failures
+        and target_project_path
+        and ((project / "runtest.py").exists() or (target_project_path / "runtest.py").exists())
+    )
+
     report = BootstrapReport(
         project_path=str(project),
         selected_sample=args.sample,
@@ -336,10 +350,13 @@ def main():
         copied=copied,
         skipped=skipped,
         failures=failures,
+        tod_guide=build_tod_guide(target_project_path, has_runtest)
+        if not failures and target_project_path
+        else [],
         next_steps=build_next_steps(
             args.sample,
             target_project_path,
-            (project / "runtest.py").exists() or (target_project_path / "runtest.py").exists(),
+            has_runtest,
         )
         if not failures and target_project_path
         else [],
@@ -364,6 +381,10 @@ def main():
             print("Failures:")
             for failure in report.failures:
                 print(f"- {failure}")
+        if report.tod_guide:
+            print("TOD Guide:")
+            for step in report.tod_guide:
+                print(f"- {step}")
         if report.next_steps:
             print("Next steps:")
             for step in report.next_steps:

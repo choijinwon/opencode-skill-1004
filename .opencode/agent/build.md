@@ -82,6 +82,7 @@ sample_source_path
 target_project_path
 copy_mode: folder
 ignored_generated_files
+TOD Guide
 next_action:
   1. 환경 검증
   2. 샘플 규격 확인/보충
