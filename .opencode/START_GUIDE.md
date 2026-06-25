@@ -1,5 +1,21 @@
 # Start Guide
 
+## Quick View
+
+```text
+Launch  -> 읽기 전용, 워크스페이스 분석, model_found 결정
+Build   -> 파일 복사/수정/설치/실행 가능
+
+모델 있음  -> 실행 파일 확정부터 7단계 진행
+모델 없음  -> Build 모드에서 1 sklearn / 2 pytorch / 3 tensorflow 선택
+
+폐쇄망 기준
+- Bun 사용 금지
+- package.json이 있으면 npm i
+- WSL wheelhouse가 있으면 install_offline.sh
+- 인덱싱이 느리면 apply_index_ignore.py
+```
+
 ## Mode Priority
 
 이 파일은 Launch 모드 진입 안내용 전역 참고 문서입니다.
