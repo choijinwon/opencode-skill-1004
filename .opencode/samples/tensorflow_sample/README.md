@@ -32,13 +32,13 @@ mlflow_register_model_name = "tensorflow_sample_model"
 ```
 
 `run_model.py` 실행 시 위 값은 `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_REGISTER_MODEL_NAME`으로 export됩니다.
-`mlflow_tracking_url`을 비워두면 로컬 기본값 `file://<sample>/ai_studio/artifacts`를 사용하므로 MLflow run은 `ai_studio/artifacts/<experiment_id>` 아래에 생성됩니다. experiment id가 1이면 `ai_studio/artifacts/1`이 됩니다. 이때 `MLFLOW_ALLOW_FILE_STORE=true`도 함께 설정합니다.
+`mlflow_tracking_url`을 비워두면 로컬 기본값 `file://<sample>/ai_studio/tracking`를 사용하므로 MLflow run은 `ai_studio/tracking/<experiment_id>` 아래에 생성됩니다. experiment id가 1이면 `ai_studio/tracking/1`이 됩니다. 이때 `MLFLOW_ALLOW_FILE_STORE=true`도 함께 설정합니다.
 
 주의: `mflow_tracking_url`이 아니라 `mlflow_tracking_url`을 사용합니다.
 
 주의:
 
 - 실제 API key, password, token 값은 넣지 않습니다.
-- `run_model.py` 실행 산출물은 `ai_studio/metrics/`와 `ai_studio/artifacts/`에 생성됩니다.
+- `run_model.py` 실행 산출물은 `ai_studio/metrics/`와 `ai_studio/code/`에 생성됩니다.
 - Git에는 `.env`, `ai_studio.env`, 대용량 모델 artifact를 올리지 않습니다.
 - 사용자 워크스페이스에 모델이 없으면 `sklearn`, `pytorch`, `tensorflow` 중 하나로 이 폴더를 루트에 복사할 수 있습니다.

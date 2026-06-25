@@ -82,7 +82,7 @@ metadata:
 5. `ai_studio.env` 필수 키가 모두 준비되었는지 확인한다.
 6. 실제 학습 또는 모델 export를 실행한다.
 7. 기존 artifact를 덮어쓸 가능성이 있으면 사용자 확인을 받는다.
-8. 생성 또는 갱신된 MLflow metrics/artifacts와 ai_studio/metrics, ai_studio/artifacts 경로를 확인한다.
+8. 생성 또는 갱신된 MLflow metrics/artifacts와 ai_studio/metrics, ai_studio/code 경로를 확인한다.
 9. Step 4 추론 테스트에 사용할 model path와 input example을 넘긴다.
 ```
 
@@ -102,7 +102,7 @@ metadata:
 5. `ai_studio.env` 필수 키가 모두 준비되었는지 확인한다.
 6. prepare-only 또는 smoke test가 있으면 먼저 실행 가능성을 검증한다.
 7. 로컬 학습 또는 로컬 모델 export를 실행한다.
-8. 생성된 MLflow metrics/artifacts와 ai_studio/metrics, ai_studio/artifacts 경로를 확인한다.
+8. 생성된 MLflow metrics/artifacts와 ai_studio/metrics, ai_studio/code 경로를 확인한다.
 9. 다음 단계의 inference-test에서 사용할 input example과 model path를 넘긴다.
 ```
 

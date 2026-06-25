@@ -32,7 +32,7 @@ PATTERNS = [
     "mlruns/",
     "mlartifacts/",
     "mlflow.db",
-    "ai_studio/artifacts/",
+    "ai_studio/tracking/",
     "ai_studio/metrics/",
     "artifacts/",
     "model/",

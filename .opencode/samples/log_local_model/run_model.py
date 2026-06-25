@@ -3,6 +3,7 @@ import io
 import json
 import sys
 import logging
+import tempfile
 from pathlib import Path
 
 
@@ -27,8 +28,9 @@ quiet_mlflow_logging()
 
 PROJECT_DIR = Path(__file__).resolve().parent
 AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
-AI_STUDIO_ARTIFACTS_DIR = AI_STUDIO_DIR / "artifacts"
+AI_STUDIO_CODE_DIR = AI_STUDIO_DIR / "code"
 AI_STUDIO_METRICS_DIR = AI_STUDIO_DIR / "metrics"
+AI_STUDIO_TRACKING_DIR = AI_STUDIO_DIR / "tracking"
 
 # MLflow/AI Studio settings
 # 사용자가 아래 값을 직접 입력합니다. 비밀번호 값은 출력하지 마세요.
@@ -50,9 +52,9 @@ def missing_mlflow_settings() -> list[str]:
 
 
 def export_mlflow_environment() -> None:
-    AI_STUDIO_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    AI_STUDIO_TRACKING_DIR.mkdir(parents=True, exist_ok=True)
     exports = {
-        "MLFLOW_TRACKING_URI": mlflow_tracking_url or AI_STUDIO_ARTIFACTS_DIR.as_uri(),
+        "MLFLOW_TRACKING_URI": mlflow_tracking_url or AI_STUDIO_TRACKING_DIR.as_uri(),
         "MLFLOW_TRACKING_USERNAME": mlflow_tracking_username,
         "MLFLOW_TRACKING_PASSWORD": mlflow_tracking_password,
         "MLFLOW_EXPERIMENT_NAME": mlflow_experiment_name,
@@ -67,27 +69,25 @@ def export_mlflow_environment() -> None:
 
 def write_visible_outputs() -> Path:
     AI_STUDIO_METRICS_DIR.mkdir(parents=True, exist_ok=True)
-    AI_STUDIO_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    AI_STUDIO_CODE_DIR.mkdir(parents=True, exist_ok=True)
     metrics = {
         "sample_log_count": 3,
         "sample_success_rate": 1.0,
     }
     for name, value in metrics.items():
         (AI_STUDIO_METRICS_DIR / name).write_text(f"{value}\n", encoding="utf-8")
-    summary_path = AI_STUDIO_ARTIFACTS_DIR / "training_summary.json"
-    summary_path.write_text(
-        json.dumps(
-            {
-                "sample": "log",
-                "status": "completed",
-                "metrics": metrics,
-                "artifact": "training_summary.json",
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
+    summary_path = AI_STUDIO_CODE_DIR / "training_summary.json"
+    summary_text = json.dumps(
+        {
+            "sample": "log",
+            "status": "completed",
+            "metrics": metrics,
+            "artifact": "training_summary.json",
+        },
+        ensure_ascii=False,
+        indent=2,
     )
+    summary_path.write_text(summary_text, encoding="utf-8")
     return summary_path
 
 
@@ -106,7 +106,12 @@ def log_mlflow_outputs(summary_path: Path) -> None:
             mlflow.log_param("sample", "log")
             mlflow.log_metric("sample_log_count", 3)
             mlflow.log_metric("sample_success_rate", 1.0)
-            mlflow.log_artifact(str(summary_path), artifact_path="ai_studio")
+            with tempfile.TemporaryDirectory() as upload_root_name:
+                upload_root = Path(upload_root_name)
+                upload_code_dir = upload_root / "code"
+                upload_code_dir.mkdir(parents=True, exist_ok=True)
+                (upload_code_dir / summary_path.name).write_text(summary_path.read_text(encoding="utf-8"), encoding="utf-8")
+                mlflow.log_artifacts(str(upload_root), artifact_path="ai_studio")
             print(f"MLflow run created: {run.info.run_id}")
     except Exception as exc:
         print(f"MLflow logging failed; local ai_studio outputs were created. reason={exc}")
@@ -125,7 +130,7 @@ def main() -> None:
     summary_path = write_visible_outputs()
     log_mlflow_outputs(summary_path)
     print(f"metrics written: {AI_STUDIO_METRICS_DIR}")
-    print(f"artifacts written: {AI_STUDIO_ARTIFACTS_DIR}")
+    print(f"code artifacts written: {AI_STUDIO_CODE_DIR}")
 
 
 if __name__ == "__main__":

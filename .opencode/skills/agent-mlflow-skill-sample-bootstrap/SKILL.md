@@ -224,7 +224,7 @@ next_action:
 3. 환경 변수 입력/export: run_model.py 또는 runtest.py 설정 블록 값 직접 입력 및 실행 시 MLFLOW_* export
 4. 패키지 설치: 폐쇄망 WSL은 bash .opencode/wsl/install_offline.sh 우선, wheelhouse가 없으면 온라인 WSL에서 bash .opencode/wsl/download_wheels.sh로 준비
 5. 로컬 학습 모델 실행: python run_model.py 또는 python runtest.py
-6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 확인
+6. 산출물 확인: MLflow artifact_path='ai_studio' 아래 ai_studio/code 또는 로컬 ai_studio/metrics, ai_studio/code 생성 확인
 ```
 
 ## Safety

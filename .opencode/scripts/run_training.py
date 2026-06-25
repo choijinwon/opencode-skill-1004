@@ -14,7 +14,7 @@ SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "main.py", "app.py", "scripts/train.py"]
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
-MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags"}
+MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
 AI_STUDIO_ENV_KEYS = [
     "mlflow_tracking_url",
