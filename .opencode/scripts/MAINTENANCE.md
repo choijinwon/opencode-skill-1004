@@ -23,6 +23,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 ```text
 doctor.py
   전체 워크플로우 상태를 한 화면에서 점검합니다.
+  run.py처럼 이름이 자유로운 단일 Python 실행 파일도 자동 후보로 잡습니다.
   유지보수자가 가장 먼저 봐야 하는 종합 진단 진입점입니다.
 
 validate_mlflow_project.py
@@ -74,6 +75,7 @@ test_local_sample.py
 - Python 3.11.9 여부를 확인합니다.
 - `requirements.txt` 기준 pip 패키지 설치/버전 상태를 요약합니다.
 - 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
+- 실행 파일이 AI Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
 - 샘플 규격 폴더/파일 누락을 찾습니다.
 - MLflow 필수 5개 설정값을 소스 또는 환경 변수에서 확인합니다.
 - 산출물 후보를 확인합니다.
@@ -94,6 +96,7 @@ SETTING_ALIASES            사용자가 다르게 쓴 설정명 허용 목록
 
 - `mlflow_tracking_password` 값은 절대 evidence에 그대로 넣지 않습니다.
 - `.opencode/` 내부 샘플은 사용자 모델 산출물로 오인하지 않도록 스캔에서 제외합니다.
+- 실행 파일 후보가 여러 개면 `--entrypoint <file>`로 사용자가 실제 파일을 확정해야 합니다.
 - `--strict-exit`은 QA 자동화용입니다. 일반 사용 흐름에서는 기본 exit code 0을 유지합니다.
 
 ## validate_mlflow_project.py
@@ -176,6 +179,7 @@ REQUIREMENT_OPERATORS      자동 비교할 버전 연산자
 주의:
 
 - `ai_studio.env`는 보조 확인용입니다. 현재 흐름은 소스 직접 입력을 우선합니다.
+- `run.py`처럼 이름이 다른 단일 Python 파일도 설정 파일 후보로 사용합니다.
 - AST 파싱은 문자열 literal만 안전하게 읽습니다. 동적 표현식은 값을 추론하지 않습니다.
 - password는 값이 있어도 `set`만 출력합니다.
 - 복잡한 pip specifier는 `version_unchecked`로 표시하고 사용자가 호환성을 직접 확인하게 합니다.

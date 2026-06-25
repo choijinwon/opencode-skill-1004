@@ -7,6 +7,7 @@ Launch  -> 읽기 전용, 워크스페이스 분석, model_found 결정
 Build   -> 파일 복사/수정/설치/실행 가능
 
 모델 있음  -> 실행 파일 확정부터 7단계 진행
+              run.py처럼 파일명은 사용자마다 달라도 됨
 모델 없음  -> Build 모드에서 1 sklearn / 2 pytorch / 3 tensorflow 선택
 
 폐쇄망 기준

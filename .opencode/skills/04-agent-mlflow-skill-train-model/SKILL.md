@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-train-model
-description: Use when the user asks "학습 실행", "모델 생성", "runtest.py", "run_model.py", "saved_model 확인", "artifact 생성", or train model; checks local training entrypoint, model artifact creation, config, and input example.
+description: Use when the user asks "학습 실행", "모델 생성", "runtest.py", "run_model.py", "run.py", "saved_model 확인", "artifact 생성", or train model; checks local training entrypoint, model artifact creation, config, and input example.
 license: MIT
 compatibility: opencode
 metadata:
@@ -38,7 +38,7 @@ metadata:
 ```text
 1. 기존 모델이면 실제 entrypoint를 먼저 확정한다.
 2. 샘플 모델이면 복사된 샘플 폴더를 실행 대상으로 사용한다.
-3. run_model.py로 고정하지 않는다.
+3. run_model.py로 고정하지 않는다. run.py처럼 사용자 파일명이 다르면 실제 파일명을 확정한다.
 4. 실행 전 MLflow/AI Studio 설정 블록을 확인한다.
 5. 실행 후 ai_studio/metrics, ai_studio/code를 확인한다.
 ```
@@ -80,6 +80,7 @@ python .opencode/scripts/run_training.py --project <project> --execute
 
 명시적 entrypoint 실행:
 python .opencode/scripts/run_training.py --project <project> --entrypoint <file> --execute
+python .opencode/scripts/run_training.py --project <project> --entrypoint run.py --execute
 ```
 
 ## Artifact Map

@@ -53,6 +53,7 @@ metadata:
 - requirements.txt 필요 패키지 / 설치 여부 / 설치 버전 / 요구 버전 / 버전 불일치
 - MLflow 설치/version 상태
 - 환경 변수 상태
+- 실행 파일명이 다른 경우 --entrypoint <file> 사용 여부
 - 입력이 필요한 값
 - password는 값 없이 set/empty/missing
 - TOD Guide
@@ -74,6 +75,7 @@ Secrets: mlflow_tracking_password=set, value hidden
 ```text
 환경 검증:
 python .opencode/scripts/check_environment.py --project <selected_project_path>
+python .opencode/scripts/check_environment.py --project <selected_project_path> --entrypoint <file>
 
 폐쇄망 WSL 패키지 설치:
 bash .opencode/wsl/install_offline.sh

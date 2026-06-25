@@ -126,11 +126,11 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 7. 산출물 확인
 ```
 
-The first Build step for an existing model is always confirming the actual training/model-creation entrypoint. Do not assume `run_model.py`. If candidates are ambiguous or missing, ask: `로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.`
+The first Build step for an existing model is always confirming the actual training/model-creation entrypoint. Do not assume `run_model.py`. If the project has exactly one Python file, such as `run.py`, treat it as the entrypoint candidate. If candidates are ambiguous or missing, ask: `로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.`
 
 ## MLflow Tracking Guide
 
-For `runtest.py` and `run_model.py`, guide the user to fill MLflow tracking settings directly in the file's setting block. Do not generate, infer, or print secret values.
+For the confirmed entrypoint file, such as `run.py`, `runtest.py`, `train.py`, or `run_model.py`, guide the user to fill MLflow tracking settings directly in that file's setting block. Do not generate, infer, or print secret values.
 
 Required keys:
 
@@ -142,7 +142,7 @@ mlflow_experiment_name       pytorch_sample by default for the PyTorch sample
 mlflow_register_model_name   pytorch_sample_model by default for the PyTorch sample
 ```
 
-Guide the user to write these values directly in `run_model.py` or `runtest.py`:
+Guide the user to write these values directly in the confirmed entrypoint file:
 
 ```text
 mlflow_tracking_url=
@@ -152,7 +152,7 @@ mlflow_experiment_name=
 mlflow_register_model_name=
 ```
 
-`run_model.py` exports the setting block to:
+The confirmed entrypoint exports the setting block to:
 
 ```text
 MLFLOW_TRACKING_URI

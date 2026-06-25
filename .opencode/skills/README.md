@@ -48,6 +48,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 doctor는 실행 파일 확정, 샘플 규격, MLflow 필수 5개 설정값, 산출물 상태를 한 화면에 보여줍니다.
 `requirements.txt`가 있으면 pip 필요 패키지, 현재 설치 여부, 설치된 버전, 요구 버전, 버전 불일치도 함께 보여줍니다.
+`run.py`처럼 실행 파일명이 사용자마다 달라도 단일 `.py` 파일은 자동으로 잡고, 여러 후보가 있으면 `--entrypoint <file>`로 확정합니다.
 
 ## Common UI Pattern
 

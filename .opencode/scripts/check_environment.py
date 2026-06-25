@@ -27,8 +27,8 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_register_model_name",
 ]
 
-MODEL_SETTING_FILES = ["runtest.py", "run_model.py"]
-ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "main.py", "app.py", "scripts/train.py"]
+MODEL_SETTING_FILES = ["runtest.py", "run_model.py", "run.py"]
+ENTRYPOINTS = ["runtest.py", "train.py", "run_model.py", "run.py", "main.py", "app.py", "scripts/train.py"]
 SAMPLE_PROJECT_NAMES = {"sklearn_sample", "pytorch_sample", "tensorflow_sample"}
 MODEL_MARKERS = ["runtest.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
@@ -381,44 +381,55 @@ def parse_python_string_assignments(path: Path) -> dict[str, str]:
     return values
 
 
-def model_settings_status(project: Path) -> EnvFileStatus | None:
+def resolve_setting_file(project: Path, entrypoint_name: str | None = None) -> Path | None:
+    if entrypoint_name:
+        path = Path(entrypoint_name)
+        return path if path.is_absolute() else project / path
     for name in MODEL_SETTING_FILES:
         path = project / name
         if not path.exists():
             continue
-        values = parse_python_string_assignments(path)
-        statuses = []
-        for key in AI_STUDIO_ENV_KEYS:
-            if key not in values:
-                status = "local_default" if key == "mlflow_tracking_url" else "missing"
-            elif values[key] == "":
-                status = "local_default" if key == "mlflow_tracking_url" else "empty"
-            else:
-                status = "set"
-            statuses.append(EnvVarStatus(key, status))
-        return EnvFileStatus(str(path), statuses)
+        return path
+    candidates = find_entrypoint_candidates(project)
+    if len(candidates) == 1:
+        return candidates[0]
     return None
 
 
-def export_ready_status(project: Path) -> list[EnvVarStatus]:
-    for name in MODEL_SETTING_FILES:
-        path = project / name
-        if not path.exists():
-            continue
-        values = parse_python_string_assignments(path)
-        statuses = []
-        for setting_key, env_key in EXPORT_ENV_MAP.items():
-            if values.get(setting_key):
-                status = "set"
-            elif env_status(env_key) == "set":
-                status = "exported"
-            elif setting_key == "mlflow_tracking_url":
-                status = "local_default"
-            else:
-                status = "missing"
-            statuses.append(EnvVarStatus(env_key, status))
-        return statuses
-    return []
+def model_settings_status(project: Path, entrypoint_name: str | None = None) -> EnvFileStatus | None:
+    path = resolve_setting_file(project, entrypoint_name)
+    if path is None or not path.exists():
+        return None
+    values = parse_python_string_assignments(path)
+    statuses = []
+    for key in AI_STUDIO_ENV_KEYS:
+        if key not in values:
+            status = "local_default" if key == "mlflow_tracking_url" else "missing"
+        elif values[key] == "":
+            status = "local_default" if key == "mlflow_tracking_url" else "empty"
+        else:
+            status = "set"
+        statuses.append(EnvVarStatus(key, status))
+    return EnvFileStatus(str(path), statuses)
+
+
+def export_ready_status(project: Path, entrypoint_name: str | None = None) -> list[EnvVarStatus]:
+    path = resolve_setting_file(project, entrypoint_name)
+    if path is None or not path.exists():
+        return []
+    values = parse_python_string_assignments(path)
+    statuses = []
+    for setting_key, env_key in EXPORT_ENV_MAP.items():
+        if values.get(setting_key):
+            status = "set"
+        elif env_status(env_key) == "set":
+            status = "exported"
+        elif setting_key == "mlflow_tracking_url":
+            status = "local_default"
+        else:
+            status = "missing"
+        statuses.append(EnvVarStatus(env_key, status))
+    return statuses
 
 
 def source_input_required_status(model_settings: EnvFileStatus | None) -> list[EnvVarStatus]:
@@ -433,7 +444,7 @@ def source_input_required_status(model_settings: EnvFileStatus | None) -> list[E
     return required
 
 
-def build_report(project: Path) -> EnvironmentReport:
+def build_report(project: Path, entrypoint_name: str | None = None) -> EnvironmentReport:
     python_version = platform.python_version()
     deps = dependency_files(project)
     packages = []
@@ -444,8 +455,8 @@ def build_report(project: Path) -> EnvironmentReport:
 
     env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
     ai_env = ai_studio_env_status(project)
-    model_settings = model_settings_status(project)
-    export_ready = export_ready_status(project)
+    model_settings = model_settings_status(project, entrypoint_name)
+    export_ready = export_ready_status(project, entrypoint_name)
     source_input_required = source_input_required_status(model_settings)
     blocked_summary: list[str] = []
     failures: list[str] = []
@@ -608,6 +619,7 @@ def print_text(report: EnvironmentReport):
 def main():
     parser = argparse.ArgumentParser(description="Check local ML project execution environment and ai_studio.env settings.")
     parser.add_argument("--project", default=".", help="model project folder")
+    parser.add_argument("--entrypoint", help="actual local training/model creation file, such as run.py")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
@@ -615,7 +627,7 @@ def main():
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
 
-    report = build_report(project)
+    report = build_report(project, args.entrypoint)
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

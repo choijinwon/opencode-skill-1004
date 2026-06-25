@@ -44,6 +44,7 @@ SAMPLE_SPEC_FILES = [
 ENTRYPOINT_CANDIDATES = [
     "runtest.py",
     "run_model.py",
+    "run.py",
     "train.py",
     "main.py",
     "app.py",
@@ -53,6 +54,7 @@ ENTRYPOINT_CANDIDATES = [
 SETTING_FILES = [
     "runtest.py",
     "run_model.py",
+    "run.py",
     "train.py",
     "main.py",
     "app.py",
@@ -340,6 +342,9 @@ def find_setting_file(project: Path, explicit: str | None) -> Path | None:
             values = parse_python_settings(path)
             if values or name in {"runtest.py", "run_model.py"}:
                 return path
+    entrypoints = find_entrypoints(project)
+    if len(entrypoints) == 1:
+        return entrypoints[0]
     return None
 
 
@@ -541,6 +546,64 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
     return DoctorCheck("환경 변수 입력/export", "pass", "필수 5개 MLflow 설정값이 확인됐습니다.", evidence)
 
 
+def check_ai_studio_code(project: Path, setting_file_arg: str | None) -> DoctorCheck:
+    setting_file = find_setting_file(project, setting_file_arg)
+    if setting_file is None or not setting_file.exists():
+        return DoctorCheck(
+            "AI Studio 코드 적합성",
+            "warn",
+            "검사할 실행 파일을 확정하지 못했습니다.",
+            [],
+            ["실행 파일명이 사용자마다 다르면 --entrypoint <file>로 실제 파일을 지정하세요."],
+        )
+
+    text = read_text(setting_file)
+    values = parse_python_settings(setting_file)
+    evidence = [rel(setting_file, project)]
+    missing = []
+
+    if "mlflow" in text:
+        evidence.append("mlflow usage: found")
+    else:
+        missing.append("mlflow import/use")
+
+    missing_settings = [key for key in MLFLOW_SOURCE_KEYS if not values.get(key) and ENV_EXPORT_MAP[key] not in text]
+    if missing_settings:
+        missing.append("settings: " + ", ".join(missing_settings))
+    else:
+        evidence.append("MLflow settings: found")
+
+    export_markers = [env_key for env_key in ENV_EXPORT_MAP.values() if env_key in text]
+    if export_markers:
+        evidence.append("MLFLOW export/env markers: " + ", ".join(export_markers))
+    else:
+        missing.append("MLFLOW_* export/env mapping")
+
+    if "artifact_path=\"ai_studio\"" in text or "artifact_path='ai_studio'" in text or "ai_studio/code" in text or "ai_studio/metrics" in text:
+        evidence.append("AI Studio artifact/output path: found")
+    else:
+        missing.append("AI Studio artifact/output path")
+
+    if "aiu_custom" in text or "ModelWrapper" in text or "code_paths" in text or (project / "aiu_custom").exists():
+        evidence.append("aiu_custom/code_paths marker: found")
+    else:
+        missing.append("aiu_custom wrapper/code_paths marker")
+
+    if missing:
+        return DoctorCheck(
+            "AI Studio 코드 적합성",
+            "warn",
+            "현재 실행 파일은 AI Studio/MLflow 규격에 맞게 수정이 필요할 수 있습니다.",
+            [f"missing: {item}" for item in missing] + evidence,
+            [
+                f"{rel(setting_file, project)}에 MLflow 설정 블록 5개와 MLFLOW_* export를 추가하세요.",
+                "MLflow artifact는 artifact_path=\"ai_studio\" 기준으로 기록되게 맞추세요.",
+                "aiu_custom ModelWrapper 또는 code_paths 사용 여부를 확인하세요.",
+            ],
+        )
+    return DoctorCheck("AI Studio 코드 적합성", "pass", "실행 파일에 AI Studio/MLflow 연동 마커가 있습니다.", evidence)
+
+
 def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck:
     entrypoints = find_entrypoints(project)
     setting_file = find_setting_file(project, setting_file_arg)
@@ -610,6 +673,7 @@ def build_report(workspace: Path, project: Path, sample: str, setting_file: str 
         check_python_version(),
         check_pip_requirements(project),
         check_entrypoint(project, setting_file),
+        check_ai_studio_code(project, setting_file),
         check_sample_spec(project, workspace, sample),
         check_env_settings(project, setting_file),
         check_model_outputs(project),

@@ -69,6 +69,7 @@ Launch/Build/skills/sample/env 상태를 한 화면에서 점검한다. 주니�
 ```text
 python .opencode/scripts/doctor.py --workspace . --project .
 python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint run.py
 python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --json
 ```
 
@@ -79,9 +80,10 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 2. Python 3.11.9 환경
 3. requirements.txt 패키지 설치/버전 상태
 4. 실행 파일 확정
-5. 샘플 규격 폴더/파일
-6. MLflow 필수 5개 설정값 입력/export
-7. 모델/메트릭/코드 산출물
+5. AI Studio 코드 적합성
+6. 샘플 규격 폴더/파일
+7. MLflow 필수 5개 설정값 입력/export
+8. 모델/메트릭/코드 산출물
 ```
 
 ### validate_mlflow_project.py
@@ -216,6 +218,7 @@ PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_reg
 
 ```text
 python .opencode/scripts/check_environment.py --project <model-project-folder>
+python .opencode/scripts/check_environment.py --project <model-project-folder> --entrypoint run.py
 python .opencode/scripts/check_environment.py --project <model-project-folder> --json
 ```
 
