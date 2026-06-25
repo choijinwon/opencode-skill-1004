@@ -63,9 +63,9 @@ metadata:
 기본 복사 방식은 `copy_mode: folder`다. 이 방식은 워크스페이스 루트에 파일을 풀어놓지 않고 선택한 샘플 폴더 자체를 복사한다.
 
 ```text
-<workspace-root>/sklearn_sample/
-<workspace-root>/pytorch_sample/
-<workspace-root>/tensorflow_sample/
+<workspace>/sklearn_sample/
+<workspace>/pytorch_sample/
+<workspace>/tensorflow_sample/
 ```
 
 워크스페이스에 기존 파일이 있어도 대상 샘플 폴더가 없으면 복사할 수 있다. 같은 이름의 샘플 폴더가 이미 있으면 기존 파일은 덮어쓰지 않고 누락된 파일/폴더만 보충한다.
@@ -96,12 +96,12 @@ saved_model/
 선택한 샘플 폴더를 워크스페이스 아래로 폴더째 복사한다.
 
 ```text
-<workspace-root>/<sample-folder>/aiu_custom/
-<workspace-root>/<sample-folder>/local_serving/
-<workspace-root>/<sample-folder>/saved_model/
-<workspace-root>/<sample-folder>/run_model.py
-<workspace-root>/<sample-folder>/requirements.txt
-<workspace-root>/<sample-folder>/input_example.json
+<workspace>/<sample-folder>/aiu_custom/
+<workspace>/<sample-folder>/local_serving/
+<workspace>/<sample-folder>/saved_model/
+<workspace>/<sample-folder>/run_model.py
+<workspace>/<sample-folder>/requirements.txt
+<workspace>/<sample-folder>/input_example.json
 ```
 
 `runtest.py`가 대상 워크스페이스 또는 대상 샘플 폴더에 이미 있으면 `run_model.py`를 새로 만들거나 덮어쓰지 않는다. 이 경우 `runtest.py`를 모델 생성/테스트 entrypoint로 사용한다.

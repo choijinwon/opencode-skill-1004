@@ -53,23 +53,23 @@ Selection mapping:
 When the user selects a sample, use `agent-mlflow-skill-sample-bootstrap` and copy the selected sample folder into the workspace. The default copy mode is folder mode:
 
 ```text
-<workspace-root>/sklearn_sample/
-<workspace-root>/pytorch_sample/
-<workspace-root>/tensorflow_sample/
+<workspace>/sklearn_sample/
+<workspace>/pytorch_sample/
+<workspace>/tensorflow_sample/
 ```
 
 Run the sample copy through:
 
 ```text
-python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample <sklearn|pytorch|tensorflow> --execute
+python .opencode/scripts/bootstrap_sample_project.py --project . --sample <sklearn|pytorch|tensorflow> --execute
 ```
 
 Concrete examples:
 
 ```text
-1 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample sklearn --execute
-2 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute
-3 -> python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample tensorflow --execute
+1 -> python .opencode/scripts/bootstrap_sample_project.py --project . --sample sklearn --execute
+2 -> python .opencode/scripts/bootstrap_sample_project.py --project . --sample pytorch --execute
+3 -> python .opencode/scripts/bootstrap_sample_project.py --project . --sample tensorflow --execute
 ```
 
 If the target sample folder already exists, run the same copy command without `--force` to supplement only missing files and folders such as `saved_model/`. Existing files must be skipped, not overwritten. Ask before using `--force` only when the user explicitly wants a clean overwrite.

@@ -143,6 +143,23 @@ def append_unique(items: list[str], item: str) -> None:
         items.append(item)
 
 
+def display_path(path: Path) -> str:
+    return path.as_posix()
+
+
+def copy_file(source: Path, target: Path) -> None:
+    # copyfile avoids Windows metadata/permission edge cases that can affect copy2.
+    shutil.copyfile(source, target)
+
+
+def resolve_project_arg(raw_project: str) -> Path:
+    if raw_project.strip() == "<workspace-root>":
+        raw_project = "."
+    elif "<" in raw_project or ">" in raw_project:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+    return Path(raw_project).expanduser().resolve()
+
+
 def copy_existing_project_scaffold(sample: Path, project: Path, execute: bool) -> tuple[Path, list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
@@ -156,21 +173,21 @@ def copy_existing_project_scaffold(sample: Path, project: Path, execute: bool) -
         target = project / relative
         if source.is_dir():
             if target.exists():
-                append_unique(skipped, str(relative) + "/")
+                append_unique(skipped, display_path(relative) + "/")
                 continue
             if execute:
                 target.mkdir(parents=True, exist_ok=True)
-            append_unique(copied, str(relative) + "/")
+            append_unique(copied, display_path(relative) + "/")
             continue
 
         if target.exists():
-            append_unique(skipped, str(relative))
+            append_unique(skipped, display_path(relative))
             continue
 
         if execute:
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-        append_unique(copied, str(relative))
+            copy_file(source, target)
+        append_unique(copied, display_path(relative))
 
     for name in REQUIRED_PROJECT_DIRS:
         target = project / name
@@ -201,28 +218,28 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
 
         if source.is_dir():
             if target.exists() and not force:
-                skipped.append(str(display_relative) + "/")
+                skipped.append(display_path(display_relative) + "/")
                 continue
             if execute:
                 target.mkdir(parents=True, exist_ok=True)
-            copied.append(str(display_relative) + "/")
+            copied.append(display_path(display_relative) + "/")
             continue
 
         if target.exists() and not force:
-            skipped.append(str(display_relative))
+            skipped.append(display_path(display_relative))
             continue
 
         if execute:
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-        copied.append(str(display_relative))
+            copy_file(source, target)
+        copied.append(display_path(display_relative))
 
     for name in REQUIRED_PROJECT_DIRS:
         target = target_root / name
         display_relative = Path(sample.name) / name if copy_mode == "folder" else Path(name)
         if execute:
             target.mkdir(parents=True, exist_ok=True)
-        entry = f"{display_relative}/"
+        entry = f"{display_path(display_relative)}/"
         if entry not in copied:
             copied.append(entry)
 
@@ -268,7 +285,7 @@ def main():
     if not args.sample:
         raise ValueError("--sample is required unless --list is used")
 
-    project = Path(args.project).expanduser().resolve()
+    project = resolve_project_arg(args.project)
     sample_meta = SAMPLES[args.sample]
     sample_source = SAMPLES_DIR / sample_meta["path"]
     failures: list[str] = []

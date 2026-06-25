@@ -9,7 +9,7 @@ Build 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow
 이 패키지는 Python 스크립트만 사용합니다. Bun 런타임에서 세그멘테이션 오류가 발생할 수 있으므로 `bun`, `bunx`, `bun install`, `bun run`을 사용하지 않습니다.
 
 ```text
-python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute
+python .opencode/scripts/bootstrap_sample_project.py --project . --sample pytorch --execute
 ```
 
 새 채팅 세션의 첫 assistant 응답에서는 사용자의 첫 입력 내용과 관계없이 Launch Guide를 먼저 출력합니다.
