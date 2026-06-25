@@ -19,7 +19,9 @@ If the user arrived here by switching from the Launch tab to the Build tab, do n
 - If a secret-like field must be discussed, report only `set`, `empty`, or `missing`.
 - Prefer local and closed-network assumptions unless the user explicitly asks for external network use.
 - In closed-network/offline mode, never create or open GitHub issues, crash reports, telemetry reports, or external bug-report URLs. Treat environment-check problems as report findings and continue the chat.
-- Do not use Bun. Never run `bun`, `bunx`, `bun install`, or `bun run`; this package uses Python scripts and does not require a JavaScript package manager.
+- Do not use Bun. Never run `bun`, `bunx`, `bun install`, or `bun run`.
+- If JavaScript package installation is needed and `package.json` exists in the target project, use `npm i` only.
+- This `.opencode` package itself uses Python scripts and does not require a JavaScript package manager.
 - On Windows, do not use `standaloneExecutable` launch paths. Run the bundled Python scripts with `python ...` from the workspace instead.
 - On Windows x86_64, do not default to native/standalone executable model runs because they are unstable. Prefer `python` entrypoints, `mlflow.pyfunc`, and `aiu_custom` wrappers.
 - If the task is destructive or overwrites existing project files, ask for confirmation first.

@@ -27,6 +27,14 @@ Step 6  산출물 확인
         verify_mlflow.py
 ```
 
+패키지 설치 기준:
+
+```text
+JavaScript 프로젝트(package.json 있음) -> npm i
+Python 샘플/모델(requirements.txt 있음) -> python -m pip install -r requirements.txt
+Bun 사용 금지 -> bun, bunx, bun install, bun run 실행하지 않음
+```
+
 ## Scripts
 
 ### validate_mlflow_project.py

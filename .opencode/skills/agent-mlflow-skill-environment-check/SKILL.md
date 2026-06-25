@@ -110,6 +110,8 @@ metadata:
 - 폐쇄망에서는 내부 패키지 저장소 정책을 우선 확인해야 한다.
 - 폐쇄망에서는 GitHub issue 생성, 외부 crash report, telemetry, bug-report URL 열기를 시도하지 않는다.
 - 환경 검증의 차단/경고 항목은 프로세스를 종료시키는 실패가 아니라 보고서 항목으로 출력한다.
-- Bun 런타임은 사용하지 않는다. `bun`, `bunx`, `bun install`, `bun run` 대신 Python 스크립트만 실행한다.
+- Bun 런타임은 사용하지 않는다. `bun`, `bunx`, `bun install`, `bun run`을 절대 실행하지 않는다.
+- JavaScript 패키지 설치가 필요하고 대상 프로젝트에 `package.json`이 있으면 `npm i`만 사용한다.
+- Python 샘플/모델 의존성은 `requirements.txt` 기준으로 `python -m pip install -r requirements.txt`를 사용한다.
 - Windows에서는 `standaloneExecutable` 경로를 사용하지 않고 워크스페이스 기준 `python ...` 명령으로 스크립트를 직접 실행한다.
 - Windows x86_64에서는 native/standalone executable 모델 실행을 기본 경로로 안내하지 않는다. Python entrypoint, `mlflow.pyfunc`, `aiu_custom` wrapper 기반 검증을 우선한다.

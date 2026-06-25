@@ -334,7 +334,7 @@ def build_report(project: Path) -> EnvironmentReport:
             "2. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
             f"3. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
             f"4. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-            "5. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
+            "5. 패키지 설치: package.json이 있으면 npm i, Python 샘플은 requirements.txt 기준 pip 설치를 사용한다.",
             f"6. 로컬 학습 모델 실행: python {entrypoint_display}",
             "7. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
         ]
@@ -349,7 +349,7 @@ def build_report(project: Path) -> EnvironmentReport:
             "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
             f"2. 샘플 규격 확인/보충: {project}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
             f"3. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-            "4. 패키지 설치: requirements.txt 기준으로 필요한 패키지를 설치하거나 활성화된 환경을 확인한다.",
+            "4. 패키지 설치: package.json이 있으면 npm i, Python 샘플은 requirements.txt 기준 pip 설치를 사용한다.",
             f"5. 로컬 학습 모델 실행: python {entrypoint_display}",
             "6. 산출물 확인: MLflow metrics/artifacts 또는 ai_studio/metrics, ai_studio/artifacts 생성 여부를 확인한다.",
         ]
