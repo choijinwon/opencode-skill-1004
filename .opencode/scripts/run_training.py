@@ -293,7 +293,13 @@ def main():
             failures.append(entrypoint_error)
         if entrypoint is None:
             failures.append("missing_train_entrypoint")
-            next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요. 예: --entrypoint train.py")
+            if entrypoint_error == "entrypoint_not_found":
+                next_steps.append("실행 파일을 찾지 못했습니다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣어주세요.")
+                next_steps.append("파일을 넣은 뒤 --entrypoint <file>로 다시 실행하세요.")
+            elif entrypoint_error and entrypoint_error.startswith("entrypoint_not_found:"):
+                next_steps.append("지정한 실행 파일이 없습니다. 파일명을 확인하거나 해당 Python 파일을 프로젝트에 직접 넣어주세요.")
+            else:
+                next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요. 예: --entrypoint train.py")
             if entrypoint_candidates:
                 next_steps.append("Entrypoint candidates: " + ", ".join(str(path.relative_to(work_path)) for path in entrypoint_candidates))
         else:

@@ -115,7 +115,13 @@ warn:
 
 needs_user_input:
 - entrypoint 후보가 여러 개임
+- entrypoint 파일을 찾지 못해 사용자가 실제 파일을 직접 넣어야 함
 - 기존 artifact 덮어쓰기 가능성이 있음
+
+entrypoint를 찾지 못한 경우:
+- 자동으로 run.py를 생성하지 않는다.
+- 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣게 안내한다.
+- 파일을 넣은 뒤 --entrypoint <file>로 다시 실행한다.
 - MLflow 설정 값을 사용자가 직접 입력해야 함
 
 blocked:

@@ -90,6 +90,8 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 ### adapt_ai_studio.py
 
 사용자가 가져온 임의 Python 실행 파일을 AI Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
+실행 파일을 찾지 못하면 자동 생성하지 않는다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 `--entrypoint <file>`로 지정해야 한다.
+파일 후보가 여러 개일 때도 추측하지 않고 사용자가 직접 지정한다.
 
 ```text
 python .opencode/scripts/adapt_ai_studio.py --project <model-project-folder> --entrypoint run.py

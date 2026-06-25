@@ -128,6 +128,7 @@ adapt_entrypoint()          백업 생성과 adapter block 삽입
 주의:
 
 - 기본은 dry-run입니다. 실제 수정은 `--execute`가 있어야 합니다.
+- 실행 파일을 찾지 못하면 새 실행 파일을 만들지 않습니다. 사용자가 실제 파일을 직접 넣고 `--entrypoint <file>`로 지정해야 합니다.
 - entrypoint 수정 전 `<file>.ai_studio.bak` 백업을 만듭니다.
 - 기존 adapter block이 있으면 `--force` 없이는 다시 쓰지 않습니다.
 - 모델별 학습/추론 로직은 자동으로 해석하지 않습니다. adapter block과 wrapper TODO를 넣어 AI Studio 연결부를 보강합니다.

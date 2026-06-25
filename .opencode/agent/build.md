@@ -138,7 +138,7 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 7. 산출물 확인
 ```
 
-The first Build step for an existing model is always confirming the actual training/model-creation entrypoint. Do not assume `run_model.py`. If the project has exactly one Python file, such as `run.py`, treat it as the entrypoint candidate. If candidates are ambiguous or missing, ask: `로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.`
+The first Build step for an existing model is always confirming the actual training/model-creation entrypoint. Do not assume `run_model.py`. If the project has exactly one Python file, such as `run.py`, treat it as the entrypoint candidate. If no Python entrypoint can be found, do not create one automatically; ask the user to place the real training/model-creation Python file in the project and provide its filename. If candidates are ambiguous, ask the user to choose the exact file with `--entrypoint <file>`.
 
 ## MLflow Tracking Guide
 

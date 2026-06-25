@@ -513,7 +513,10 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
             "warn",
             "MLflow/AI Studio 설정을 읽을 실행 파일을 찾지 못했습니다.",
             [],
-            ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요."],
+            [
+                "실행 파일을 찾지 못했거나 후보가 여러 개입니다.",
+                "사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣거나 --entrypoint <file>로 지정하세요.",
+            ],
         )
 
     values = parse_python_settings(setting_file)
@@ -554,7 +557,10 @@ def check_ai_studio_code(project: Path, setting_file_arg: str | None) -> DoctorC
             "warn",
             "검사할 실행 파일을 확정하지 못했습니다.",
             [],
-            ["실행 파일명이 사용자마다 다르면 --entrypoint <file>로 실제 파일을 지정하세요."],
+            [
+                "실행 파일을 찾지 못했거나 후보가 모호합니다.",
+                "사용자가 실제 학습/모델 생성 Python 파일을 직접 넣고 --entrypoint <file>로 지정하세요.",
+            ],
         )
 
     text = read_text(setting_file)
@@ -621,7 +627,10 @@ def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck
             "warn",
             "실행 파일 후보가 없습니다.",
             [],
-            ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요."],
+            [
+                "실행 파일을 찾지 못했습니다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣어주세요.",
+                "파일을 넣은 뒤 --entrypoint <file>로 다시 점검하세요.",
+            ],
         )
     if len(entrypoints) == 1:
         return DoctorCheck("실행 파일 확정", "pass", f"단일 실행 파일 후보: {rel(entrypoints[0], project)}", evidence)
@@ -630,7 +639,10 @@ def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck
         "warn",
         "실행 파일 후보가 여러 개입니다.",
         evidence,
-        ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 확정하세요."],
+        [
+            "실행 파일 후보가 여러 개입니다. 사용자가 실제 사용하는 파일명을 직접 지정해야 합니다.",
+            "예: python .opencode/scripts/doctor.py --workspace . --project <project> --entrypoint run.py",
+        ],
     )
 
 

@@ -484,7 +484,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         if entrypoint is None:
             if entrypoint_candidates:
                 next_steps.append("Entrypoint candidates: " + ", ".join(str(path.relative_to(project)) for path in entrypoint_candidates))
-            next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.")
+            next_steps.append("실행 파일을 찾지 못했습니다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 --entrypoint <file>로 지정하세요.")
             source_input_required = []
     else:
         entrypoint_display = setting_file or "run_model.py 또는 runtest.py"
@@ -526,7 +526,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if model_settings is None and not (project / "ai_studio.env").exists():
         failures.append("missing_model_settings_file:entrypoint_or_ai_studio_env")
         if existing_model_flow and entrypoint is None:
-            next_steps.append("실행 파일 확정 후 해당 파일의 MLflow/AI Studio 설정 블록에 값을 입력하세요.")
+            next_steps.append("실행 파일을 직접 넣고 확정한 뒤 해당 파일의 MLflow/AI Studio 설정 블록에 값을 입력하세요.")
         else:
             next_steps.append("Fill MLflow/AI Studio settings directly in the confirmed entrypoint file.")
     for item in setting_source.key_status:
