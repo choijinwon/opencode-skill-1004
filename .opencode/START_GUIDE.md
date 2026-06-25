@@ -6,6 +6,7 @@
 현재 활성 모드가 Build 모드이거나 Build 탭 프롬프트가 적용된 상태에서는 Launch 읽기 전용 규칙을 적용하지 않습니다.
 Build 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow` 중 하나를 입력하면 안내만 하지 말고 즉시 선택된 샘플 복사 명령을 실행합니다.
 특히 `2`는 PyTorch 샘플 선택이므로 다음 명령을 직접 실행합니다.
+이 패키지는 Python 스크립트만 사용합니다. Bun 런타임에서 세그멘테이션 오류가 발생할 수 있으므로 `bun`, `bunx`, `bun install`, `bun run`을 사용하지 않습니다.
 
 ```text
 python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute

@@ -110,3 +110,4 @@ metadata:
 - 폐쇄망에서는 내부 패키지 저장소 정책을 우선 확인해야 한다.
 - 폐쇄망에서는 GitHub issue 생성, 외부 crash report, telemetry, bug-report URL 열기를 시도하지 않는다.
 - 환경 검증의 차단/경고 항목은 프로세스를 종료시키는 실패가 아니라 보고서 항목으로 출력한다.
+- Bun 런타임은 사용하지 않는다. `bun`, `bunx`, `bun install`, `bun run` 대신 Python 스크립트만 실행한다.
