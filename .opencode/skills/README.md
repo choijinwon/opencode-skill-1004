@@ -37,6 +37,17 @@
 
 폴더명은 순서 표시용입니다. 각 `SKILL.md`의 `name:` 값은 기존 호출 호환성을 위해 변경하지 않습니다.
 
+## Doctor
+
+전체 흐름을 한 번에 점검할 때는 doctor를 먼저 실행합니다.
+
+```text
+python .opencode/scripts/doctor.py --workspace . --project .
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+```
+
+doctor는 실행 파일 확정, 샘플 규격, MLflow 필수 5개 설정값, 산출물 상태를 한 화면에 보여줍니다.
+
 ## Common UI Pattern
 
 각 스킬은 `판단 결과`를 먼저 보여주고, 자세한 설명은 접기 영역에 둡니다.

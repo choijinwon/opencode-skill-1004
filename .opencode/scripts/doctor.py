@@ -1,0 +1,522 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import ast
+import json
+import os
+import platform
+import sys
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+
+EXPECTED_PYTHON_VERSION = "3.11.9"
+
+SKILL_FOLDERS = [
+    "01-agent-mlflow-skill-project-analyze",
+    "02-agent-mlflow-skill-sample-bootstrap",
+    "03-agent-mlflow-skill-environment-check",
+    "04-agent-mlflow-skill-train-model",
+    "05-agent-mlflow-skill-inference-test",
+    "06-agent-mlflow-skill-mlflow-verify",
+]
+
+SAMPLE_SPEC_DIRS = [
+    "aiu_custom",
+    "local_serving",
+    "saved_model",
+]
+
+SAMPLE_SPEC_FILES = [
+    "requirements.txt",
+    "input_example.json",
+]
+
+ENTRYPOINT_CANDIDATES = [
+    "runtest.py",
+    "run_model.py",
+    "train.py",
+    "main.py",
+    "app.py",
+    "scripts/train.py",
+]
+
+SETTING_FILES = [
+    "runtest.py",
+    "run_model.py",
+    "train.py",
+    "main.py",
+    "app.py",
+]
+
+MLFLOW_SOURCE_KEYS = [
+    "mlflow_tracking_url",
+    "mlflow_tracking_username",
+    "mlflow_tracking_password",
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+]
+
+ENV_EXPORT_MAP = {
+    "mlflow_tracking_url": "MLFLOW_TRACKING_URI",
+    "mlflow_tracking_username": "MLFLOW_TRACKING_USERNAME",
+    "mlflow_tracking_password": "MLFLOW_TRACKING_PASSWORD",
+    "mlflow_experiment_name": "MLFLOW_EXPERIMENT_NAME",
+    "mlflow_register_model_name": "MLFLOW_REGISTER_MODEL_NAME",
+}
+
+SETTING_ALIASES = {
+    "mlflow_tracking_url": {
+        "mlflow_tracking_url",
+        "mflow_tracking_url",
+        "tracking_url",
+        "mlflow_tracking_uri",
+        "MLFLOW_TRACKING_URI",
+    },
+    "mlflow_tracking_username": {
+        "mlflow_tracking_username",
+        "tracking_username",
+        "mlflow_username",
+        "username",
+        "MLFLOW_TRACKING_USERNAME",
+    },
+    "mlflow_tracking_password": {
+        "mlflow_tracking_password",
+        "tracking_password",
+        "mlflow_password",
+        "password",
+        "MLFLOW_TRACKING_PASSWORD",
+    },
+    "mlflow_experiment_name": {
+        "mlflow_experiment_name",
+        "experiment_name",
+        "MLFLOW_EXPERIMENT_NAME",
+    },
+    "mlflow_register_model_name": {
+        "mlflow_register_model_name",
+        "register_model_name",
+        "registered_model_name",
+        "MLFLOW_REGISTER_MODEL_NAME",
+    },
+}
+
+ALIAS_TO_SETTING = {
+    alias: key
+    for key, aliases in SETTING_ALIASES.items()
+    for alias in aliases
+}
+
+MODEL_SUFFIXES = {
+    ".pkl",
+    ".joblib",
+    ".pt",
+    ".pth",
+    ".onnx",
+    ".h5",
+    ".keras",
+    ".safetensors",
+}
+
+GENERATED_SKIP_DIRS = {
+    ".git",
+    ".opencode",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "mlruns",
+    "node_modules",
+}
+
+
+@dataclass
+class DoctorCheck:
+    name: str
+    status: str
+    detail: str
+    evidence: list[str] = field(default_factory=list)
+    tod: list[str] = field(default_factory=list)
+
+
+@dataclass
+class DoctorReport:
+    workspace: str
+    project: str
+    os: str
+    python: str
+    expected_python: str
+    checks: list[DoctorCheck]
+    next_steps: list[str]
+
+
+def rel(path: Path, base: Path) -> str:
+    try:
+        return path.relative_to(base).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+
+
+def literal_string(node: ast.AST | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def target_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Subscript):
+        return literal_string(node.slice)
+    return None
+
+
+def record_setting(values: dict[str, str], key: str | None, value: str | None) -> None:
+    if key is None or value is None:
+        return
+    setting_key = ALIAS_TO_SETTING.get(key)
+    if setting_key:
+        values[setting_key] = value
+
+
+def parse_python_settings(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    try:
+        tree = ast.parse(read_text(path))
+    except SyntaxError:
+        return values
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            value = literal_string(node.value)
+            for target in node.targets:
+                record_setting(values, target_name(target), value)
+        elif isinstance(node, ast.AnnAssign):
+            record_setting(values, target_name(node.target), literal_string(node.value))
+        elif isinstance(node, ast.Dict):
+            for key_node, value_node in zip(node.keys, node.values):
+                record_setting(values, literal_string(key_node), literal_string(value_node))
+    return values
+
+
+def find_entrypoints(project: Path) -> list[Path]:
+    found = []
+    for name in ENTRYPOINT_CANDIDATES:
+        candidate = project / name
+        if candidate.is_file():
+            found.append(candidate)
+    found.extend(path for path in project.glob("*.py") if path.is_file())
+    return sorted(set(found))
+
+
+def find_setting_file(project: Path, explicit: str | None) -> Path | None:
+    if explicit:
+        path = (project / explicit).resolve() if not Path(explicit).is_absolute() else Path(explicit).resolve()
+        return path if path.exists() else path
+    for name in SETTING_FILES:
+        path = project / name
+        if path.is_file():
+            values = parse_python_settings(path)
+            if values or name in {"runtest.py", "run_model.py"}:
+                return path
+    return None
+
+
+def find_model_artifacts(project: Path, max_depth: int = 4) -> list[Path]:
+    artifacts: list[Path] = []
+    base_depth = len(project.parts)
+    for root, dirs, files in os.walk(project):
+        root_path = Path(root)
+        depth = len(root_path.parts) - base_depth
+        if depth >= max_depth:
+            dirs[:] = []
+        dirs[:] = [dirname for dirname in dirs if dirname not in GENERATED_SKIP_DIRS]
+        for dirname in dirs:
+            if dirname in {"saved_model", "model", "models"}:
+                artifacts.append(root_path / dirname)
+        for filename in files:
+            file_path = root_path / filename
+            if file_path.suffix.lower() in MODEL_SUFFIXES or filename == "MLmodel":
+                artifacts.append(file_path)
+    return sorted(set(artifacts))
+
+
+def check_python_version() -> DoctorCheck:
+    current = platform.python_version()
+    if current == EXPECTED_PYTHON_VERSION:
+        return DoctorCheck("환경 검증", "pass", f"Python {current}", [sys.executable])
+    return DoctorCheck(
+        "환경 검증",
+        "warn",
+        f"Python 버전 차이 ({current} vs 기대 {EXPECTED_PYTHON_VERSION})",
+        [sys.executable],
+        [f"Python {EXPECTED_PYTHON_VERSION} 환경에서 최종 QA를 실행하세요."],
+    )
+
+
+def check_opencode(workspace: Path) -> DoctorCheck:
+    config = workspace / ".opencode" / "opencode.json"
+    skills_dir = workspace / ".opencode" / "skills"
+    evidence = []
+    missing = []
+    if not config.exists():
+        missing.append(".opencode/opencode.json")
+    else:
+        try:
+            json.loads(read_text(config))
+            evidence.append(".opencode/opencode.json: valid")
+        except json.JSONDecodeError as exc:
+            return DoctorCheck(
+                "OpenCode 패키지",
+                "fail",
+                f"opencode.json 형식 오류: line {exc.lineno} {exc.msg}",
+                [str(config)],
+                ["opencode.json을 먼저 수정하세요."],
+            )
+
+    for folder in SKILL_FOLDERS:
+        skill = skills_dir / folder / "SKILL.md"
+        if skill.exists():
+            evidence.append(f"{folder}/SKILL.md")
+        else:
+            missing.append(f".opencode/skills/{folder}/SKILL.md")
+
+    if missing:
+        return DoctorCheck(
+            "OpenCode 패키지",
+            "warn",
+            "필수 패키지 파일 또는 순서형 스킬 폴더가 부족합니다.",
+            [f"missing: {item}" for item in missing] + evidence,
+            ["스킬 패키지를 다시 복사하거나 누락된 폴더만 보충하세요."],
+        )
+    return DoctorCheck("OpenCode 패키지", "pass", "opencode.json과 01~06 스킬 폴더가 정상입니다.", evidence)
+
+
+def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorCheck:
+    evidence = []
+    missing = []
+    for dirname in SAMPLE_SPEC_DIRS:
+        path = project / dirname
+        if path.is_dir():
+            evidence.append(f"{dirname}/")
+        else:
+            missing.append(f"{dirname}/")
+    for filename in SAMPLE_SPEC_FILES:
+        path = project / filename
+        if path.exists():
+            evidence.append(filename)
+        else:
+            missing.append(filename)
+    if not ((project / "aiu_custom" / "predict.py").exists() or (project / "aiu_custom" / "model_wrapper.py").exists()):
+        missing.append("aiu_custom/predict.py 또는 aiu_custom/model_wrapper.py")
+    if not (project / "local_serving" / "serve.py").exists():
+        missing.append("local_serving/serve.py")
+    if not find_entrypoints(project):
+        missing.append("로컬 학습/모델 생성 실행 파일")
+
+    if missing:
+        copy_command = (
+            f"python .opencode/scripts/bootstrap_sample_project.py --project {project} "
+            f"--sample {sample} --scaffold-existing --execute"
+        )
+        if project == workspace:
+            copy_command = f"python .opencode/scripts/bootstrap_sample_project.py --project . --sample {sample} --scaffold-existing --execute"
+        return DoctorCheck(
+            "샘플 규격 확인/보충",
+            "warn",
+            "모델 프로젝트에 샘플 규격 폴더/파일이 부족합니다.",
+            [f"missing: {item}" for item in missing] + evidence,
+            [
+                "기존 모델 파일은 덮어쓰지 말고 부족한 골격만 복사하세요.",
+                copy_command,
+            ],
+        )
+    return DoctorCheck("샘플 규격 확인/보충", "pass", "샘플 규격 폴더/파일이 모두 있습니다.", evidence)
+
+
+def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorCheck:
+    setting_file = find_setting_file(project, setting_file_arg)
+    if setting_file is None:
+        return DoctorCheck(
+            "환경 변수 입력/export",
+            "warn",
+            "MLflow/AI Studio 설정을 읽을 실행 파일을 찾지 못했습니다.",
+            [],
+            ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요."],
+        )
+
+    values = parse_python_settings(setting_file)
+    evidence = [rel(setting_file, project)]
+    missing = []
+    for source_key in MLFLOW_SOURCE_KEYS:
+        value = values.get(source_key, "")
+        env_key = ENV_EXPORT_MAP[source_key]
+        if value:
+            if source_key == "mlflow_tracking_password":
+                evidence.append(f"{source_key}: set (값은 출력하지 않음)")
+            else:
+                evidence.append(f"{source_key}: set")
+        elif os.environ.get(env_key):
+            evidence.append(f"{source_key}: exported")
+        else:
+            missing.append(source_key)
+
+    if missing:
+        return DoctorCheck(
+            "환경 변수 입력/export",
+            "warn",
+            "필수 MLflow 설정값이 아직 미입력 상태입니다.",
+            [f"missing: {item}" for item in missing] + evidence,
+            [
+                f"{rel(setting_file, project)} 설정 블록에 5개 값을 직접 입력하세요.",
+                "password 값은 화면에 출력하지 말고 set/missing 상태만 확인하세요.",
+            ],
+        )
+    return DoctorCheck("환경 변수 입력/export", "pass", "필수 5개 MLflow 설정값이 확인됐습니다.", evidence)
+
+
+def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck:
+    entrypoints = find_entrypoints(project)
+    setting_file = find_setting_file(project, setting_file_arg)
+    evidence = [rel(path, project) for path in entrypoints[:10]]
+    if setting_file and setting_file.exists():
+        return DoctorCheck(
+            "실행 파일 확정",
+            "pass",
+            f"실행/설정 파일 후보가 확정됐습니다: {rel(setting_file, project)}",
+            evidence or [rel(setting_file, project)],
+        )
+    if not entrypoints:
+        return DoctorCheck(
+            "실행 파일 확정",
+            "warn",
+            "실행 파일 후보가 없습니다.",
+            [],
+            ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요."],
+        )
+    if len(entrypoints) == 1:
+        return DoctorCheck("실행 파일 확정", "pass", f"단일 실행 파일 후보: {rel(entrypoints[0], project)}", evidence)
+    return DoctorCheck(
+        "실행 파일 확정",
+        "warn",
+        "실행 파일 후보가 여러 개입니다.",
+        evidence,
+        ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 확정하세요."],
+    )
+
+
+def check_model_outputs(project: Path) -> DoctorCheck:
+    artifacts = find_model_artifacts(project)
+    local_outputs = []
+    for name in ["ai_studio/metrics", "ai_studio/code"]:
+        path = project / name
+        if path.exists():
+            local_outputs.append(name)
+    evidence = [rel(path, project) for path in artifacts[:10]] + local_outputs
+    if artifacts or local_outputs:
+        return DoctorCheck("산출물 확인", "pass", "모델/메트릭/코드 산출물 후보가 있습니다.", evidence)
+    return DoctorCheck(
+        "산출물 확인",
+        "warn",
+        "모델 산출물 또는 ai_studio 산출물이 아직 보이지 않습니다.",
+        [],
+        ["로컬 학습 모델 실행 후 ai_studio/metrics, ai_studio/code 또는 모델 파일을 확인하세요."],
+    )
+
+
+def build_next_steps(checks: list[DoctorCheck]) -> list[str]:
+    steps: list[str] = []
+    for check in checks:
+        if check.status in {"warn", "fail"}:
+            steps.extend(check.tod)
+    deduped = []
+    for step in steps:
+        if step not in deduped:
+            deduped.append(step)
+    if not deduped:
+        deduped.append("doctor 기준으로 다음 단계 진행 가능: 패키지 설치 -> 로컬 학습 모델 실행 -> 산출물 확인.")
+    return deduped
+
+
+def build_report(workspace: Path, project: Path, sample: str, setting_file: str | None) -> DoctorReport:
+    checks = [
+        check_opencode(workspace),
+        check_python_version(),
+        check_entrypoint(project, setting_file),
+        check_sample_spec(project, workspace, sample),
+        check_env_settings(project, setting_file),
+        check_model_outputs(project),
+    ]
+    return DoctorReport(
+        workspace=str(workspace),
+        project=str(project),
+        os=f"{platform.system()} {platform.release()}",
+        python=platform.python_version(),
+        expected_python=EXPECTED_PYTHON_VERSION,
+        checks=checks,
+        next_steps=build_next_steps(checks),
+    )
+
+
+def print_text(report: DoctorReport) -> None:
+    print("OpenCode MLflow Doctor")
+    print(f"Workspace: {report.workspace}")
+    print(f"Project: {report.project}")
+    print(f"OS: {report.os}")
+    print(f"Python: {report.python} (expected {report.expected_python})")
+    print("")
+    for index, check in enumerate(report.checks, start=1):
+        print(f"{index}. [{check.status}] {check.name}")
+        print(f"   detail: {check.detail}")
+        for item in check.evidence:
+            print(f"   - {item}")
+        if check.tod:
+            print("   TOD:")
+            for item in check.tod:
+                print(f"   - {item}")
+    print("")
+    print("Next steps:")
+    for item in report.next_steps:
+        print(f"- {item}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run one-page OpenCode MLflow workflow diagnostics.")
+    parser.add_argument("--workspace", default=".", help="workspace root containing .opencode")
+    parser.add_argument("--project", default=".", help="model project folder")
+    parser.add_argument("--sample", choices=["sklearn", "pytorch", "tensorflow"], default="pytorch", help="sample scaffold to suggest when files are missing")
+    parser.add_argument("--entrypoint", help="actual local training/model creation file, such as runtest.py")
+    parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    parser.add_argument("--strict-exit", action="store_true", help="return non-zero on warn/fail")
+    args = parser.parse_args()
+
+    workspace = Path(args.workspace).expanduser().resolve()
+    project = Path(args.project).expanduser().resolve()
+    if not workspace.exists():
+        raise SystemExit(f"workspace not found: {workspace}")
+    if not project.exists():
+        raise SystemExit(f"project not found: {project}")
+
+    report = build_report(workspace, project, args.sample, args.entrypoint)
+    if args.json:
+        print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
+    else:
+        print_text(report)
+
+    if args.strict_exit:
+        if any(check.status == "fail" for check in report.checks):
+            return 2
+        if any(check.status == "warn" for check in report.checks):
+            return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

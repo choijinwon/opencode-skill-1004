@@ -40,6 +40,18 @@ model exists / model missing decision
 framework, entrypoint, aiu_custom, local_serving, saved_model inspection
 ```
 
+For a one-page workflow health check, run:
+
+```text
+python .opencode/scripts/doctor.py --workspace . --project .
+```
+
+If the user has an existing model and the entrypoint is known, include it:
+
+```text
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint <file>
+```
+
 ## Sample Selection
 
 If `model_found: false`, the user can choose one bundled sample.

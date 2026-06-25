@@ -9,6 +9,7 @@
 ```text
 Step 1  프로젝트 구조 분석 / 실행 파일 확정
         validate_mlflow_project.py
+        doctor.py
         bootstrap_sample_project.py
 
 Step 2  실행 환경 검증
@@ -58,6 +59,27 @@ python .opencode/scripts/apply_index_ignore.py --project .
 자세한 운영 기준은 `.opencode/performance/CLOSED_NETWORK_SPEED.md`를 본다.
 
 ## Scripts
+
+### doctor.py
+
+Launch/Build/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
+
+```text
+python .opencode/scripts/doctor.py --workspace . --project .
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --json
+```
+
+확인 항목:
+
+```text
+1. OpenCode 패키지/opencode.json/01~06 스킬 폴더
+2. Python 3.11.9 환경
+3. 실행 파일 확정
+4. 샘플 규격 폴더/파일
+5. MLflow 필수 5개 설정값 입력/export
+6. 모델/메트릭/코드 산출물
+```
 
 ### validate_mlflow_project.py
 
