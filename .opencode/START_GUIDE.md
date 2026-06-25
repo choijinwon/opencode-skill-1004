@@ -1,5 +1,16 @@
 # Start Guide
 
+## Mode Priority
+
+이 파일은 Launch 모드 진입 안내용 전역 참고 문서입니다.
+현재 활성 모드가 Build 모드이거나 Build 탭 프롬프트가 적용된 상태에서는 Launch 읽기 전용 규칙을 적용하지 않습니다.
+Build 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow` 중 하나를 입력하면 안내만 하지 말고 즉시 선택된 샘플 복사 명령을 실행합니다.
+특히 `2`는 PyTorch 샘플 선택이므로 다음 명령을 직접 실행합니다.
+
+```text
+python .opencode/scripts/bootstrap_sample_project.py --project <workspace-root> --sample pytorch --execute
+```
+
 새 채팅 세션의 첫 assistant 응답에서는 사용자의 첫 입력 내용과 관계없이 Launch Guide를 먼저 출력합니다.
 그 다음에는 곧바로 현재 워크스페이스를 분석해 모델 있음/없음을 확인합니다.
 Launch 모드는 읽기 전용입니다. 파일 생성, 수정, 삭제, 복사, 설치, 실행, 커밋, 푸시는 Build 단계에서만 진행합니다.
