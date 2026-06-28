@@ -3,8 +3,9 @@
 이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 프로젝트 루트 전체와 `data/**` 모델 목록 확인부터 시작하는 11단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
-사용자 모델 파일은 프로젝트 루트 바로 아래 또는 `data/` 하위 트리에 둘 수 있으며, `ai_studio/`로 복사하지 않는다.
-예: `model.joblib`, `models/model.joblib`, `data/child/model.joblib`, `data/checkpoints/model.pt`
+사용자 모델 파일은 프로젝트 루트 바로 아래 또는 `data/**` 하위 트리 어디에나 둘 수 있으며, `ai_studio/`로 복사하지 않는다.
+`data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
+예: `model.joblib`, `models/model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 `ai_studio/`는 실행 템플릿과 생성 산출물 폴더로만 사용한다.
 기존 `runtest.py`는 수정하지 않고, 선택 모델 기준의 `runtest_2.py`를 생성한다.
 
@@ -104,7 +105,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
-python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/child/model.joblib --execute
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/<임의폴더>/model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 ```
 

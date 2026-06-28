@@ -130,7 +130,7 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 
 Existing model assumptions:
 
-- The user's model file may be directly under the project root or under the `data/` tree, including child folders such as `data/child/model.joblib`. Examples: `model.pkl`, `models/model.joblib`, `data/child/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
+- The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
 - Do not copy the selected model file into `ai_studio/`.
 - `ai_studio/` is for execution templates and generated outputs only.
 - The confirmed entrypoint must read the selected model from its original project path.
@@ -204,7 +204,7 @@ Use this script for steps 1-8:
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
-python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/child/model.joblib --execute
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/<any-folder>/model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 ```
 
