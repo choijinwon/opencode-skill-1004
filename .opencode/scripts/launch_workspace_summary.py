@@ -81,15 +81,18 @@ def main() -> int:
         elif status in {"warn", "block", "fail"}:
             review_items.append(f"{name}: {message}")
 
+    model_artifact_paths = payload.get("model_artifact_paths") or []
     evidence_text = " ".join(str(item) for item in evidence)
-    model_found = any(hint in evidence_text for hint in MODEL_HINTS)
+    model_found = bool(model_artifact_paths) or any(hint in evidence_text for hint in MODEL_HINTS)
 
     print(f"- 분석 대상: {payload.get('selected_project', str(project_dir))}")
     print(f"- 모델 상태: {'있음' if model_found else '없음 또는 추가 확인 필요'}")
 
-    if evidence:
+    if evidence or model_artifact_paths:
         print("- 발견 항목:")
-        for item in sorted(set(str(x) for x in evidence if x))[:6]:
+        discovered = [str(x) for x in evidence if x]
+        discovered.extend(str(path) for path in model_artifact_paths[:6])
+        for item in sorted(set(discovered))[:6]:
             print(f"  - {item}")
 
     if review_items:

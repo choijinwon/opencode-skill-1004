@@ -33,6 +33,22 @@ SAMPLE_PROJECT_NAMES = {"sklearn_sample", "pytorch_sample", "tensorflow_sample"}
 MODEL_MARKERS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
 ARTIFACT_DIRS = ["ai_studio", "saved_model", "model", "artifacts"]
+MODEL_SCAN_SKIP_DIRS = {
+    ".git",
+    ".mypy_cache",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "build",
+    "dist",
+    "env",
+    "mlruns",
+    "node_modules",
+    "venv",
+}
 
 SETTING_ALIASES = {
     "mlflow_tracking_url": {
@@ -293,7 +309,21 @@ def has_model_project(project: Path) -> bool:
         return True
     if any((project / name).exists() for name in ARTIFACT_DIRS):
         return True
-    return any(path.suffix in ARTIFACT_SUFFIXES for path in project.glob("*") if path.is_file())
+    return bool(find_model_artifacts(project))
+
+
+def find_model_artifacts(project: Path) -> list[Path]:
+    found: list[Path] = []
+    for path in project.rglob("*"):
+        try:
+            relative_parts = path.relative_to(project).parts
+        except ValueError:
+            continue
+        if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
+            continue
+        if path.is_file() and path.suffix.lower() in ARTIFACT_SUFFIXES:
+            found.append(path)
+    return sorted(set(found))
 
 
 def is_sample_project(project: Path) -> bool:

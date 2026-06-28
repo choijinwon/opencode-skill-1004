@@ -24,6 +24,22 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_register_model_name",
 ]
 MODEL_SETTING_FILES = ["runtest_2.py", "runtest.py", "run_test.py", "run_model.py"]
+MODEL_SCAN_SKIP_DIRS = {
+    ".git",
+    ".mypy_cache",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "build",
+    "dist",
+    "env",
+    "mlruns",
+    "node_modules",
+    "venv",
+}
 
 SETTING_ALIASES = {
     "mlflow_tracking_url": {
@@ -99,7 +115,7 @@ def has_model_project(project: Path) -> bool:
         return True
     if find_artifacts(project):
         return True
-    return any(path.suffix in ARTIFACT_SUFFIXES for path in project.glob("*") if path.is_file())
+    return False
 
 
 def is_sample_project(project: Path) -> bool:
@@ -158,9 +174,15 @@ def find_artifacts(project: Path) -> list[str]:
             if path.is_file() and any(part in MLFLOW_OUTPUT_DIRS for part in path.relative_to(ai_studio).parts):
                 found.append(str(path))
     for path in project.rglob("*"):
+        try:
+            relative_parts = path.relative_to(project).parts
+        except ValueError:
+            continue
+        if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
+            continue
         if path.name == "model_info.json":
             continue
-        if path.is_file() and (path.suffix in ARTIFACT_SUFFIXES or path.name in {"MLmodel", "python_model.pkl"}):
+        if path.is_file() and (path.suffix.lower() in ARTIFACT_SUFFIXES or path.name in {"MLmodel", "python_model.pkl"}):
             found.append(str(path))
     return sorted(set(found))
 
