@@ -41,11 +41,14 @@ Step 9  환경 검증
         check_environment.py
         doctor.py
 
-Step 10 추론 테스트
+Step 10 모델 환경변수 체크
+        check_environment.py
+
+Step 11 추론 테스트
         runtest_2.py
         test_inference.py
 
-Step 11 MLflow 검증
+Step 12 MLflow 검증
         verify_mlflow.py
 ```
 

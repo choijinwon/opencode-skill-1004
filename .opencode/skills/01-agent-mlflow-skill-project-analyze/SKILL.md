@@ -33,8 +33,9 @@ metadata:
 7. runtest.py 참조
 8. runtest_2.py 생성
 9. 환경 검증
-10. 추론 테스트
-11. MLflow 검증
+10. 모델 환경변수 체크
+11. 추론 테스트
+12. MLflow 검증
 ```
 
 ## What To Do Now

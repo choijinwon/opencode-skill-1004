@@ -33,8 +33,9 @@ metadata:
 7. runtest.py 참조
 8. runtest_2.py 생성
 9. 환경 검증
-10. 추론 테스트
-11. MLflow 검증
+10. 모델 환경변수 체크
+11. 추론 테스트
+12. MLflow 검증
 ```
 
 ## What To Do Now
@@ -177,8 +178,9 @@ blocked:
 7. runtest.py 또는 run_test.py 참조
 8. runtest_2.py 생성
 9. Python 3.11.9와 requirements 설치/버전 확인
-10. runtest_2.py 또는 aiu_custom/predict.py로 로드/추론 확인
-11. MLflow run, artifact, registered model 검증
+10. MLflow 필수 5개 모델 환경변수 상태 확인
+11. runtest_2.py 또는 aiu_custom/predict.py로 로드/추론 확인
+12. MLflow run, artifact, registered model 검증
 ```
 
 샘플 모델 흐름:

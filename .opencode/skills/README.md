@@ -46,8 +46,9 @@ Step 6. 선택 모델 직접 읽기
 Step 7. runtest.py 참조
 Step 8. runtest_2.py 생성
 Step 9. 환경 검증
-Step 10. 추론 테스트
-Step 11. MLflow 검증
+Step 10. 모델 환경변수 체크
+Step 11. 추론 테스트
+Step 12. MLflow 검증
 ```
 
 ```text

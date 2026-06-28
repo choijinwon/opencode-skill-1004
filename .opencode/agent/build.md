@@ -172,12 +172,17 @@ Step 8. runtest_2.py 생성
         기존 runtest.py는 수정하지 않는다.
 
 Step 9. 환경 검증
-        Python, dependency, MLflow, ai_studio.env 또는 entrypoint 설정 블록을 확인한다.
+        Python, dependency, MLflow 설치 상태를 확인한다.
 
-Step 10. 추론 테스트
+Step 10. 모델 환경변수 체크
+        runtest_2.py 또는 확정 entrypoint의 MLflow 필수 5개 값을 확인한다.
+        mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password,
+        mlflow_experiment_name, mlflow_register_model_name 상태를 set/empty/missing으로만 표시한다.
+
+Step 11. 추론 테스트
         생성된 runtest_2.py 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.
 
-Step 11. MLflow 검증
+Step 12. MLflow 검증
         Run, artifact, registered model 기록을 확인한다.
 ```
 

@@ -337,8 +337,9 @@ def main():
             EnvVarStatus("7. runtest.py 참조", "done" if (work_path / "runtest.py").exists() or (work_path / "run_test.py").exists() else "needs_input"),
             EnvVarStatus("8. runtest_2.py 생성", "done" if (work_path / "runtest_2.py").exists() else "pending"),
             EnvVarStatus("9. 환경 검증", "manual_check"),
-            EnvVarStatus("10. 추론 테스트", "done" if args.execute and return_code == 0 else "pending"),
-            EnvVarStatus("11. MLflow 검증", "pending"),
+            EnvVarStatus("10. 모델 환경변수 체크", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("11. 추론 테스트", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("12. MLflow 검증", "pending"),
         ]
     else:
         process_checklist = [
