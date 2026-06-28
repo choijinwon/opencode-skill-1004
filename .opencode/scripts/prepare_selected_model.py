@@ -21,6 +21,22 @@ SUPPORTED_MODEL_KINDS = {
 
 REFERENCE_ENTRYPOINTS = ["runtest.py", "run_test.py"]
 AI_STUDIO_TEMPLATE_DIRS = ["ai_studio", "ai_studio/code", "ai_studio/metrics", "ai_studio/tracking"]
+MODEL_SCAN_SKIP_DIRS = {
+    ".git",
+    ".mypy_cache",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "build",
+    "dist",
+    "env",
+    "mlruns",
+    "node_modules",
+    "venv",
+}
 
 
 @dataclass
@@ -50,12 +66,15 @@ def model_kind(path: Path) -> str | None:
     return SUPPORTED_MODEL_KINDS.get(path.suffix.lower())
 
 
-def scan_data_models(project: Path) -> list[Path]:
-    data_root = project / "data"
-    if not data_root.is_dir():
-        return []
+def scan_model_artifacts(project: Path) -> list[Path]:
     found = []
-    for path in data_root.rglob("*"):
+    for path in project.rglob("*"):
+        try:
+            relative_parts = path.relative_to(project).parts
+        except ValueError:
+            continue
+        if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
+            continue
         if path.is_file() and model_kind(path):
             found.append(path)
     return sorted(set(found))
@@ -80,9 +99,9 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
     return candidate, None
 
 
-def ensure_under_data(project: Path, model_path: Path) -> bool:
+def ensure_under_project(project: Path, model_path: Path) -> bool:
     try:
-        model_path.resolve().relative_to((project / "data").resolve())
+        model_path.resolve().relative_to(project.resolve())
         return True
     except ValueError:
         return False
@@ -121,8 +140,9 @@ from pathlib import Path
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
-DATA_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
-MODEL_PATH = DATA_MODEL_PATH
+SOURCE_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
+DATA_MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_KIND = "{kind}"
 REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
 AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
@@ -184,9 +204,10 @@ def write_selection_summary() -> None:
     ensure_ai_studio_dirs()
     payload = {{
         "model_path": str(MODEL_PATH),
+        "source_model_path": str(SOURCE_MODEL_PATH),
         "model_kind": MODEL_KIND,
         "reference_entrypoint": str(REFERENCE_ENTRYPOINT),
-        "note": "Model file remains under data/** and is not copied into ai_studio/.",
+        "note": "Model file remains in the project source path and is not copied into ai_studio/.",
     }}
     (AI_STUDIO_DIR / "code" / "selected_model.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
@@ -236,7 +257,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         raise FileNotFoundError(f"project folder not found: {project}")
 
     data_root = project / "data"
-    models = scan_data_models(project)
+    models = scan_model_artifacts(project)
     model_paths = [rel(path, project) for path in models]
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
@@ -253,19 +274,16 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         execute=args.execute,
     )
 
-    if not data_root.is_dir():
-        report.failures.append("data_folder_missing")
-        report.next_steps.append("프로젝트 루트 아래 data/ 폴더를 만들고 모델 파일을 넣어주세요.")
     if not models:
         report.failures.append("model_artifact_paths_empty")
-        report.next_steps.append("data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors 모델 파일을 넣어주세요.")
+        report.next_steps.append("프로젝트 루트 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors 모델 파일을 넣어주세요.")
     if selection_error:
         report.failures.append(selection_error)
         if models:
-            report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1 또는 --model data/torch/model.pt")
-    if selected_model and not ensure_under_data(project, selected_model):
-        report.failures.append("selected_model_outside_data")
-        report.next_steps.append("선택 모델은 <model-project-folder>/data/** 아래에 있어야 합니다.")
+            report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
+    if selected_model and not ensure_under_project(project, selected_model):
+        report.failures.append("selected_model_outside_project")
+        report.next_steps.append("선택 모델은 <model-project-folder> 아래에 있어야 합니다.")
     if selected_model and selected_kind is None:
         report.failures.append("unsupported_model_suffix")
     if reference is None:
@@ -330,9 +348,9 @@ def print_report(report: PreparedModelReport) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Select a data/** model artifact and generate runtest_2.py without modifying runtest.py.")
+    parser = argparse.ArgumentParser(description="Select a project-root or data/** model artifact and generate runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
-    parser.add_argument("--model", help="model index from model_artifact_paths or a data/** path")
+    parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="create ai_studio/ template dirs and runtest_2.py")
     parser.add_argument("--force", action="store_true", help="overwrite existing runtest_2.py")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")

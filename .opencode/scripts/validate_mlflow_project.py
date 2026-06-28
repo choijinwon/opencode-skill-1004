@@ -83,6 +83,23 @@ ARTIFACT_DIR_HINTS = [
     "model.safetensors",
 ]
 
+SCAN_SKIP_DIRS = {
+    ".git",
+    ".mypy_cache",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "build",
+    "dist",
+    "env",
+    "mlruns",
+    "node_modules",
+    "venv",
+}
+
 REQUIRED_DIRS = [
     "aiu_custom",
     "local_serving",
@@ -157,6 +174,8 @@ def has_project_markers(path: Path) -> bool:
     direct_artifact_dirs = [path / "ai_studio", path / "data", path / "saved_model", path / "artifacts", path / "model"]
     if any(candidate.exists() for candidate in direct_artifact_dirs):
         return True
+    if find_artifacts(path, max_depth=3):
+        return True
     return any(file_path.suffix.lower() in ARTIFACT_SUFFIXES for file_path in path.iterdir() if file_path.is_file())
 
 
@@ -209,7 +228,7 @@ def iter_files(path: Path, max_depth: int = 4):
         depth = len(root_path.parts) - base_depth
         if depth >= max_depth:
             dirs[:] = []
-        dirs[:] = [d for d in dirs if d not in {".git", ".venv", "__pycache__", "mlruns"}]
+        dirs[:] = [d for d in dirs if d not in SCAN_SKIP_DIRS]
         for file_name in files:
             yield root_path / file_name
 

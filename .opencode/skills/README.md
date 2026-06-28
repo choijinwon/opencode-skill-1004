@@ -7,7 +7,7 @@
 ```text
 01. Project Analyze
    model_found: true | false 결정
-   모델 있음이면 data/** 모델 목록과 사용할 모델을 먼저 확정
+   모델 있음이면 루트/data 모델 목록과 사용할 모델을 먼저 확정
 
 02. Sample Bootstrap
    모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택
@@ -29,15 +29,15 @@
 
 전제:
 
-- 사용자가 가져온 모델 파일은 프로젝트 루트의 `data/` 하위 트리에 둔다.
+- 사용자가 가져온 모델 파일은 프로젝트 루트 바로 아래 또는 `data/` 하위 트리에 둘 수 있다.
 - 모델 파일은 `ai_studio/`로 복사하지 않는다.
 - `ai_studio/`는 실행 템플릿과 생성 산출물 폴더로만 사용한다.
-- 선택된 모델은 `data/**` 원본 경로에서 직접 읽는다.
+- 선택된 모델은 원본 경로에서 직접 읽는다.
 - 기존 `runtest.py`는 수정하지 않고 `runtest_2.py`를 생성한다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 확인한다.
 
 ```text
-Step 1. data/** 모델 목록 확인
+Step 1. 루트/data 모델 목록 확인
 Step 2. 사용할 모델 선택
 Step 3. 선택 모델 위치 확인
 Step 4. 모델 형식 판별

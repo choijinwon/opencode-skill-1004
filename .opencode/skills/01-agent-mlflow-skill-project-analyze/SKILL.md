@@ -18,13 +18,13 @@ metadata:
 현재 단계: 1. 프로젝트 분석
 현재 대상: workspace root 또는 user project path
 핵심 판단: model_found: true | false
-다음 단계: 모델 있음 -> data/** 모델 목록과 사용할 모델 선택 / 모델 없음 -> 샘플 선택
+다음 단계: 모델 있음 -> 루트/data 모델 목록과 사용할 모델 선택 / 모델 없음 -> 샘플 선택
 ```
 
 ## Workflow
 
 ```text
-1. data/** 모델 목록 확인
+1. 루트/data 모델 목록 확인
 2. 사용할 모델 선택
 3. 선택 모델 위치 확인
 4. 모델 형식 판별
@@ -41,7 +41,7 @@ metadata:
 
 ```text
 1. 현재 워크스페이스 경로를 확인한다.
-2. data/** 모델 원본 파일을 model_artifact_paths로 나열한다.
+2. 프로젝트 루트 전체와 data/** 모델 원본 파일을 model_artifact_paths로 나열한다.
 3. model_found 값을 먼저 결정한다.
 4. 모델이 있으면 사용할 모델 번호 또는 경로 선택을 요청한다.
 5. 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
@@ -110,7 +110,7 @@ blocked:
 필수 폴더: aiu_custom/, local_serving/, saved_model/
 모델 wrapper: aiu_custom/model_wrapper.py, aiu_custom/predict.py
 모델 artifact: ai_studio/, saved_model/, model/, artifacts/, .pkl, .joblib, .pt, .pth, .h5, .keras
-사용자 모델 원본: data/**/*.pkl, data/**/*.joblib, data/**/*.pt, data/**/*.pth, data/**/*.onnx, data/**/*.h5, data/**/*.keras, data/**/*.safetensors
+사용자 모델 원본: *.pkl, *.joblib, *.pt, *.pth, *.onnx, *.h5, *.keras, *.safetensors 또는 data/** 아래 같은 확장자
 MODEL_KIND: .pkl -> sklearn_pickle, .joblib -> sklearn_joblib, .pt/.pth -> pytorch, .onnx -> onnx, .keras -> tensorflow_keras, .h5 -> tensorflow_h5, .safetensors -> safetensors
 MLflow model: MLmodel, python_model.pkl
 입력 예제: input_example.json
@@ -168,6 +168,6 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 - 샘플 규격 보충은 기존 모델 파일을 덮어쓰지 않는다.
 - secret 값은 출력하지 않는다.
 - 발견한 artifact를 이동하거나 복사하지 않는다.
-- data/** 모델 원본을 ai_studio/로 복사하지 않는다.
+- 루트/data 모델 원본을 ai_studio/로 복사하지 않는다.
 
 </details>

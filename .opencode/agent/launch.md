@@ -64,7 +64,7 @@ OpenCode MLflow Launch
    결과는 model_found: true 또는 model_found: false로 표시합니다.
 
 2. model_found: true
-   data/** 모델 목록을 보여주고 사용할 모델을 선택합니다.
+   프로젝트 루트와 data/** 모델 목록을 보여주고 사용할 모델을 선택합니다.
    모델 파일은 ai_studio/로 복사하지 않습니다.
    기존 runtest.py는 수정하지 않고 runtest_2.py를 생성합니다.
    다음 흐름: 모델 선택 -> runtest_2.py 생성 -> 환경 검증 -> 추론 테스트 -> MLflow 검증

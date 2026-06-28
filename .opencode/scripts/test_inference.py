@@ -7,6 +7,16 @@ from pathlib import Path
 
 
 DATA_MODEL_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".onnx", ".h5", ".keras", ".safetensors"}
+MODEL_SCAN_SKIP_DIRS = {
+    ".git",
+    ".opencode",
+    ".venv",
+    "__pycache__",
+    "ai_studio",
+    "mlruns",
+    "node_modules",
+    "venv",
+}
 
 
 @dataclass
@@ -35,17 +45,32 @@ def find_input_example(project: Path) -> Path | None:
 
 
 def find_model_path(project: Path) -> Path | None:
+    selected_model = project / "ai_studio" / "code" / "selected_model.json"
+    if selected_model.exists():
+        try:
+            payload = json.loads(selected_model.read_text(encoding="utf-8"))
+            model_path = payload.get("source_model_path") or payload.get("model_path")
+            if model_path:
+                candidate = Path(model_path)
+                if candidate.exists():
+                    return candidate
+        except Exception:
+            pass
+    for path in sorted(project.rglob("*")):
+        try:
+            relative_parts = path.relative_to(project).parts
+        except ValueError:
+            continue
+        if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
+            continue
+        if path.is_file() and path.suffix.lower() in DATA_MODEL_SUFFIXES:
+            return path
     for name in ["ai_studio", "saved_model", "model", "artifacts"]:
         candidate = project / name
         if candidate.exists():
             return candidate
     if (project / "MLmodel").exists():
         return project
-    data_root = project / "data"
-    if data_root.is_dir():
-        for path in sorted(data_root.rglob("*")):
-            if path.is_file() and path.suffix.lower() in DATA_MODEL_SUFFIXES:
-                return path
     return None
 
 

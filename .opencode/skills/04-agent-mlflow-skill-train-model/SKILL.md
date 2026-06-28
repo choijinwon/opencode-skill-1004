@@ -40,7 +40,7 @@ metadata:
 ## What To Do Now
 
 ```text
-1. 기존 모델이면 data/** 모델 목록을 먼저 보여준다.
+1. 기존 모델이면 프로젝트 루트 전체와 data/** 모델 목록을 먼저 보여준다.
 2. 사용할 모델을 번호 또는 경로로 선택한다.
 3. MODEL_KIND를 확장자 기준으로 판별한다.
 4. 기존 runtest.py를 우선 참조하고 없으면 run_test.py를 참조한다.
@@ -168,12 +168,12 @@ blocked:
 기존 모델 흐름:
 
 ```text
-1. data/** 모델 목록 확인
+1. 루트/data 모델 목록 확인
 2. model_artifact_paths에서 사용할 모델 선택
-3. 선택 모델이 data/** 아래인지 확인
+3. 선택 모델이 <model-project-folder> 아래인지 확인
 4. MODEL_KIND 판별
 5. ai_studio 템플릿 폴더 준비
-6. MODEL_PATH = DATA_MODEL_PATH 기준으로 직접 읽기
+6. MODEL_PATH = SOURCE_MODEL_PATH 기준으로 직접 읽기
 7. runtest.py 또는 run_test.py 참조
 8. runtest_2.py 생성
 9. Python 3.11.9와 requirements 설치/버전 확인
@@ -203,6 +203,6 @@ blocked:
 - 원격 학습이나 외부 데이터 다운로드는 기본 동작으로 가정하지 않는다.
 - secret 값은 출력하지 않는다.
 - Windows native/standalone executable 실행은 기본 경로로 안내하지 않는다.
-- 기존 data/** 모델 원본을 이동하거나 ai_studio/로 복사하지 않는다.
+- 기존 루트/data 모델 원본을 이동하거나 ai_studio/로 복사하지 않는다.
 
 </details>

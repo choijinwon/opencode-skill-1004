@@ -1,9 +1,9 @@
 # OpenCode MLflow Scripts
 
-이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 `data/**` 모델 목록 확인부터 시작하는 11단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
+이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 프로젝트 루트 전체와 `data/**` 모델 목록 확인부터 시작하는 11단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
-사용자 모델 파일은 프로젝트 루트의 `data/` 하위 트리에 두고, `ai_studio/`로 복사하지 않는다.
+사용자 모델 파일은 프로젝트 루트 바로 아래 또는 `data/` 하위 트리에 둘 수 있으며, `ai_studio/`로 복사하지 않는다.
 `ai_studio/`는 실행 템플릿과 생성 산출물 폴더로만 사용한다.
 기존 `runtest.py`는 수정하지 않고, 선택 모델 기준의 `runtest_2.py`를 생성한다.
 
@@ -12,7 +12,7 @@
 ## Script Mapping
 
 ```text
-Step 1  data/** 모델 목록 확인
+Step 1  루트/data 모델 목록 확인
         prepare_selected_model.py
         validate_mlflow_project.py
 
@@ -103,17 +103,18 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 6. AI Studio 코드 적합성
 7. 샘플 규격 폴더/파일
 8. MLflow 필수 5개 설정값 입력/export
-9. data/** 모델 원본 경로와 모델/메트릭/코드 산출물
+9. 루트/data 모델 원본 경로와 모델/메트릭/코드 산출물
 ```
 
 ### prepare_selected_model.py
 
-`data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `ai_studio/` 실행 템플릿 폴더와 `runtest_2.py`를 준비한다.
+프로젝트 루트 전체와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `ai_studio/` 실행 템플릿 폴더와 `runtest_2.py`를 준비한다.
 기존 `runtest.py`는 수정하지 않는다.
 
 ```text
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 ```
 
@@ -158,7 +159,7 @@ python .opencode/scripts/adapt_ai_studio.py --project <model-project-folder> --e
 - ai_studio/metrics, ai_studio/code, ai_studio/tracking 경로 helper 삽입
 - aiu_custom/predict.py, local_serving/serve.py, saved_model/, input_example.json 보충
 - requirements.txt가 없으면 프레임워크/Import 기반 최소 패키지 작성
-- data/** 모델 원본은 복사하거나 이동하지 않음
+- 루트/data 모델 원본은 복사하거나 이동하지 않음
 ```
 
 기존 파일은 기본적으로 덮어쓰지 않는다. 이미 adapter block이 있으면 `--force`가 없을 때 건너뛴다.

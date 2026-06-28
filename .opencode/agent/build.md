@@ -130,26 +130,26 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 
 Existing model assumptions:
 
-- The user's model file must stay under the project root `data/` tree, for example `data/model.pkl`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
+- The user's model file may be directly under the project root or under the `data/` tree, for example `model.pkl`, `models/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
 - Do not copy the selected model file into `ai_studio/`.
 - `ai_studio/` is for execution templates and generated outputs only.
-- The confirmed entrypoint must read the selected model from its original `data/**` path.
+- The confirmed entrypoint must read the selected model from its original project path.
 - Prefer generated `runtest_2.py` for selected-model tests. Do not modify the existing `runtest.py`.
 - Secret values must never be printed; report only `set`, `empty`, or `missing`.
 
 Model-found detailed process:
 
 ```text
-Step 1. data/** 모델 목록 확인
-        프로젝트 루트 아래 data/ 하위 전체를 스캔한다.
+Step 1. 루트/data 모델 목록 확인
+        프로젝트 루트 전체를 스캔하되 .opencode, .git, .venv, ai_studio, mlruns 같은 생성/도구 폴더는 제외한다.
         .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors 모델 파일을 model_artifact_paths로 표시한다.
 
 Step 2. 사용할 모델 선택
         model_artifact_paths 목록에서 번호 또는 경로를 선택한다.
-        예: 1번, 2번, data/torch/model.pt
+        예: 1번, 2번, model.joblib, data/torch/model.pt
 
 Step 3. 선택 모델 위치 확인
-        선택한 모델이 <model-project-folder>/data/** 아래에 있는지 확인한다.
+        선택한 모델이 <model-project-folder> 아래에 있는지 확인한다.
 
 Step 4. 모델 형식 판별
         확장자 기준으로 MODEL_KIND를 결정한다.
@@ -160,8 +160,8 @@ Step 5. ai_studio 템플릿 폴더 준비
         모델 파일은 ai_studio/로 복사하지 않는다.
 
 Step 6. 선택 모델 직접 읽기
-        선택된 data/** 모델 파일을 직접 읽도록 설정한다.
-        MODEL_PATH = DATA_MODEL_PATH
+        선택된 원본 모델 파일을 직접 읽도록 설정한다.
+        MODEL_PATH = SOURCE_MODEL_PATH
 
 Step 7. runtest.py 참조
         기존 runtest.py를 우선 참조한다.
@@ -186,10 +186,11 @@ Use this script for steps 1-8:
 ```text
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 ```
 
-The first Build step for an existing model is always listing `data/**` model artifacts, selecting one model, and generating `runtest_2.py` from `runtest.py` or `run_test.py`. Do not assume `run_model.py`. If neither `runtest.py` nor `run_test.py` exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.
+The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `runtest_2.py` from `runtest.py` or `run_test.py`. Do not assume `run_model.py`. If neither `runtest.py` nor `run_test.py` exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.
 
 ## MLflow Tracking Guide
 

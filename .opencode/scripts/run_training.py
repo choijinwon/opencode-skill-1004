@@ -328,7 +328,7 @@ def main():
     existing_model_flow = model_found and not is_sample_project(work_path)
     if existing_model_flow:
         process_checklist = [
-            EnvVarStatus("1. data/** 모델 목록 확인", "done" if artifacts else "needs_input"),
+            EnvVarStatus("1. 루트/data 모델 목록 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("2. 사용할 모델 선택", "done" if artifacts else "needs_input"),
             EnvVarStatus("3. 선택 모델 위치 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("4. 모델 형식 판별", "done" if artifacts else "needs_input"),

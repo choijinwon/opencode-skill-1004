@@ -473,12 +473,12 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if existing_model_flow:
         entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
         tod_guide = [
-            "1. data/** 모델 목록 확인: model_artifact_paths에서 사용할 모델 후보를 확인한다.",
+            "1. 루트/data 모델 목록 확인: 프로젝트 루트 전체와 data/**에서 사용할 모델 후보를 확인한다.",
             "2. 사용할 모델 선택: prepare_selected_model.py --model <번호|경로>로 선택한다.",
-            "3. 선택 모델 위치 확인: 선택 모델이 <model-project-folder>/data/** 아래인지 확인한다.",
+            "3. 선택 모델 위치 확인: 선택 모델이 <model-project-folder> 아래인지 확인한다.",
             "4. 모델 형식 판별: 확장자 기준 MODEL_KIND를 확인한다.",
             "5. ai_studio 템플릿 폴더 준비: 모델 파일은 복사하지 않고 ai_studio/ 실행 폴더만 준비한다.",
-            "6. 선택 모델 직접 읽기: MODEL_PATH = DATA_MODEL_PATH 기준으로 설정한다.",
+            "6. 선택 모델 직접 읽기: MODEL_PATH = SOURCE_MODEL_PATH 기준으로 설정한다.",
             "7. runtest.py 참조: 없으면 run_test.py를 참조한다.",
             "8. runtest_2.py 생성: 기존 runtest.py는 수정하지 않는다.",
             "9. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
