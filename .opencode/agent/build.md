@@ -178,7 +178,7 @@ Step 6. 선택 모델 읽기/판별
 Step 7. runtest.py 참조
         aiu_studio/runtest.py를 우선 읽기 전용으로 참조한다.
         없으면 프로젝트 루트 runtest.py, run_test.py 순서로 참조한다.
-        PyTorch 모델(.pt, .pth)을 선택한 경우에는 .opencode/samples/log_local_model/run_model.py를 우선 참조해 변환한다.
+        PyTorch 모델(.pt, .pth)을 선택한 경우에는 .opencode/samples/pytorch_sample/runtest.py를 우선 참조해 변환한다.
 
 Step 8. runtest_2.py 변환/갱신
         복사된 aiu_studio/runtest_2.py 또는 참조 파일을 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.

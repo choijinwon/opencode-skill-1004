@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 AIU_STUDIO_DIR_NAME = "aiu_studio"
 AIU_STUDIO_SAMPLE_DIR_NAME = "aiu_studio"
 AIU_STUDIO_SAMPLE_DIR = ROOT / "samples" / AIU_STUDIO_SAMPLE_DIR_NAME
-PYTORCH_REFERENCE_ENTRYPOINT = ROOT / "samples" / "log_local_model" / "run_model.py"
+PYTORCH_REFERENCE_ENTRYPOINT = ROOT / "samples" / "pytorch_sample" / "runtest.py"
 AIU_STUDIO_COPY_IGNORE_DIRS = {"code", "metrics", "tracking"}
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
@@ -639,6 +639,7 @@ def transform_reference_text(
     kind: str,
     load_hint: str,
     required_package: str,
+    preserve_code: bool = False,
 ) -> str:
     lines = reference_text.splitlines(keepends=True)
     output: list[str] = []
@@ -677,13 +678,13 @@ def transform_reference_text(
         break
 
     for index, line in enumerate(lines):
-        if index == insert_at and not inserted:
+        if not preserve_code and index == insert_at and not inserted:
             output.append(injected_block)
             inserted = True
 
         stripped = line.lstrip()
         indent = line[: len(line) - len(stripped)]
-        if stripped.startswith("#") and not re.match(r"^#.*coding[:=]", stripped):
+        if not preserve_code and stripped.startswith("#") and not re.match(r"^#.*coding[:=]", stripped):
             next_index = index + 1
             while next_index < len(lines) and not lines[next_index].strip():
                 next_index += 1
@@ -699,34 +700,34 @@ def transform_reference_text(
                             continue
         match = assignment_pattern.match(stripped.rstrip("\n"))
         if not match:
-            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
+            output.append(rewrite_path_separator_literals(line) if preserve_code else rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
             continue
 
         name, raw_value = match.groups()
         if stripped.rstrip("\n").rstrip().endswith(",") and name in {"CODE_PATHS", "code_paths", "MLFLOW_CODE_PATHS", "mlflow_code_paths"}:
-            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
+            output.append(rewrite_path_separator_literals(line) if preserve_code else rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
             continue
 
         expression = replacement_expression(name, replacements)
         if expression is None:
-            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
+            output.append(rewrite_path_separator_literals(line) if preserve_code else rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
             continue
 
-        if name in MLFLOW_SETTING_NAMES and not indent:
+        if not preserve_code and name in MLFLOW_SETTING_NAMES and not indent:
             output.append(f"# AIU Studio preserved original assignment; value is defined in the conversion block above.\n")
             output.append(f"# {line.rstrip()}\n")
             continue
-        if name in MLFLOW_SETTING_NAMES:
-            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
+        if not preserve_code and name in MLFLOW_SETTING_NAMES:
+            output.append(rewrite_path_separator_literals(line) if preserve_code else rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
             continue
 
         _, comment = split_inline_comment(raw_value)
-        converted_comment = converted_assignment_comment(name, selected_relative, kind, load_hint, required_package)
+        converted_comment = None if preserve_code else converted_assignment_comment(name, selected_relative, kind, load_hint, required_package)
         if converted_comment:
             comment = converted_comment
         output.append(f"{indent}{assignment_line(name, expression, comment)}")
 
-    if not inserted:
+    if not preserve_code and not inserted:
         output.insert(0, injected_block)
 
     if output and not output[-1].endswith("\n"):
@@ -848,16 +849,18 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
     load_hint = details.get("load_hint", "custom loader required")
+    preserve_code = reference.resolve() == PYTORCH_REFERENCE_ENTRYPOINT.resolve()
     replacements = {
-        "AI_STUDIO_DIR": "AI_STUDIO_DIR",
-        "PROJECT_DIR": "PROJECT_DIR",
+        "AI_STUDIO_DIR": 'Path(__file__).resolve().parent' if preserve_code else "AI_STUDIO_DIR",
+        "PROJECT_DIR": "Path(__file__).resolve().parent.parent" if preserve_code else "PROJECT_DIR",
         "AI_STUDIO_CODE_DIR": 'AI_STUDIO_DIR / "code"',
         "AI_STUDIO_METRICS_DIR": 'AI_STUDIO_DIR / "metrics"',
-        "AI_STUDIO_TRACKING_DIR": "LOCAL_MLFLOW_STORE_DIR",
+        "AI_STUDIO_TRACKING_DIR": 'AI_STUDIO_DIR / "local_serving" / "aiu_studio"' if preserve_code else "LOCAL_MLFLOW_STORE_DIR",
         "SOURCE_MODEL_PATH": f'PROJECT_DIR / "{selected_relative}"',
         "DATA_MODEL_PATH": "SOURCE_MODEL_PATH",
         "MODEL_PATH": "SOURCE_MODEL_PATH",
         "MODEL_KIND": repr(kind),
+        "MODEL_LOAD_HINT": repr(load_hint),
         "INPUT_EXAMPLE_PATH": 'AI_STUDIO_DIR / "input_example.json"',
         "input_example_path": "str(INPUT_EXAMPLE_PATH)",
         "INPUT_EXAMPLE_FILE": "INPUT_EXAMPLE_PATH",
@@ -871,7 +874,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "model_file": "str(MODEL_PATH)",
         "CHECKPOINT_PATH": "SOURCE_MODEL_PATH",
         "checkpoint_path": "str(MODEL_PATH)",
-        "MODEL_LOAD_HINT": "AIU_LOAD_HINT",
+        "MODEL_LOAD_HINT": repr(load_hint) if preserve_code else "AIU_LOAD_HINT",
         "model_load_hint": "AIU_LOAD_HINT",
         "REQUIRED_PACKAGE": "AIU_REQUIRED_PACKAGE",
         "required_package": "AIU_REQUIRED_PACKAGE",
@@ -885,6 +888,14 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "mlflow_experiment_name": repr(default_experiment_name),
         "mlflow_register_model_name": repr(default_register_model_name),
     }
+    if preserve_code:
+        replacements.update(
+            {
+                "mlflow_tracking_url": 'AI_STUDIO_TRACKING_DIR.as_uri()',
+                "mlflow_experiment_name": repr(default_experiment_name),
+                "mlflow_register_model_name": repr(default_register_model_name),
+            }
+        )
     transformed = transform_reference_text(
         reference_text,
         aiu_injected_block(project, selected_model, kind, reference),
@@ -893,6 +904,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         kind,
         load_hint,
         required_package,
+        preserve_code=preserve_code,
     )
     return transformed.rstrip() + "\n"
 
