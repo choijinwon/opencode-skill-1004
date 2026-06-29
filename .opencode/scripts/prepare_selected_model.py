@@ -17,6 +17,8 @@ SUPPORTED_MODEL_KINDS = {
     ".keras": "tensorflow_keras",
     ".h5": "tensorflow_h5",
     ".safetensors": "safetensors",
+    ".bst": "xgboost_bst",
+    ".ubj": "xgboost_ubj",
 }
 
 REFERENCE_ENTRYPOINTS = ["runtest.py", "run_test.py"]
@@ -197,6 +199,12 @@ def load_selected_model():
         from safetensors.torch import load_file
 
         return load_file(str(MODEL_PATH))
+    if MODEL_KIND in {{"xgboost_bst", "xgboost_ubj"}}:
+        import xgboost as xgb
+
+        booster = xgb.Booster()
+        booster.load_model(str(MODEL_PATH))
+        return booster
     raise ValueError(f"unsupported MODEL_KIND: {{MODEL_KIND}}")
 
 
@@ -276,7 +284,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
     if not models:
         report.failures.append("model_artifact_paths_empty")
-        report.next_steps.append("프로젝트 루트 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors 모델 파일을 넣어주세요.")
+        report.next_steps.append("프로젝트 루트 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
     if selection_error:
         report.failures.append(selection_error)
         if models:

@@ -130,7 +130,7 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 
 Existing model assumptions:
 
-- The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
+- The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Supported suffixes are `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.keras`, `.h5`, `.safetensors`, `.bst`, and `.ubj`. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
 - Do not copy the selected model file into `ai_studio/`.
 - `ai_studio/` is for execution templates and generated outputs only.
 - The confirmed entrypoint must read the selected model from its original project path.
@@ -142,7 +142,7 @@ Model-found detailed process:
 ```text
 Step 1. 루트/data 모델 목록 확인
         프로젝트 루트 전체를 스캔하되 .opencode, .git, .venv, ai_studio, mlruns 같은 생성/도구 폴더는 제외한다.
-        .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors 모델 파일을 model_artifact_paths로 표시한다.
+        .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 model_artifact_paths로 표시한다.
 
 Step 2. 사용할 모델 선택
         model_artifact_paths 목록에서 번호 또는 경로를 선택한다.

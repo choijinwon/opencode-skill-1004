@@ -106,9 +106,9 @@ blocked:
 필수 폴더: aiu_custom/, local_serving/, saved_model/
 모델 wrapper: aiu_custom/model_wrapper.py, aiu_custom/predict.py
 모델 artifact: ai_studio/, saved_model/, model/, artifacts/, .pkl, .joblib, .pt, .pth, .h5, .keras
-사용자 모델 원본: *.pkl, *.joblib, *.pt, *.pth, *.onnx, *.h5, *.keras, *.safetensors 또는 data/** 아래 같은 확장자
-예: model.joblib, models/model.joblib, data/<임의폴더>/model.joblib, data/sklearn/model.pkl, data/checkpoints/model.pt
-MODEL_KIND: .pkl -> sklearn_pickle, .joblib -> sklearn_joblib, .pt/.pth -> pytorch, .onnx -> onnx, .keras -> tensorflow_keras, .h5 -> tensorflow_h5, .safetensors -> safetensors
+사용자 모델 원본: *.pkl, *.joblib, *.pt, *.pth, *.onnx, *.h5, *.keras, *.safetensors, *.bst, *.ubj 또는 data/** 아래 같은 확장자
+예: model.joblib, models/model.joblib, data/<임의폴더>/model.joblib, data/sklearn/model.pkl, data/checkpoints/model.pt, data/xgboost/model.ubj
+MODEL_KIND: .pkl -> sklearn_pickle, .joblib -> sklearn_joblib, .pt/.pth -> pytorch, .onnx -> onnx, .keras -> tensorflow_keras, .h5 -> tensorflow_h5, .safetensors -> safetensors, .bst -> xgboost_bst, .ubj -> xgboost_ubj
 MLflow model: MLmodel, python_model.pkl
 입력 예제: input_example.json
 ```

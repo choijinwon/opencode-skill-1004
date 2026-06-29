@@ -15,7 +15,7 @@ ENTRYPOINTS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_mod
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
-ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
+ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 AI_STUDIO_ENV_KEYS = [
     "mlflow_tracking_url",
     "mlflow_tracking_username",

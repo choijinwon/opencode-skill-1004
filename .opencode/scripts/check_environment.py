@@ -31,7 +31,7 @@ MODEL_SETTING_FILES = ["runtest_2.py", "runtest.py", "run_test.py", "run_model.p
 ENTRYPOINTS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "run.py", "main.py", "app.py", "scripts/train.py"]
 SAMPLE_PROJECT_NAMES = {"sklearn_sample", "pytorch_sample", "tensorflow_sample"}
 MODEL_MARKERS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
-ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors"}
+ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 ARTIFACT_DIRS = ["ai_studio", "saved_model", "model", "artifacts"]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",

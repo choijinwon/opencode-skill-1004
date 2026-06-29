@@ -130,6 +130,8 @@ MODEL_SUFFIXES = {
     ".h5",
     ".keras",
     ".safetensors",
+    ".bst",
+    ".ubj",
 }
 REQUIREMENT_OPERATORS = ["==", "!=", ">=", "<=", "~=", ">", "<"]
 

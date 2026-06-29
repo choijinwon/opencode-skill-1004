@@ -23,7 +23,7 @@ FRAMEWORK_RULES = [
     ("pytorch", ["import torch", "from torch", "torch.", ".pt", ".pth"]),
     ("tensorflow", ["tensorflow", "keras", ".keras", ".h5", "SavedModel"]),
     ("sklearn", ["sklearn", "scikit-learn", "joblib", ".pkl"]),
-    ("xgboost", ["xgboost", ".bst"]),
+    ("xgboost", ["xgboost", ".bst", ".ubj"]),
     ("lightgbm", ["lightgbm"]),
 ]
 

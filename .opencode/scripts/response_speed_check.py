@@ -19,8 +19,15 @@ EXPECTED_IGNORE_PATTERNS = [
     "saved_model/",
     "datasets/",
     "*.pt",
+    "*.pth",
+    "*.onnx",
+    "*.h5",
+    "*.keras",
     "*.pkl",
+    "*.joblib",
     "*.safetensors",
+    "*.bst",
+    "*.ubj",
 ]
 
 SLOW_DIR_NAMES = {
@@ -64,6 +71,8 @@ LARGE_SUFFIXES = {
     ".pt",
     ".pth",
     ".safetensors",
+    ".bst",
+    ".ubj",
     ".tar",
     ".gz",
     ".whl",

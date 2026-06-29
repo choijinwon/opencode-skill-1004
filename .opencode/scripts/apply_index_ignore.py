@@ -60,6 +60,8 @@ PATTERNS = [
     "*.pkl",
     "*.joblib",
     "*.safetensors",
+    "*.bst",
+    "*.ubj",
 ]
 
 TARGET_FILES = [".ignore", ".rgignore", ".gitignore"]

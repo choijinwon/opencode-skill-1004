@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
-DATA_MODEL_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".onnx", ".h5", ".keras", ".safetensors"}
+DATA_MODEL_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".onnx", ".h5", ".keras", ".safetensors", ".bst", ".ubj"}
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
     ".opencode",
