@@ -1579,7 +1579,7 @@ def _mapping_runtime():
 def _resolve_model_path():
     model = _mapping_model()
     runtime = _mapping_runtime()
-    raw_path = model.get("source_path") or model.get("absolute_path") or model.get("relative_path")
+    raw_path = model.get("relative_path") or model.get("source_path") or model.get("absolute_path")
     if not raw_path:
         raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
     path = Path(str(raw_path))
