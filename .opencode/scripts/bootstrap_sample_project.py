@@ -161,10 +161,18 @@ def resolve_project_arg(raw_project: str) -> Path:
     return Path(raw_project).expanduser().resolve()
 
 
+def reference_runtest_path(project: Path) -> Path | None:
+    for name in ["runtest.py", "aiu_studio/runtest.py", "aui_studio/runtest.py"]:
+        path = project / name
+        if path.exists():
+            return path
+    return None
+
+
 def copy_existing_project_scaffold(sample: Path, project: Path, execute: bool) -> tuple[Path, list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
-    skip_run_model = any((project / name).exists() for name in ["runtest.py", "run_model.py", "train.py"])
+    skip_run_model = bool(reference_runtest_path(project)) or any((project / name).exists() for name in ["run_model.py", "train.py"])
 
     for source in iter_sample_files(sample, skip_run_model=skip_run_model):
         relative = source.relative_to(sample)
@@ -207,7 +215,7 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
     target_root = project / sample.name if copy_mode == "folder" else project
     copied: list[str] = []
     skipped: list[str] = []
-    skip_run_model = (project / "runtest.py").exists() or (target_root / "runtest.py").exists()
+    skip_run_model = bool(reference_runtest_path(project) or reference_runtest_path(target_root))
 
     if target_root.exists() and copy_mode == "folder" and force and execute:
         shutil.rmtree(target_root)
@@ -247,8 +255,14 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
     return target_root, copied, skipped
 
 
-def build_tod_guide(target_project_path: Path, has_runtest: bool) -> list[str]:
-    entrypoint = "runtest.py" if has_runtest else "run_model.py"
+def build_tod_guide(target_project_path: Path, runtest_path: Path | None) -> list[str]:
+    if runtest_path:
+        try:
+            entrypoint = runtest_path.relative_to(target_project_path).as_posix()
+        except ValueError:
+            entrypoint = runtest_path.as_posix()
+    else:
+        entrypoint = "run_model.py"
     return [
         f"1. 환경 검증: python .opencode/scripts/check_environment.py --project {target_project_path}",
         f"2. 샘플 규격 확인/보충: {target_project_path}의 aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json을 확인한다.",
@@ -259,8 +273,8 @@ def build_tod_guide(target_project_path: Path, has_runtest: bool) -> list[str]:
     ]
 
 
-def build_next_steps(sample_key: str, target_project_path: Path, has_runtest: bool) -> list[str]:
-    tod_guide = build_tod_guide(target_project_path, has_runtest)
+def build_next_steps(sample_key: str, target_project_path: Path, runtest_path: Path | None) -> list[str]:
+    tod_guide = build_tod_guide(target_project_path, runtest_path)
     return [
         tod_guide[0],
         f"선택 샘플: {sample_key}",
@@ -333,11 +347,9 @@ def main():
         except Exception as exc:
             failures.append(str(exc))
 
-    has_runtest = bool(
-        not failures
-        and target_project_path
-        and ((project / "runtest.py").exists() or (target_project_path / "runtest.py").exists())
-    )
+    runtest_path = None
+    if not failures and target_project_path:
+        runtest_path = reference_runtest_path(target_project_path) or reference_runtest_path(project)
 
     report = BootstrapReport(
         project_path=str(project),
@@ -350,13 +362,13 @@ def main():
         copied=copied,
         skipped=skipped,
         failures=failures,
-        tod_guide=build_tod_guide(target_project_path, has_runtest)
+        tod_guide=build_tod_guide(target_project_path, runtest_path)
         if not failures and target_project_path
         else [],
         next_steps=build_next_steps(
             args.sample,
             target_project_path,
-            has_runtest,
+            runtest_path,
         )
         if not failures and target_project_path
         else [],

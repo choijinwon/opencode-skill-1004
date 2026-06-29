@@ -39,7 +39,7 @@ metadata:
 1. Python 실행 파일과 버전을 확인한다.
 2. dependency 파일과 핵심 패키지를 확인한다.
 3. MLflow 설치/version을 확인한다.
-4. run_model.py 또는 runtest.py 설정 블록을 확인한다.
+4. run_model.py, runtest.py 또는 aiu_studio/runtest.py 설정 블록을 확인한다.
 5. 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
 ```
 
@@ -157,7 +157,7 @@ mlflow_register_model_name
 조치: 로컬 기본 tracking은 ai_studio/tracking 기준으로 안내
 
 증상: 환경변수를 입력했는데 체크가 안 됨
-원인: run_model.py/runtest.py 설정 블록 또는 export mapping 누락
+원인: run_model.py/runtest.py/aiu_studio/runtest.py 설정 블록 또는 export mapping 누락
 조치: 소스 설정 블록 값을 확인하고 MLFLOW_* export 상태를 표시
 
 증상: 폐쇄망 설치가 느림

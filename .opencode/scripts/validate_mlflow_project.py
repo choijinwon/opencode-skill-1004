@@ -23,6 +23,10 @@ ENTRYPOINT_NAMES = [
     "runtest_2.py",
     "runtest.py",
     "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
     "run_model.py",
     "run.py",
     "serve.py",
@@ -38,6 +42,10 @@ TRAINING_ENTRYPOINT_NAMES = [
     "runtest_2.py",
     "runtest.py",
     "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
     "run_model.py",
     "run.py",
     "main.py",
@@ -92,6 +100,8 @@ SCAN_SKIP_DIRS = {
     ".venv",
     "__pycache__",
     "ai_studio",
+    "aiu_studio",
+    "aui_studio",
     "build",
     "dist",
     "env",
@@ -175,7 +185,9 @@ def has_project_markers(path: Path) -> bool:
     }
     if any((path / name).exists() for name in marker_names):
         return True
-    direct_artifact_dirs = [path / "ai_studio", path / "data", path / "saved_model", path / "artifacts", path / "model"]
+    if any((path / name).exists() for name in ["aiu_studio/runtest.py", "aiu_studio/run_test.py", "aui_studio/runtest.py", "aui_studio/run_test.py"]):
+        return True
+    direct_artifact_dirs = [path / "ai_studio", path / "aiu_studio", path / "aui_studio", path / "data", path / "saved_model", path / "artifacts", path / "model"]
     if any(candidate.exists() for candidate in direct_artifact_dirs):
         return True
     if find_artifacts(path, max_depth=3):

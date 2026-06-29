@@ -11,7 +11,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SAMPLES_DIR = ROOT / "samples"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
-ENTRYPOINTS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "run.py", "main.py", "app.py", "scripts/train.py"]
+ENTRYPOINTS = [
+    "runtest_2.py",
+    "runtest.py",
+    "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
+    "train.py",
+    "run_model.py",
+    "run.py",
+    "main.py",
+    "app.py",
+    "scripts/train.py",
+]
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
@@ -27,7 +41,16 @@ AUTO_DEFAULT_SETTING_KEYS = {
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 }
-MODEL_SETTING_FILES = ["runtest_2.py", "runtest.py", "run_test.py", "run_model.py"]
+MODEL_SETTING_FILES = [
+    "runtest_2.py",
+    "runtest.py",
+    "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
+    "run_model.py",
+]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
     ".mypy_cache",
@@ -38,6 +61,7 @@ MODEL_SCAN_SKIP_DIRS = {
     "__pycache__",
     "ai_studio",
     "aiu_studio",
+    "aui_studio",
     "build",
     "dist",
     "env",
@@ -111,7 +135,20 @@ class TrainingReport:
 
 
 def has_model_project(project: Path) -> bool:
-    markers = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "predict.py", "input_example.json", "MLmodel"]
+    markers = [
+        "runtest_2.py",
+        "runtest.py",
+        "run_test.py",
+        "aiu_studio/runtest.py",
+        "aiu_studio/run_test.py",
+        "aui_studio/runtest.py",
+        "aui_studio/run_test.py",
+        "train.py",
+        "run_model.py",
+        "predict.py",
+        "input_example.json",
+        "MLmodel",
+    ]
     if any((project / name).exists() for name in markers):
         return True
     if find_entrypoint_candidates(project):

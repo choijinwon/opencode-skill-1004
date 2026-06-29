@@ -45,6 +45,10 @@ ENTRYPOINT_CANDIDATES = [
     "runtest_2.py",
     "runtest.py",
     "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
     "run_model.py",
     "run.py",
     "train.py",
@@ -57,6 +61,10 @@ SETTING_FILES = [
     "runtest_2.py",
     "runtest.py",
     "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
     "run_model.py",
     "run.py",
     "train.py",
@@ -357,7 +365,7 @@ def find_setting_file(project: Path, explicit: str | None) -> Path | None:
         path = project / name
         if path.is_file():
             values = parse_python_settings(path)
-            if values or name in {"runtest.py", "run_model.py"}:
+            if values or name.endswith("runtest.py") or name in {"run_model.py"}:
                 return path
     entrypoints = find_entrypoints(project)
     if len(entrypoints) == 1:

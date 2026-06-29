@@ -123,7 +123,7 @@ next_action:
   6. 산출물 확인
 ```
 
-The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `saved_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py` or `runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables. The package-install step should prefer `bash .opencode/wsl/install_offline.sh` in closed-network WSL when `.opencode/wsl/wheelhouse/` exists.
+The first next action after folder copy must be environment validation. The second next action must confirm or supplement the sample-spec scaffold (`aiu_custom/`, `local_serving/`, `saved_model/`, `requirements.txt`, `input_example.json`) without overwriting existing model files. The third next action must guide the user to fill the needed MLflow/AI Studio values directly in `run_model.py`, `runtest.py`, or `aiu_studio/runtest.py` and explain that execution exports those values to `MLFLOW_*` environment variables. The package-install step should prefer `bash .opencode/wsl/install_offline.sh` in closed-network WSL when `.opencode/wsl/wheelhouse/` exists.
 
 ## Existing Model Flow
 
@@ -166,7 +166,7 @@ Step 6. 선택 모델 직접 읽기
 
 Step 7. runtest.py 참조
         기존 runtest.py를 우선 참조한다.
-        없으면 run_test.py를 참조한다.
+        루트에 없으면 aiu_studio/runtest.py, run_test.py 순서로 참조한다.
 
 Step 8. runtest_2.py 생성
         선택 모델 경로와 MODEL_KIND 기준으로 변환 생성한다.
@@ -210,11 +210,11 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 ```
 
-The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `runtest_2.py` from `runtest.py` or `run_test.py`. Do not assume `run_model.py`. If neither `runtest.py` nor `run_test.py` exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.
+The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `runtest_2.py` from `runtest.py`, `aiu_studio/runtest.py`, or `run_test.py`. Do not assume `run_model.py`. If none of those reference files exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.
 
 ## MLflow Tracking Guide
 
-For the confirmed entrypoint file, such as `run.py`, `runtest.py`, `train.py`, or `run_model.py`, guide the user to fill MLflow tracking settings directly in that file's setting block. Do not generate, infer, or print secret values.
+For the confirmed entrypoint file, such as `run.py`, `runtest.py`, `aiu_studio/runtest.py`, `train.py`, or `run_model.py`, guide the user to fill MLflow tracking settings directly in that file's setting block. Do not generate, infer, or print secret values.
 
 Required user input keys:
 

@@ -36,7 +36,7 @@ validate_mlflow_project.py
 
 prepare_selected_model.py
   data/** 모델 파일 목록을 만들고 사용자가 선택한 모델 기준으로 MODEL_KIND를 판별합니다.
-  기존 runtest.py 또는 run_test.py를 참조해 runtest_2.py를 생성하며, 기존 파일은 수정하지 않습니다.
+  루트 또는 aiu_studio/ 아래의 기존 runtest.py/run_test.py를 참조해 runtest_2.py를 생성하며, 기존 파일은 수정하지 않습니다.
   aiu_studio/ 실행 템플릿 폴더만 복사하고 모델 파일은 복사하지 않습니다.
 
 bootstrap_sample_project.py

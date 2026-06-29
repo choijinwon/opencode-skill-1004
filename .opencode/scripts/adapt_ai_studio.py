@@ -15,7 +15,20 @@ END = "# <<< AI Studio MLflow adapter <<<"
 
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 REQUIRED_FILES = ["input_example.json", "requirements.txt"]
-ENTRYPOINT_HINTS = ["runtest.py", "run_model.py", "run.py", "train.py", "main.py", "app.py", "scripts/train.py"]
+ENTRYPOINT_HINTS = [
+    "runtest.py",
+    "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
+    "run_model.py",
+    "run.py",
+    "train.py",
+    "main.py",
+    "app.py",
+    "scripts/train.py",
+]
 
 FRAMEWORK_RULES = [
     ("qwen", ["qwen", "AutoModelForCausalLM", "AutoTokenizer"]),

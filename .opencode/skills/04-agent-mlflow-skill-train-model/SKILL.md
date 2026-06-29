@@ -39,8 +39,8 @@ metadata:
 1. 기존 모델이면 프로젝트 루트 전체와 data/** 모델 목록을 먼저 보여준다.
 2. 사용할 모델을 번호 또는 경로로 선택한다.
 3. MODEL_KIND를 확장자 기준으로 판별한다.
-4. 기존 runtest.py를 우선 참조하고 없으면 run_test.py를 참조한다.
-5. 기존 runtest.py는 수정하지 않고 runtest_2.py를 생성한다.
+4. 기존 runtest.py를 우선 참조하고 루트에 없으면 aiu_studio/runtest.py, run_test.py를 참조한다.
+5. 기존 runtest.py 또는 aiu_studio/runtest.py는 수정하지 않고 runtest_2.py를 생성한다.
 6. 모델 파일은 aiu_studio/로 복사하지 않는다.
 7. 실행 전 MLflow/AI Studio 설정 블록을 확인한다.
 ```

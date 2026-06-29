@@ -23,7 +23,14 @@ SUPPORTED_MODEL_KINDS = {
     ".ubj": "xgboost_ubj",
 }
 
-REFERENCE_ENTRYPOINTS = ["runtest.py", "run_test.py"]
+REFERENCE_ENTRYPOINTS = [
+    "runtest.py",
+    "run_test.py",
+    "aiu_studio/runtest.py",
+    "aiu_studio/run_test.py",
+    "aui_studio/runtest.py",
+    "aui_studio/run_test.py",
+]
 ROOT = Path(__file__).resolve().parents[1]
 AIU_STUDIO_DIR_NAME = "aiu_studio"
 AIU_STUDIO_TEMPLATE_DIR = ROOT / "templates" / AIU_STUDIO_DIR_NAME
@@ -38,6 +45,7 @@ MODEL_SCAN_SKIP_DIRS = {
     "__pycache__",
     "ai_studio",
     "aiu_studio",
+    "aui_studio",
     "build",
     "dist",
     "env",
@@ -321,7 +329,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.failures.append("unsupported_model_suffix")
     if reference is None:
         report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
-        report.next_steps.append("기존 runtest.py 또는 run_test.py를 프로젝트 루트에 넣어주세요.")
+        report.next_steps.append("기존 runtest.py 또는 run_test.py를 프로젝트 루트나 aiu_studio/ 아래에 넣어주세요.")
 
     if report.failures:
         return report

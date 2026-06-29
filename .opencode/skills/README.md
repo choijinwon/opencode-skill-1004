@@ -35,7 +35,7 @@
 - 모델 파일은 `aiu_studio/`로 복사하지 않는다.
 - `.opencode/templates/aiu_studio/` 템플릿 폴더만 프로젝트 루트의 `aiu_studio/`로 복사한다.
 - 선택된 모델은 원본 경로에서 직접 읽는다.
-- 기존 `runtest.py`는 수정하지 않고 `runtest_2.py`를 생성한다.
+- 기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에 둘 수 있고, 수정하지 않고 `runtest_2.py`를 생성한다.
 - 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
 - `mlflow_experiment_name`, `mlflow_register_model_name`은 프로젝트명 기준으로 자동 생성한다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 확인한다.
@@ -81,12 +81,12 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 
 ```text
 python .opencode/scripts/doctor.py --workspace . --project .
-python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+python .opencode/scripts/doctor.py --workspace . --project <model-project-folder> --entrypoint aiu_studio/runtest.py
 ```
 
 doctor는 실행 파일 확정, 샘플 규격, MLflow 입력값 3개와 자동값 2개, 산출물 상태를 한 화면에 보여줍니다.
 `requirements.txt`가 있으면 pip 필요 패키지, 현재 설치 여부, 설치된 버전, 요구 버전, 버전 불일치도 함께 보여줍니다.
-`run.py`처럼 실행 파일명이 사용자마다 달라도 단일 `.py` 파일은 자동으로 잡고, 여러 후보가 있으면 `--entrypoint <file>`로 확정합니다.
+`run.py`처럼 실행 파일명이 사용자마다 달라도 단일 `.py` 파일은 자동으로 잡고, `aiu_studio/runtest.py`처럼 하위 폴더에 있는 실행 파일도 후보로 잡습니다. 여러 후보가 있으면 `--entrypoint <file>`로 확정합니다.
 실행 파일을 찾지 못하면 자동 생성하지 않고, 사용자가 실제 학습/모델 생성 Python 파일을 직접 넣도록 안내합니다.
 
 AI Studio/MLflow 연결부를 실제로 보강해야 하면 먼저 dry-run을 실행합니다.
