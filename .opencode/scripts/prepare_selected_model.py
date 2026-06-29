@@ -431,14 +431,11 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
 # 선택된 모델을 먼저 판별하고, 원본 모델 파일은 프로젝트 경로에서 직접 읽습니다.
 # MODEL_KIND에 맞는 load_selected_model()을 생성해 선택 모델 기준으로 변환합니다.
 # 이 블록은 자동 생성되지만 아래 원본 runtest.py 구조와 주석은 유지합니다.
-import json as _aiu_json
 import os as _aiu_os
 from pathlib import Path as _AIUPath
 
 AI_STUDIO_DIR = _AIUPath(__file__).resolve().parent
 PROJECT_DIR = AI_STUDIO_DIR.parent
-LOCAL_SERVING_DIR = PROJECT_DIR / "local_serving"
-SELECTED_MODEL_INFO_PATH = LOCAL_SERVING_DIR / "selected_model.json"
 SOURCE_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_PATH = SOURCE_MODEL_PATH
@@ -468,8 +465,6 @@ mlflow_register_model_name = "{default_register_model_name}"
 if mlflow_tracking_url.lower().startswith("https://"):
     raise ValueError("ssl_not_allowed: use http:// or file:// for mlflow_tracking_url")
 
-LOCAL_SERVING_DIR.mkdir(parents=True, exist_ok=True)
-
 for _aiu_env_name, _aiu_env_value in {{
     "MLFLOW_TRACKING_URI": mlflow_tracking_url,
     "MLFLOW_TRACKING_USERNAME": mlflow_tracking_username,
@@ -479,26 +474,6 @@ for _aiu_env_name, _aiu_env_value in {{
 }}.items():
     if _aiu_env_value:
         _aiu_os.environ[_aiu_env_name] = _aiu_env_value
-
-SELECTED_MODEL_INFO_PATH.write_text(
-    _aiu_json.dumps(
-        {{
-            "model_path": str(MODEL_PATH),
-            "source_model_path": str(SOURCE_MODEL_PATH),
-            "model_kind": MODEL_KIND,
-            "model_profile": MODEL_PROFILE,
-            "required_package": AIU_REQUIRED_PACKAGE,
-            "load_hint": AIU_LOAD_HINT,
-            "reference_entrypoint": str(REFERENCE_ENTRYPOINT),
-            "generated_entrypoint": str(AI_STUDIO_DIR / "runtest_2.py"),
-            "selected_model_info_path": str(SELECTED_MODEL_INFO_PATH),
-            "note": "Model file remains in the project source path and is not copied into aiu_studio/. code/, metrics/, and tracking/ folders are not created. Original runtest.py comments and structure are preserved in aiu_studio/runtest_2.py.",
-        }},
-        ensure_ascii=False,
-        indent=2,
-    ),
-    encoding="utf-8",
-)
 # --- /AIU Studio selected model conversion ---
 
 '''
@@ -638,7 +613,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 "python .opencode/scripts/check_environment.py --project <model-project-folder> --entrypoint aiu_studio/runtest_2.py",
                 "python aiu_studio/runtest_2.py",
                 "python .opencode/scripts/test_inference.py --project <model-project-folder>",
-                "선택 모델 정보: local_serving/selected_model.json",
                 "추론 테스트 결과: local_serving/inference_result.json",
                 "python .opencode/scripts/verify_mlflow.py --tracking-uri <tracking-uri> --experiment-name <experiment-name>",
             ]
@@ -651,6 +625,15 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 def print_report(report: PreparedModelReport) -> None:
     print(f"Project: {report.project_path}")
     print(f"Data root: {report.data_root}")
+    if report.model_artifact_paths and report.selected_model_path is None:
+        data_model_count = sum(1 for path in report.model_artifact_paths if path == "data" or path.startswith("data/"))
+        total_model_count = len(report.model_artifact_paths)
+        if data_model_count == total_model_count:
+            print(f"data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+        elif data_model_count:
+            print(f"프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+        else:
+            print(f"프로젝트 루트에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
     print("model_artifact_paths:")
     if report.model_artifact_paths:
         for index, path in enumerate(report.model_artifact_paths, start=1):

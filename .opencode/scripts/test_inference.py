@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -46,21 +47,29 @@ def find_input_example(project: Path) -> Path | None:
     return None
 
 
-def find_model_path(project: Path) -> Path | None:
-    for selected_model in [
-        project / "local_serving" / "selected_model.json",
-    ]:
-        if not selected_model.exists():
+def find_model_path_from_generated_entrypoint(project: Path) -> Path | None:
+    for entrypoint in [project / "aiu_studio" / "runtest_2.py"]:
+        if not entrypoint.exists():
             continue
-        try:
-            payload = json.loads(selected_model.read_text(encoding="utf-8"))
-            model_path = payload.get("source_model_path") or payload.get("model_path")
-            if model_path:
-                candidate = Path(model_path)
-                if candidate.exists():
-                    return candidate
-        except Exception:
-            pass
+        text = entrypoint.read_text(encoding="utf-8", errors="ignore")
+        patterns = [
+            r"SOURCE_MODEL_PATH\s*=\s*PROJECT_DIR\s*/\s*['\"]([^'\"]+)['\"]",
+            r"MODEL_PATH\s*=\s*PROJECT_DIR\s*/\s*['\"]([^'\"]+)['\"]",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if not match:
+                continue
+            candidate = (project / match.group(1)).resolve()
+            if candidate.exists():
+                return candidate
+    return None
+
+
+def find_model_path(project: Path) -> Path | None:
+    selected_model = find_model_path_from_generated_entrypoint(project)
+    if selected_model is not None:
+        return selected_model
     for path in sorted(project.rglob("*")):
         try:
             relative_parts = path.relative_to(project).parts
