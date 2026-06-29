@@ -133,7 +133,7 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 
 Existing model assumptions:
 
-- The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Supported suffixes are `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.keras`, `.h5`, `.safetensors`, `.bst`, and `.ubj`. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
+- The user's model file may be directly under the currently selected project root or anywhere under that project's recursive `data/**` tree. Do not scan arbitrary project subfolders, parent folders, home folders, drive roots, or `.opencode` samples. The folder name under `data/` is user-defined, not fixed. Supported suffixes are `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.keras`, `.h5`, `.safetensors`, `.bst`, and `.ubj`. Examples: `model.pkl`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
 - Read and classify the selected model, then transform copied `aiu_studio/` runtime files for that model. Generate/update `aiu_studio/aiu_custom/model.py` for the selected model. Do not rewrite `aiu_studio/aiu_custom/predict.py`; only check its import compatibility.
 - Do not copy the selected model file into `aiu_studio/`. Generated/converted code must read the selected project model path directly.
 - If Linux paths contain Windows separators such as `\`, `＼`, `￦`, or `₩`, normalize them to `/` during generated file conversion.
@@ -146,12 +146,13 @@ Model-found detailed process:
 
 ```text
 Step 1. 루트/data 모델 목록 확인
-        현재 --project 폴더 안에서만 스캔하되 .opencode, .git, .venv, ai_studio 같은 생성/도구 폴더는 제외한다.
-        상위 폴더, 홈 디렉터리, 드라이브 루트, 번들 샘플 폴더를 자동 검색하지 않는다.
+        현재 --project 폴더 안에서만 스캔한다.
+        검색 범위는 현재 프로젝트 루트 바로 아래 모델 파일과 현재 프로젝트 data/** 트리다.
+        상위 폴더, 홈 디렉터리, 드라이브 루트, 임의 하위 폴더, 번들 샘플 폴더를 자동 검색하지 않는다.
         .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 model_artifact_paths로 표시한다.
 
 Step 2. 사용할 모델 선택
-        data/** 또는 루트에서 발견된 model_artifact_paths 목록을 번호로 보여준다.
+        현재 프로젝트 루트 바로 아래 또는 data/**에서 발견된 model_artifact_paths 목록을 번호로 보여준다.
         사용자는 프로젝트 상대 경로로 사용할 모델을 선택하는 것을 우선한다.
         번호 선택은 현재 표시된 목록에서만 유효하므로 자동 준비 명령에는 실제 경로를 우선 사용한다.
         이미 준비된 선택 모델을 다시 쓰는 경우 --model selected를 사용할 수 있다.
@@ -297,7 +298,7 @@ Describe that one command to the user as:
 다음 작업 수행(한 번에): 선택 모델 환경 변환
 ```
 
-The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, choosing the sample reference by `MODEL_KIND`, and generating `aiu_studio/runtest_2.py`. Use `.opencode/samples/pytorch_sample/runtest.py` for PyTorch/safetensors, `.opencode/samples/sklearn_sample/run_model.py` for sklearn/joblib/xgboost, and `.opencode/samples/tensorflow_sample/run_model.py` for tensorflow/keras/h5. If no kind-specific sample exists, fall back to `aiu_studio/runtest.py`, `runtest.py`, or `run_test.py`. Do not create a fake reference file automatically; ask the user to place the real reference file in the project when fallback also fails.
+The first Build step for an existing model is always listing model artifacts directly under the currently selected project root and under that project's `data/**` tree, selecting one model, choosing the sample reference by `MODEL_KIND`, and generating `aiu_studio/runtest_2.py`. Use `.opencode/samples/pytorch_sample/runtest.py` for PyTorch/safetensors, `.opencode/samples/sklearn_sample/run_model.py` for sklearn/joblib/xgboost, and `.opencode/samples/tensorflow_sample/run_model.py` for tensorflow/keras/h5. If no kind-specific sample exists, fall back to `aiu_studio/runtest.py`, `runtest.py`, or `run_test.py`. Do not create a fake reference file automatically; ask the user to place the real reference file in the project when fallback also fails.
 
 ## MLflow Tracking Guide
 

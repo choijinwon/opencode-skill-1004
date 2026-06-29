@@ -372,8 +372,19 @@ def is_opencode_sample_source(path: Path) -> bool:
 def scan_model_artifacts(project: Path) -> list[Path]:
     if is_opencode_sample_source(project):
         return []
-    found = []
-    for path in project.rglob("*"):
+    found: list[Path] = []
+
+    # Search only the selected project root and its data/** tree. Do not scan
+    # arbitrary sibling folders or the whole drive/workspace.
+    for path in project.iterdir():
+        if path.is_file() and model_kind(path):
+            found.append(path)
+
+    data_root = project / "data"
+    if not data_root.is_dir():
+        return sorted(set(found))
+
+    for path in data_root.rglob("*"):
         try:
             relative_parts = path.relative_to(project).parts
         except ValueError:
@@ -583,7 +594,7 @@ def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference
     return [
         f"1. 선택 모델 확인: {rel(selected_model, project)}",
         "2. aiu_studio/ 폴더 복사",
-        f"3. 모델 형식 확인: MODEL_KIND={kind}",
+        f"3. 현재 프로젝트 루트/data/** 검색 결과에서 모델 형식 확인: MODEL_KIND={kind}",
         f"4. 형식별 샘플 참조: {reference_display_path(reference)}",
         "5. aiu_studio/runtest_2.py 생성 및 선택 모델 경로 연결",
         "6. 선택 모델 형식에 맞게 실행 코드 변환",
@@ -1952,7 +1963,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
     if not models:
         report.failures.append("model_artifact_paths_empty")
-        report.next_steps.append("프로젝트 루트 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
+        report.next_steps.append("현재 프로젝트 루트 바로 아래 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
     if selection_error:
         report.failures.append(selection_error)
         if models:
@@ -2024,7 +2035,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
                 "PowerShell에서는 선택 프로젝트의 aiu_studio 폴더로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project / AIU_STUDIO_DIR_NAME)}",
                 "python runtest_2.py",
@@ -2059,7 +2070,7 @@ def print_report(report: PreparedModelReport) -> None:
         elif data_model_count:
             print(f"프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
         else:
-            print(f"프로젝트 루트에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            print(f"현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
     print("model_artifact_paths:")
     if report.model_artifact_paths:
         for index, path in enumerate(report.model_artifact_paths, start=1):
@@ -2116,7 +2127,7 @@ def print_report(report: PreparedModelReport) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Select a project-root or data/** model artifact and generate aiu_studio/runtest_2.py without modifying runtest.py.")
+    parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate aiu_studio/runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="copy samples/aiu_studio/ into project-root aiu_studio/ and create aiu_studio/runtest_2.py")
