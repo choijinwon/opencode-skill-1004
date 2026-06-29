@@ -587,7 +587,7 @@ def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference
         "4. aiu_studio/runtest_2.py 파일 생성",
         "5. 모델 로더와 데이터 준비를 선택 모델 환경에 맞게 변환",
         "6. input_example, MLflow 경로, local serving, 주석을 선택 모델 기준으로 변환",
-        "7. 모델 파일은 복사하지 않고 현재 프로젝트 안 원본 경로를 읽도록 유지",
+        "7. 모델 파일은 복사하지 않고 선택 모델 원본 경로에 연결",
     ]
 
 
