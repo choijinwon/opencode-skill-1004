@@ -244,10 +244,9 @@ For `4`, always report it as `모델 환경변수 체크`. The output must show 
 
 Step 3. 선택 모델 환경 변환
         사용자가 선택한 모델 경로와 MODEL_KIND를 기준으로 .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 모델 환경에 맞게 변환한다.
-        PyTorch/safetensors 모델은 .opencode/samples/pytorch_sample/runtest.py를 기준으로 선택 모델에 맞게 변환한다.
-        runtest_2.py 생성 시퀀스는 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 선택 모델 기준 변환 -> runtest_2.py 생성/연결 -> 실행 코드 변환 순서로 수행한다.
-        변환 대상은 model.py 로더/헬퍼, predict.py 배포 엔트리포인트, 데이터 준비, input_example, MLflow artifact/code_paths, local serving 동작, 선택 모델 관련 주석이다.
-        내부 일치 검증은 자동으로 수행하되 사용자에게 파일별 확인 목록을 길게 보여주지 않는다.
+        PyTorch/safetensors 모델은 .opencode/samples/pytorch_sample/ 내부를 참조해서 워크스페이스를 선택 모델에 맞게 변환한다.
+        runtest_2.py 생성 시퀀스는 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 변환 -> 실행 코드 변환 순서로 수행한다.
+        내부 일치 검증은 자동으로 수행하되 사용자에게 세부 파일 목록을 길게 보여주지 않는다.
 
 Step 4. 모델 환경변수 체크
         runtest_2.py 또는 확정 entrypoint의 MLflow 입력값 3개와 자동값 2개를 확인한다.

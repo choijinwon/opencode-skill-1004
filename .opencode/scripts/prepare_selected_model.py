@@ -581,7 +581,7 @@ def reference_display_path(reference: Path) -> str:
 def conversion_reference_step(kind: str, reference: Path) -> str:
     display_path = reference_display_path(reference)
     if kind in {"pytorch", "safetensors"}:
-        return f"4. pytorch_sample/runtest.py 기준으로 선택 모델에 맞게 변환: {display_path}"
+        return f"4. samples/pytorch_sample/ 내부를 참조해서 워크스페이스를 선택 모델에 맞게 변환: {display_path}"
     return f"4. 선택 모델 기준으로 실행 코드 변환: {display_path}"
 
 
@@ -2129,7 +2129,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 선택 모델 기준 변환 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 변환 -> 실행 코드 변환",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
@@ -2179,8 +2179,13 @@ def print_report(report: PreparedModelReport) -> None:
     print(f"Execute: {report.execute}")
     if report.prepared_paths:
         print("Prepared:")
-        for item in report.prepared_paths:
-            print(f"- {item}")
+        if report.selected_model_path:
+            print("- .opencode/samples/aiu_studio/* -> workspace root")
+            print("- samples/pytorch_sample/ 내부 참조 기준으로 워크스페이스 선택 모델 변환")
+            print("- 선택 모델 기준 변환 검증")
+        else:
+            for item in report.prepared_paths:
+                print(f"- {item}")
     if report.skipped:
         print("Skipped:")
         for item in report.skipped:
