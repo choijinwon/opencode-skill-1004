@@ -526,11 +526,7 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
     skipped: list[str] = []
     failures: list[str] = []
     reference_digest_before = file_sha256(reference)
-    if target.exists() and not force:
-        skipped.append("aiu_studio/runtest_2.py")
-        if execute:
-            failures.append("runtest_2_exists: use --force to overwrite")
-        return changed, skipped, failures
+    existed_before = target.exists()
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(generated_runtest_text(project, selected_model, kind, reference), encoding="utf-8")
@@ -538,7 +534,7 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("aiu_studio/runtest_2.py")
+    changed.append("aiu_studio/runtest_2.py (refreshed)" if existed_before else "aiu_studio/runtest_2.py")
     return changed, skipped, failures
 
 
@@ -575,6 +571,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.failures.append(selection_error)
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
+            report.next_steps.append(
+                "모델 선택 후 다음 작업 수행(1~4 한 번에): python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+            )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
         report.next_steps.append("선택 모델은 <model-project-folder> 아래에 있어야 합니다.")
@@ -610,9 +609,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "python .opencode/scripts/check_environment.py --project <model-project-folder> --entrypoint aiu_studio/runtest_2.py",
+                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성",
                 "python aiu_studio/runtest_2.py",
-                "python .opencode/scripts/test_inference.py --project <model-project-folder>",
+                "python .opencode/scripts/test_inference.py --project <model-project-folder> --execute",
                 "추론 테스트 결과: local_serving/inference_result.json",
                 "python .opencode/scripts/verify_mlflow.py --tracking-uri <tracking-uri> --experiment-name <experiment-name>",
             ]
@@ -668,7 +667,7 @@ def main() -> int:
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="copy samples/aiu_studio/ into project-root aiu_studio/ and create aiu_studio/runtest_2.py")
-    parser.add_argument("--force", action="store_true", help="overwrite existing aiu_studio/runtest_2.py")
+    parser.add_argument("--force", action="store_true", help="kept for compatibility; aiu_studio/runtest_2.py is refreshed for the selected model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 

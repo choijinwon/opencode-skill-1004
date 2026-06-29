@@ -113,12 +113,9 @@ def main() -> int:
 
     print("- 다음 단계:")
     if model_found:
-        print("  - 샘플은 사용하지 않고 본인 모델 경로 기준으로 모델 있음 12단계를 진행하세요.")
-        print("  - 사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1 또는 --model data/<folder>/model.joblib")
-        print("  - Build 모드에서 실행: python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute")
-        print("  - 모델 파일은 data/** 원본 경로에서 직접 읽고 aiu_studio/로 복사하지 않습니다.")
-        print("  - 실제 분석/환경 검증/모델 실행은 OpenCode 빌드모드에서 선택해주세요.")
-        print("  - 추천 요청: 내 모델 경로 기준으로 MLflow 모델 있음 프로세스 분석해줘.")
+        print("  - 사용할 모델을 번호 또는 경로로 선택하세요. 예: 1 또는 data/<folder>/model.joblib")
+        print("  - Build 모드 다음 작업 수행(한 번에): python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute")
+        print("  - 포함 작업: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성")
     else:
         print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
         print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode 빌드모드에서 선택해주세요.")

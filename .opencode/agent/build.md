@@ -182,12 +182,13 @@ Step 8. runtest_2.py 생성
         모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
         기존 runtest.py는 절대 수정하지 않는다.
 
-사용자에게 보여줄 TOD는 자동 처리 단계 3-8을 `자동 준비 실행`으로 묶어 간략히 표시한다.
+사용자에게 보여줄 TOD는 자동 처리 단계 3-8을 `자동 준비 실행` 하나로 묶어 간략히 표시한다. 모델 선택 이후에는 Launch 규칙이나 긴 세부 규칙을 다시 보여주지 않는다.
 
 ```text
 1. 루트/data 모델 목록 확인
 2. 사용할 모델 선택
 3. 자동 준비 실행
+   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성
 4. 환경 검증
 5. 모델 환경변수 체크
 6. runtest_2.py 실행
@@ -223,6 +224,18 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/<any-folder>/model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
+```
+
+When the user has already selected a model, do not show the Launch Guide or the detailed Launch rules again. In Build mode, run the one automatic preparation command directly:
+
+```text
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute
+```
+
+Describe that one command to the user as:
+
+```text
+다음 작업 수행(한 번에): 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성
 ```
 
 The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `aiu_studio/runtest_2.py` from `aiu_studio/runtest.py`, `runtest.py`, or `run_test.py`. Do not assume `run_model.py`. If none of those reference files exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.
