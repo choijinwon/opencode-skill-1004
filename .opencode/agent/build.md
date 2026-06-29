@@ -245,6 +245,7 @@ For `4`, always report it as `모델 환경변수 체크`. The output must show 
 
 Step 3. 선택 모델 환경 변환
         사용자가 선택한 모델 경로와 MODEL_KIND를 기준으로 aiu_studio/ 폴더를 복사하고 모델 환경에 맞게 변환한다.
+        runtest_2.py 생성 시퀀스는 모델 형식별 샘플 참조 -> aiu_studio/runtest_2.py 파일 생성 -> 선택 모델 환경 변환 순서로 수행한다.
         변환 대상은 모델 로더, 데이터 준비, input_example, MLflow artifact/code_paths, local serving 동작, 선택 모델 관련 주석이다.
         내부 일치 검증은 자동으로 수행하되 사용자에게 파일별 확인 목록을 길게 보여주지 않는다.
         aiu_studio/aiu_custom/predict.py는 코드 변환 대상이 아니며 선택 모델 required_package import 상태만 확인한다.

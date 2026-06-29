@@ -572,6 +572,25 @@ def runtime_project_path_expr(project: Path, path: Path) -> str:
     return f'PROJECT_DIR / "{relative}"'
 
 
+def reference_display_path(reference: Path) -> str:
+    try:
+        return ".opencode/" + normalize_path_text(reference.resolve().relative_to(ROOT).as_posix())
+    except ValueError:
+        return normalize_path_text(reference.as_posix())
+
+
+def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
+    return [
+        f"1. 선택 모델 확인: {rel(selected_model, project)}",
+        f"2. MODEL_KIND 판별: {kind}",
+        f"3. 모델 형식별 샘플 참조: {reference_display_path(reference)}",
+        "4. aiu_studio/runtest_2.py 파일 생성",
+        "5. 모델 로더와 데이터 준비를 선택 모델 환경에 맞게 변환",
+        "6. input_example, MLflow 경로, local serving, 주석을 선택 모델 기준으로 변환",
+        "7. 모델 파일은 복사하지 않고 현재 프로젝트 안 원본 경로를 읽도록 유지",
+    ]
+
+
 def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
@@ -1091,6 +1110,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
     load_hint = details.get("load_hint", "custom loader required")
+    sequence = runtest_2_sequence(project, selected_model, kind, reference)
     loader = details.get(
         "loader",
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
@@ -1107,6 +1127,7 @@ import atexit as _aiu_atexit
 import json as _aiu_json
 from pathlib import Path as _AIUPath
 
+RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}
 AI_STUDIO_DIR = {aiu_studio_expr}
 PROJECT_DIR = {project_expr}
 ORIGINAL_MODEL_PATH = {selected_model_expr}
@@ -1328,9 +1349,42 @@ def insert_preserved_data_prep_block(text: str, kind: str) -> str:
     return text.rstrip() + block
 
 
+def runtest_sequence_block(sequence: list[str]) -> str:
+    return (
+        "\n# --- AIU Studio runtest_2.py generation sequence ---\n"
+        f"RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}\n"
+        "# --- /AIU Studio runtest_2.py generation sequence ---\n"
+    )
+
+
+def insert_runtest_sequence_block(text: str, sequence: list[str]) -> str:
+    if "RUNTEST_2_SEQUENCE" in text:
+        return text
+    lines = text.splitlines(keepends=True)
+    future_import_pattern = re.compile(r"^\s*from\s+__future__\s+import\s+")
+    import_pattern = re.compile(
+        r"^\s*(import\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?|from\s+[A-Za-z_][A-Za-z0-9_.]*\s+import\s+.+)"
+    )
+
+    insert_at = 0
+    if lines and lines[0].startswith("#!"):
+        insert_at = 1
+    while insert_at < len(lines) and re.match(r"^#.*coding[:=]", lines[insert_at]):
+        insert_at += 1
+    while insert_at < len(lines):
+        line = lines[insert_at]
+        if not line.strip() or future_import_pattern.match(line) or import_pattern.match(line):
+            insert_at += 1
+            continue
+        break
+    lines.insert(insert_at, runtest_sequence_block(sequence))
+    return "".join(lines)
+
+
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     reference_text = reference.read_text(encoding="utf-8", errors="ignore")
     selected_relative = rel(selected_model, project)
+    sequence = runtest_2_sequence(project, selected_model, kind, reference)
     preserve_code = preserve_reference_code(reference)
     path_constructor = "Path" if preserve_code else "_AIUPath"
     aiu_studio_path = project / AIU_STUDIO_DIR_NAME
@@ -1443,6 +1497,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     )
     if preserve_code:
         transformed = insert_preserved_data_prep_block(transformed, kind)
+    transformed = insert_runtest_sequence_block(transformed, sequence)
     return transformed.rstrip() + "\n"
 
 
@@ -1734,7 +1789,7 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("aiu_studio/runtest_2.py (refreshed)" if existed_before else "aiu_studio/runtest_2.py")
+    changed.append("aiu_studio/runtest_2.py sequence generated + transformed (refreshed)" if existed_before else "aiu_studio/runtest_2.py sequence generated + transformed")
     return changed, skipped, failures
 
 
@@ -1970,6 +2025,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
+                "runtest_2.py 생성 시퀀스 완료: 모델 형식별 샘플 참조 -> aiu_studio/runtest_2.py 파일 생성 -> 선택 모델 환경 변환",
                 "PowerShell에서는 선택 프로젝트의 aiu_studio 폴더로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project / AIU_STUDIO_DIR_NAME)}",
                 "python runtest_2.py",
