@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -79,6 +80,28 @@ MODEL_RELATED_SETTING_NAMES = {
     "REQUIRED_PACKAGE",
     "required_package",
 }
+MODEL_PATH_REFERENCE_PATTERN = re.compile(
+    r"(?P<path>[A-Za-z0-9가-힣_./\\() -]+(?:"
+    + "|".join(re.escape(suffix) for suffix in sorted(SUPPORTED_MODEL_KINDS, key=len, reverse=True))
+    + r"))",
+    re.IGNORECASE,
+)
+PYTHON_STRING_LITERAL_PATTERN = re.compile(
+    r"(?P<prefix>[rRuUbBfF]*)(?P<quote>['\"])(?P<body>(?:\\.|[^\\])*?)(?P=quote)"
+)
+MODEL_LOADER_CALL_PATTERN = re.compile(
+    r"\b("
+    r"joblib\.load|"
+    r"pickle\.load|"
+    r"torch\.load|"
+    r"tf\.keras\.models\.load_model|"
+    r"keras\.models\.load_model|"
+    r"onnxruntime\.InferenceSession|"
+    r"ort\.InferenceSession|"
+    r"mlflow\.pyfunc\.load_model|"
+    r"load_file"
+    r")\s*\("
+)
 MODEL_KIND_DETAILS = {
     "sklearn_pickle": {
         "required_package": "joblib",
@@ -137,6 +160,7 @@ class PreparedModelReport:
     model_kind: str | None
     reference_entrypoint: str | None
     generated_entrypoint: str
+    generated_inference_test: str
     execute: bool
     prepared_paths: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
@@ -267,20 +291,6 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
     return copied, skipped, failures
 
 
-def ensure_local_serving_folder(project: Path, execute: bool) -> tuple[list[str], list[str]]:
-    changed: list[str] = []
-    skipped: list[str] = []
-    target = project / "local_serving"
-    if target.exists():
-        skipped.append("local_serving/")
-        return changed, skipped
-    if execute:
-        target.mkdir(parents=True, exist_ok=True)
-        (target / ".gitkeep").touch(exist_ok=True)
-    changed.append("local_serving/")
-    return changed, skipped
-
-
 def split_inline_comment(value: str) -> tuple[str, str]:
     in_single = False
     in_double = False
@@ -329,6 +339,79 @@ def replacement_expression(name: str, replacements: dict[str, str]) -> str | Non
     return None
 
 
+def text_contains_model_path(value: str) -> bool:
+    return any(suffix in value.lower() for suffix in SUPPORTED_MODEL_KINDS)
+
+
+def rewrite_model_comment(comment: str, selected_relative: str) -> str:
+    if not text_contains_model_path(comment):
+        return comment
+    prefix = "#"
+    body = comment[1:].strip() if comment.lstrip().startswith("#") else comment.strip()
+    converted = MODEL_PATH_REFERENCE_PATTERN.sub(selected_relative, body)
+    if converted == body:
+        return comment
+    return f"{prefix} AIU Studio 변환: {converted}"
+
+
+def model_path_literal_expression(token_text: str) -> str | None:
+    try:
+        value = ast.literal_eval(token_text)
+    except (SyntaxError, ValueError):
+        return None
+    if not isinstance(value, str) or not text_contains_model_path(value):
+        return None
+    if MODEL_PATH_REFERENCE_PATTERN.search(value):
+        return "str(MODEL_PATH)"
+    return None
+
+
+def rewrite_model_string_literals(line: str, selected_relative: str) -> str:
+    if not text_contains_model_path(line):
+        return line
+    suffix = "\n" if line.endswith("\n") else ""
+    body = line.rstrip("\n")
+    if body.lstrip().startswith("#"):
+        indent = body[: len(body) - len(body.lstrip())]
+        return f"{indent}{rewrite_model_comment(body.lstrip(), selected_relative)}{suffix}"
+
+    code, comment = split_inline_comment(body)
+
+    def replace_literal(match: re.Match[str]) -> str:
+        literal = match.group(0)
+        if "f" in match.group("prefix").lower():
+            return literal
+        expression = model_path_literal_expression(literal)
+        return expression if expression else literal
+
+    converted_code = PYTHON_STRING_LITERAL_PATTERN.sub(replace_literal, code)
+    converted_comment = rewrite_model_comment(comment, selected_relative) if comment else ""
+    if converted_comment:
+        return f"{converted_code}  {converted_comment}{suffix}"
+    return f"{converted_code}{suffix}"
+
+
+def rewrite_model_loader_line(line: str, kind: str, load_hint: str) -> str:
+    code, comment = split_inline_comment(line.rstrip("\n"))
+    if "MODEL_PATH" not in code or not MODEL_LOADER_CALL_PATTERN.search(code):
+        return line
+    suffix = "\n" if line.endswith("\n") else ""
+    indent = code[: len(code) - len(code.lstrip())]
+    stripped_code = code.strip()
+    if "=" in stripped_code:
+        lhs = stripped_code.split("=", 1)[0].strip()
+        converted_code = f"{indent}{lhs} = load_selected_model()"
+    else:
+        converted_code = f"{indent}load_selected_model()"
+    converted_comment = f"# AIU Studio 변환: 선택 모델 종류 {kind}, 로더 {load_hint}"
+    return f"{converted_code}  {converted_comment}{suffix}"
+
+
+def rewrite_reference_line(line: str, selected_relative: str, kind: str, load_hint: str) -> str:
+    converted = rewrite_model_string_literals(line, selected_relative)
+    return rewrite_model_loader_line(converted, kind, load_hint)
+
+
 def transform_reference_text(
     reference_text: str,
     injected_block: str,
@@ -371,7 +454,8 @@ def transform_reference_text(
             while next_index < len(lines) and not lines[next_index].strip():
                 next_index += 1
             if next_index < len(lines):
-                next_match = assignment_pattern.match(lines[next_index].rstrip("\n"))
+                next_stripped = lines[next_index].lstrip()
+                next_match = assignment_pattern.match(next_stripped.rstrip("\n"))
                 if next_match:
                     next_name = next_match.group(1)
                     if replacement_expression(next_name, replacements) is not None:
@@ -379,31 +463,30 @@ def transform_reference_text(
                         if converted_comment:
                             output.append(f"{indent}{converted_comment}\n")
                             continue
-        if indent:
-            output.append(line)
-            continue
-
-        match = assignment_pattern.match(line.rstrip("\n"))
+        match = assignment_pattern.match(stripped.rstrip("\n"))
         if not match:
-            output.append(line)
+            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint))
             continue
 
         name, raw_value = match.groups()
         expression = replacement_expression(name, replacements)
         if expression is None:
-            output.append(line)
+            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint))
             continue
 
-        if name in MLFLOW_SETTING_NAMES:
+        if name in MLFLOW_SETTING_NAMES and not indent:
             output.append(f"# AIU Studio preserved original assignment; value is defined in the conversion block above.\n")
             output.append(f"# {line.rstrip()}\n")
+            continue
+        if name in MLFLOW_SETTING_NAMES:
+            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint))
             continue
 
         _, comment = split_inline_comment(raw_value)
         converted_comment = converted_assignment_comment(name, selected_relative, kind, load_hint, required_package)
         if converted_comment:
             comment = converted_comment
-        output.append(assignment_line(name, expression, comment))
+        output.append(f"{indent}{assignment_line(name, expression, comment)}")
 
     if not inserted:
         output.insert(0, injected_block)
@@ -520,6 +603,97 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     return transformed.rstrip() + "\n"
 
 
+def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
+    selected_relative = rel(selected_model, project)
+    reference_relative = rel(reference, project)
+    profile = model_profile(project, selected_model, kind)
+    details = MODEL_KIND_DETAILS.get(kind, {})
+    required_package = details.get("required_package", "unknown")
+    load_hint = details.get("load_hint", "custom loader required")
+    loader = details.get(
+        "loader",
+        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
+    )
+    return f'''#!/usr/bin/env python3
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+
+
+LOCAL_SERVING_DIR = Path(__file__).resolve().parent
+AI_STUDIO_DIR = LOCAL_SERVING_DIR.parent
+PROJECT_DIR = AI_STUDIO_DIR.parent
+SOURCE_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
+DATA_MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_KIND = "{kind}"
+MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
+AIU_REQUIRED_PACKAGE = "{required_package}"
+AIU_LOAD_HINT = "{load_hint}"
+REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
+
+# AIU Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
+# 모델 파일은 aiu_studio/로 복사하지 않고 원본 경로에서 직접 읽습니다.
+# MODEL_KIND={kind}, loader={load_hint}
+
+{loader}
+
+
+def load_input_example():
+    for name in ["input_example.json", "sample_input.json", "example.json"]:
+        candidate = PROJECT_DIR / name
+        if candidate.is_file():
+            return json.loads(candidate.read_text(encoding="utf-8"))
+    return {{}}
+
+
+def load_aiu_custom_wrapper():
+    for relative in ["aiu_custom/model_wrapper.py", "aiu_custom/predict.py"]:
+        wrapper_path = PROJECT_DIR / relative
+        if not wrapper_path.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("aiu_custom_model_wrapper", wrapper_path)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        wrapper_class = getattr(module, "ModelWrapper", None)
+        if wrapper_class is not None:
+            return wrapper_class()
+    return None
+
+
+def run_inference():
+    payload = load_input_example()
+    wrapper = load_aiu_custom_wrapper()
+    if wrapper is not None:
+        return wrapper.predict(None, payload)
+
+    model = load_selected_model()
+    if hasattr(model, "predict"):
+        return model.predict(payload)
+    if callable(model):
+        return model(payload)
+    return {{
+        "status": "loaded",
+        "model_kind": MODEL_KIND,
+        "model_path": str(MODEL_PATH),
+        "input_example": payload,
+    }}
+
+
+def main():
+    result = run_inference()
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
 def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool, force: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / AIU_STUDIO_DIR_NAME / "runtest_2.py"
     changed: list[str] = []
@@ -535,6 +709,24 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
     changed.append("aiu_studio/runtest_2.py (refreshed)" if existed_before else "aiu_studio/runtest_2.py")
+    return changed, skipped, failures
+
+
+def write_localservingtest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / AIU_STUDIO_DIR_NAME / "local_serving" / "localservingtest.py"
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    reference_digest_before = file_sha256(reference)
+    existed_before = target.exists()
+    if execute:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(generated_localservingtest_text(project, selected_model, kind, reference), encoding="utf-8")
+        reference_digest_after = file_sha256(reference)
+        if reference_digest_after != reference_digest_before:
+            failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
+            return changed, skipped, failures
+    changed.append("aiu_studio/local_serving/localservingtest.py (refreshed)" if existed_before else "aiu_studio/local_serving/localservingtest.py")
     return changed, skipped, failures
 
 
@@ -561,6 +753,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         model_kind=selected_kind,
         reference_entrypoint=None,
         generated_entrypoint="aiu_studio/runtest_2.py",
+        generated_inference_test="aiu_studio/local_serving/localservingtest.py",
         execute=args.execute,
     )
 
@@ -590,10 +783,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
 
-    local_changed, local_skipped = ensure_local_serving_folder(project, args.execute)
-    report.prepared_paths.extend(local_changed)
-    report.skipped.extend(local_skipped)
-
     reference = find_reference_entrypoint(project)
     report.reference_entrypoint = rel(reference, project) if reference else None
     if reference is None:
@@ -605,14 +794,21 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.prepared_paths.extend(changed)
     report.skipped.extend(write_skipped)
     report.failures.extend(write_failures)
+    if report.failures:
+        return report
+
+    inference_changed, inference_skipped, inference_failures = write_localservingtest(project, selected_model, selected_kind, reference, args.execute)
+    report.prepared_paths.extend(inference_changed)
+    report.skipped.extend(inference_skipped)
+    report.failures.extend(inference_failures)
 
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성",
+                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/local_serving/localservingtest.py 생성",
                 "python aiu_studio/runtest_2.py",
-                "python .opencode/scripts/test_inference.py --project <model-project-folder> --execute",
-                "추론 테스트 결과: local_serving/inference_result.json",
+                "python aiu_studio/local_serving/localservingtest.py",
+                "추론 테스트 결과는 화면에 출력합니다.",
                 "python .opencode/scripts/verify_mlflow.py --tracking-uri <tracking-uri> --experiment-name <experiment-name>",
             ]
         )
@@ -643,6 +839,7 @@ def print_report(report: PreparedModelReport) -> None:
     print(f"MODEL_KIND: {report.model_kind or 'missing'}")
     print(f"Reference entrypoint: {report.reference_entrypoint or 'missing'}")
     print(f"Generated entrypoint: {report.generated_entrypoint}")
+    print(f"Generated inference test: {report.generated_inference_test}")
     print(f"Execute: {report.execute}")
     if report.prepared_paths:
         print("Prepared:")

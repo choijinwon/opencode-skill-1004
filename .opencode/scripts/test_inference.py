@@ -102,7 +102,7 @@ def preview(value) -> str:
 
 
 def inference_result_path(project: Path) -> Path:
-    return project / "local_serving" / "inference_result.json"
+    return project / "inference_result.json"
 
 
 def run_pyfunc(model_path: Path, payload):
@@ -135,6 +135,7 @@ def main():
     parser.add_argument("--input-example", help="explicit input example JSON path")
     parser.add_argument("--mode", choices=["auto", "pyfunc", "aiu-custom"], default="auto")
     parser.add_argument("--execute", action="store_true", help="actually load model and run predict")
+    parser.add_argument("--output", help="optional result JSON file path; no result file is written unless this is set")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
@@ -176,7 +177,8 @@ def main():
         except Exception as exc:
             failures.append(f"predict_error:{exc}")
 
-    result_path = str(inference_result_path(project)) if args.execute else None
+    output_path = Path(args.output).expanduser().resolve() if args.output else None
+    result_path = str(output_path) if output_path else None
     report = InferenceReport(
         project_path=str(project),
         model_path=str(model_path) if model_path else None,
@@ -189,8 +191,7 @@ def main():
         failures=failures,
         output_preview=preview(result) if result is not None else None,
     )
-    if args.execute:
-        output_path = inference_result_path(project)
+    if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 

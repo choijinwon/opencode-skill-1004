@@ -53,7 +53,7 @@ Step 2. 사용할 모델 선택
         model_artifact_paths를 번호로 보여주고, 사용자는 번호 또는 경로로 선택한다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 자동 준비 실행
-        aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, aiu_studio/runtest_2.py 생성을 처리한다.
+        aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, aiu_studio/runtest_2.py와 aiu_studio/local_serving/localservingtest.py 생성을 처리한다.
 Step 4. 환경 검증
         Python 3.11.9, dependency, MLflow 설치 상태를 확인한다.
 Step 5. 모델 환경변수 체크
@@ -61,8 +61,8 @@ Step 5. 모델 환경변수 체크
 Step 6. runtest_2.py 실행
         aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 7. 추론 테스트
-        aiu_custom/predict.py 또는 test_inference.py 기준으로 입력/출력 스키마를 확인한다.
-        실행 결과는 local_serving/inference_result.json에 생성한다.
+        aiu_studio/local_serving/localservingtest.py 기준으로 입력/출력 스키마를 확인한다.
+        기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않는다.
 Step 8. MLflow 검증
         Run, artifact, registered model 기록을 확인한다.
 ```

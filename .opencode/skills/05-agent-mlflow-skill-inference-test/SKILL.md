@@ -26,10 +26,10 @@ metadata:
 ```text
 1. 로컬 학습 산출물 확인
 2. input_example.json 확인
-3. 추론 entrypoint 확인
+3. 추론 entrypoint 확인: aiu_studio/local_serving/localservingtest.py
 4. 모델 로드 방식 결정
 5. predict 실행
-6. 출력 schema 확인 및 local_serving/inference_result.json 생성
+6. 출력 schema 확인. 기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않음
 7. 추론 테스트 완료
 8. MLflow 검증으로 이동
 ```
@@ -38,8 +38,8 @@ metadata:
 
 ```text
 1. input_example.json을 확인한다.
-2. aiu_custom/predict.py 또는 ModelWrapper를 확인한다.
-3. mlflow.pyfunc.load_model 또는 custom wrapper load를 우선 사용한다.
+2. aiu_studio/local_serving/localservingtest.py를 확인한다.
+3. localservingtest.py의 선택 모델 경로, MODEL_KIND, load_selected_model()을 확인한다.
 4. Windows native load는 보조 확인으로만 둔다.
 5. 결과가 JSON serializable인지 확인한다.
 ```
@@ -50,11 +50,11 @@ metadata:
 반드시 보여줄 값:
 - 판단 결과
 - 사용한 input example
-- 추론 entrypoint
+- 추론 entrypoint: aiu_studio/local_serving/localservingtest.py
 - 모델 로드 방식
 - predict 결과 요약
 - response schema
-- result_path: local_serving/inference_result.json
+- result_path: not written, unless --output is set
 - 다음 단계
 ```
 
@@ -65,21 +65,18 @@ metadata:
 input_example: input_example.json
 load mode: aiu_custom wrapper
 schema: JSON serializable
-result_path: local_serving/inference_result.json
+result_path: not written
 next: MLflow verify
 ```
 
 ## Commands
 
 ```text
-추론 dry-run:
-python .opencode/scripts/test_inference.py --project <project>
-
 실제 추론 실행:
-python .opencode/scripts/test_inference.py --project <project> --execute
+python aiu_studio/local_serving/localservingtest.py
 
-명시적 모델 경로:
-python .opencode/scripts/test_inference.py --project <project> --model-path <model-path> --execute
+보조 스크립트:
+python .opencode/scripts/test_inference.py --project <project> --execute
 ```
 
 <details>

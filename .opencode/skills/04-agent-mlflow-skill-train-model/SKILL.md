@@ -168,11 +168,11 @@ blocked:
 ```text
 1. 루트/data 모델 목록 확인
 2. model_artifact_paths에서 사용할 모델 선택
-3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, runtest.py 구조/주석 기반 aiu_studio/runtest_2.py 생성
+3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, runtest.py 구조/주석/모델 로딩 코드 기반 aiu_studio/runtest_2.py와 aiu_studio/local_serving/localservingtest.py 생성
 4. Python 3.11.9와 requirements 설치/버전 확인
 5. MLflow 입력값 3개와 자동값 2개 상태 확인
 6. aiu_studio/runtest_2.py 실행
-7. aiu_custom/predict.py 또는 test_inference.py로 추론 입력/출력 확인
+7. aiu_studio/local_serving/localservingtest.py로 추론 입력/출력 확인
 8. MLflow run, artifact, registered model 검증
 ```
 

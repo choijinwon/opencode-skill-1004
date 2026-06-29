@@ -179,6 +179,7 @@ Step 8. runtest_2.py 생성
         선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/runtest_2.py를 생성한다.
         MODEL_KIND별 load_selected_model()과 required_package/load_hint를 생성한다.
         변환은 참조한 runtest.py 구조를 기반으로 한다.
+        함수 내부의 기존 모델 경로 문자열과 모델 로딩 호출은 선택 모델 기준 load_selected_model() 호출로 변환한다.
         모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
         기존 runtest.py는 절대 수정하지 않는다.
 
@@ -188,7 +189,7 @@ Step 8. runtest_2.py 생성
 1. 루트/data 모델 목록 확인
 2. 사용할 모델 선택
 3. 자동 준비 실행
-   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성
+   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/local_serving/localservingtest.py 생성
 4. 환경 검증
 5. 모델 환경변수 체크
 6. runtest_2.py 실행
@@ -209,8 +210,9 @@ Step 11. runtest_2.py 실행
         생성된 aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 
 Step 12. 추론 테스트
-        aiu_custom/predict.py 또는 test_inference.py 기준으로 입력/출력 스키마를 확인한다.
-        추론 테스트 실행 결과는 local_serving/inference_result.json에 생성한다.
+        aiu_studio/local_serving/localservingtest.py 기준으로 입력/출력 스키마를 확인한다.
+        이 파일은 선택 모델 경로, MODEL_KIND, load_selected_model()을 반영해 생성한다.
+        기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않는다.
 
 Step 13. MLflow 검증
         Run, artifact, registered model 기록을 확인한다.

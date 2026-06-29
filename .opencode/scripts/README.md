@@ -35,7 +35,7 @@ Step 6  runtest_2.py 실행
         aiu_studio/runtest_2.py
 
 Step 7  추론 테스트
-        test_inference.py
+        aiu_studio/local_serving/localservingtest.py
 
 Step 8  MLflow 검증
         verify_mlflow.py
@@ -102,7 +102,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 ### prepare_selected_model.py
 
-프로젝트 루트 전체와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `aiu_studio/` 폴더를 루트에 그대로 복사하고 `aiu_studio/runtest_2.py`를 준비한다.
+프로젝트 루트 전체와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `aiu_studio/` 폴더를 루트에 그대로 복사하고 `aiu_studio/runtest_2.py`를 준비한다. 기존 모델 경로 문자열, 모델 로딩 호출, 관련 주석은 선택 모델 기준으로 변환한다.
 기존 `runtest.py` 또는 `aiu_studio/runtest.py`는 수정하지 않는다.
 
 ```text
@@ -332,15 +332,14 @@ python .opencode/scripts/test_local_sample.py --sample sklearn
 python .opencode/scripts/test_local_sample.py --sample all
 ```
 
-### test_inference.py
+### aiu_studio/local_serving/localservingtest.py
 
-모델 로드와 input example 기반 predict를 테스트한다.
+`prepare_selected_model.py --execute`가 생성하는 선택 모델 기준 추론 테스트 파일이다. 선택 모델 경로, `MODEL_KIND`, `load_selected_model()`이 반영된다.
 
-기본값은 안전 모드다. 실제 추론은 `--execute`를 명시해야 한다.
+기본 실행은 화면 출력만 수행하며 프로젝트 루트 `local_serving/` 폴더를 만들지 않는다.
 
 ```text
-python .opencode/scripts/test_inference.py --project <model-project-folder>
-python .opencode/scripts/test_inference.py --project <model-project-folder> --execute
+python aiu_studio/local_serving/localservingtest.py
 ```
 
 ### verify_mlflow.py
