@@ -581,7 +581,7 @@ def reference_display_path(reference: Path) -> str:
 def conversion_reference_step(kind: str, reference: Path) -> str:
     display_path = reference_display_path(reference)
     if kind in {"pytorch", "safetensors"}:
-        return f"4. samples/pytorch_sample/ 내부를 참조해서 워크스페이스를 선택 모델에 맞게 변환: {display_path}"
+        return f"4. samples/pytorch_sample/ 내부를 참조해서 선택 모델 실행/등록 연결부 변환: {display_path}"
     return f"4. 선택 모델 기준으로 실행 코드 변환: {display_path}"
 
 
@@ -983,6 +983,25 @@ def rewrite_preserved_line(line: str) -> str:
     return rewrite_code_paths_argument(converted)
 
 
+SAFE_EXECUTION_REGISTRATION_FIELDS = {
+    "AI_STUDIO_DIR",
+    "PROJECT_DIR",
+    "SOURCE_MODEL_PATH",
+    "DATA_MODEL_PATH",
+    "MODEL_PATH",
+    "MODEL_KIND",
+    "MODEL_LOAD_HINT",
+    "INPUT_EXAMPLE_PATH",
+    "CONFIG_DIR",
+    "CONFIG_PATH",
+    "mlflow_tracking_url",
+    "mlflow_tracking_username",
+    "mlflow_tracking_password",
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+}
+
+
 def transform_reference_text(
     reference_text: str,
     injected_block: str,
@@ -1075,23 +1094,7 @@ def transform_reference_text(
         if expression is None:
             output.append(rewrite_preserved_line(line) if preserve_code else rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
             continue
-        if preserve_code and name not in {
-            "AI_STUDIO_DIR",
-            "PROJECT_DIR",
-            "SOURCE_MODEL_PATH",
-            "DATA_MODEL_PATH",
-            "MODEL_PATH",
-            "MODEL_KIND",
-            "MODEL_LOAD_HINT",
-            "INPUT_EXAMPLE_PATH",
-            "CONFIG_DIR",
-            "CONFIG_PATH",
-            "mlflow_tracking_url",
-            "mlflow_tracking_username",
-            "mlflow_tracking_password",
-            "mlflow_experiment_name",
-            "mlflow_register_model_name",
-        }:
+        if preserve_code and name not in SAFE_EXECUTION_REGISTRATION_FIELDS:
             output.append(rewrite_preserved_line(line))
             continue
 
@@ -1432,6 +1435,8 @@ from aiu_custom.predict import ModelWrapper
 
 logging.getLogger("mlflow").setLevel(logging.ERROR)
 
+# 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환합니다.
+# 일반 학습 로직과 불필요한 변수명은 무리하게 치환하지 않습니다.
 
 RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}
 PROJECT_DIR = Path({absolute_path_text(project)!r})
@@ -2144,7 +2149,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         project / "aiu_custom" / "predict.py",
         project / "local_serving" / "localservingtest.py",
     ]
-    changed = ["선택 모델 기준 변환 검증"]
+    changed = ["선택 모델 실행/등록 연결부 변환 검증"]
     failures: list[str] = []
 
     for path in required_text_files:
@@ -2305,7 +2310,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 변환 -> 실행 코드 변환",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 연결부 변환 -> 실행 코드 변환",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
@@ -2357,8 +2362,8 @@ def print_report(report: PreparedModelReport) -> None:
         print("Prepared:")
         if report.selected_model_path:
             print("- .opencode/samples/aiu_studio/* -> workspace root")
-            print("- samples/pytorch_sample/ 내부 참조 기준으로 워크스페이스 선택 모델 변환")
-            print("- 선택 모델 기준 변환 검증")
+            print("- samples/pytorch_sample/ 내부 참조 기준으로 선택 모델 실행/등록 연결부 변환")
+            print("- 선택 모델 실행/등록 연결부 변환 검증")
         else:
             for item in report.prepared_paths:
                 print(f"- {item}")

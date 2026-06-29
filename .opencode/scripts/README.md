@@ -126,12 +126,13 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 ### prepare_selected_model.py
 
-현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한 뒤 워크스페이스를 선택 모델에 맞게 변환한다. 기존 모델 경로 문자열, 모델 로딩 호출, 데이터 준비, 관련 주석은 선택 모델 기준으로 변환한다.
+현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한 뒤 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다. 기존 모델 경로 문자열, 모델 로딩 호출, 데이터 준비, 관련 주석은 선택 모델 기준으로 변환한다.
 `requirements.txt`는 `mlflow==3.13.0`, `numpy`, 선택 모델 필수 패키지 기준으로 갱신한다.
 `runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
 기존 `runtest.py`는 수정하지 않는다.
-PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 워크스페이스를 선택 모델에 맞게 변환한다.
-`runtest_2.py` 생성 시퀀스는 `모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 변환 -> 실행 코드 변환` 순서로 수행한다.
+PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다.
+원본 주석/구조는 최대한 유지하고 일반 학습 로직이나 불필요한 변수명은 무리하게 치환하지 않는다.
+`runtest_2.py` 생성 시퀀스는 `모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 연결부 변환 -> 실행 코드 변환` 순서로 수행한다.
 
 ```text
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
