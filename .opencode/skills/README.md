@@ -31,20 +31,30 @@
 
 - 사용자가 가져온 모델 파일은 프로젝트 루트 바로 아래 또는 `data/**` 하위 트리 어디에나 둘 수 있다.
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
-- 모델 파일은 `ai_studio/`로 복사하지 않는다.
-- `ai_studio/`는 실행 템플릿과 생성 산출물 폴더로만 사용한다.
+- 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
+- 모델 파일은 `aiu_studio/`로 복사하지 않는다.
+- `.opencode/templates/aiu_studio/` 템플릿 폴더만 프로젝트 루트의 `aiu_studio/`로 복사한다.
 - 선택된 모델은 원본 경로에서 직접 읽는다.
 - 기존 `runtest.py`는 수정하지 않고 `runtest_2.py`를 생성한다.
+- 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
+- `mlflow_experiment_name`, `mlflow_register_model_name`은 프로젝트명 기준으로 자동 생성한다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 확인한다.
 
 ```text
 Step 1. 루트/data 모델 목록 확인
+        프로젝트 루트와 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 사용할 모델 선택
+        model_artifact_paths에서 번호 또는 경로로 선택한다.
 Step 3. 자동 준비 실행
+        aiu_studio/ 템플릿 복사, MODEL_KIND 판별, runtest_2.py 생성을 처리한다.
 Step 4. 환경 검증
+        Python 3.11.9, dependency, MLflow 설치 상태를 확인한다.
 Step 5. 모델 환경변수 체크
+        입력값 3개와 자동값 2개 상태를 확인한다.
 Step 6. 추론 테스트
+        runtest_2.py 또는 aiu_custom/predict.py 기준으로 로드/추론을 확인한다.
 Step 7. MLflow 검증
+        Run, artifact, registered model 기록을 확인한다.
 ```
 
 ```text
