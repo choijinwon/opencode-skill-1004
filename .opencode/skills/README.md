@@ -13,7 +13,7 @@
    모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택
 
 03. Environment Check
-   Python 3.11.9, dependency, MLflow 3.10.0, 설정 상태 확인
+   Python 3.11.9, dependency, MLflow 3.13.0, 설정 상태 확인
 
 04. Train Model
    선택 모델 기준 aiu_studio/runtest_2.py 생성 또는 실제 entrypoint 실행

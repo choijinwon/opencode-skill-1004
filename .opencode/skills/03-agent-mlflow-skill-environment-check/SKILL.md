@@ -17,7 +17,7 @@ metadata:
 판단 결과: pass | warn | needs_user_input | blocked
 현재 단계: 2. 환경 검증
 현재 대상: selected_project_path
-핵심 판단: Python 3.11.9, MLflow 3.10.0, dependency, 설정 상태
+핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
 다음 단계: 샘플 규격 확인/보충 또는 원격 MLflow 배포/등록 실행
 ```
 
@@ -38,7 +38,7 @@ metadata:
 ```text
 1. Python 실행 파일과 버전을 확인한다.
 2. dependency 파일과 핵심 패키지를 확인한다.
-3. MLflow 3.10.0 설치/version을 확인한다.
+3. MLflow 3.13.0 설치/version을 확인한다.
 4. run_model.py, runtest.py 또는 aiu_studio/runtest.py 설정 블록을 확인한다.
 5. 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
 ```
@@ -51,7 +51,7 @@ metadata:
 - Python 현재 version / 기대 version 3.11.9
 - dependency 파일 상태
 - requirements.txt 필요 패키지 / 설치 여부 / 설치 버전 / 요구 버전 / 버전 불일치
-- MLflow 3.10.0 설치/version 상태
+- MLflow 3.13.0 설치/version 상태
 - 환경 변수 상태
 - 실행 파일명이 다른 경우 --entrypoint <file> 사용 여부
 - 입력이 필요한 값
@@ -110,7 +110,7 @@ tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 ```text
 pass:
 - Python 3.11.9
-- MLflow 3.10.0 설치됨
+- MLflow 3.13.0 설치됨
 - 핵심 dependency 확인됨
 - 필수 MLflow 설정이 소스 또는 환경에 있음
 

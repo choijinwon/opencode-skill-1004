@@ -256,7 +256,7 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 
 ### check_environment.py
 
-Python 3.11.9, dependency, MLflow 3.10.0, `ai_studio.env` 상태를 확인한다.
+Python 3.11.9, dependency, MLflow 3.13.0, `ai_studio.env` 상태를 확인한다.
 Python 기준 버전은 3.11.9이다. 다른 버전이면 `version_mismatch:python`으로 분류한다.
 `requirements.txt`가 있으면 필요한 pip 패키지 목록, 현재 설치 여부, 설치된 버전, 요구 버전, 버전 불일치 여부를 함께 출력한다.
 Python 버전이 다르면 `차단 항목 요약`에 다음 형식으로 표시한다.

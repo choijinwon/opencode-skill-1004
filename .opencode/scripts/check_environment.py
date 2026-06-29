@@ -179,7 +179,7 @@ MODEL_KIND_REQUIRED_PACKAGE = {
 
 EXPECTED_PYTHON_VERSION = "3.11.9"
 EXPECTED_PACKAGE_VERSIONS = {
-    "mlflow": "==3.10.0",
+    "mlflow": "==3.13.0",
 }
 REQUIREMENT_OPERATORS = ["==", "!=", ">=", "<=", "~=", ">", "<"]
 
