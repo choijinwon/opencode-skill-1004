@@ -261,6 +261,7 @@ Step 5. 모델 학습 서버 배포
         Windows PowerShell에서는 cd '<selected-project-path>\aiu_studio' 후 python runtest_2.py로 실행한다.
         실행 시 작업 디렉터리는 aiu_studio/로 고정한다.
         mlflow_tracking_url 기본값은 ""이며, 사용자가 직접 입력해야 한다.
+        오류 사항이 있으면 서버 배포 오류사항 목록을 먼저 보여준다.
         input_example.json, saved_model/, outputs/ 같은 상대경로 파일/산출물은 프로젝트 루트가 아니라 aiu_studio/ 아래에 생성되어야 한다.
 
 Step 6. 추론 스모크 테스트

@@ -27,6 +27,7 @@ Step 3  선택 모델 환경 변환
 
 Step 4  모델 환경변수 체크
         check_environment.py
+        오류 사항이 있으면 서버 배포 오류사항 목록을 함께 보여준다.
 
 Step 5  모델 학습 서버 배포
         aiu_studio/runtest_2.py

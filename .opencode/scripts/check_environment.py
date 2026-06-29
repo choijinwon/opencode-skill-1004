@@ -250,6 +250,7 @@ class EnvironmentReport:
     model_settings: EnvFileStatus | None = None
     export_ready: list[EnvVarStatus] = field(default_factory=list)
     blocked_summary: list[str] = field(default_factory=list)
+    server_deploy_errors: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
     tod_guide: list[str] = field(default_factory=list)
@@ -266,6 +267,52 @@ def package_version(name: str) -> str | None:
         return importlib.metadata.version(name)
     except importlib.metadata.PackageNotFoundError:
         return None
+
+
+def server_deploy_error_items(failures: list[str], blocked_summary: list[str]) -> list[str]:
+    if not failures:
+        return []
+
+    items: list[str] = []
+    for item in blocked_summary:
+        if item not in items:
+            items.append(item)
+
+    missing_env_names = []
+    missing_package_names = []
+    version_mismatch_names = []
+    for failure in failures:
+        if failure.startswith("missing_env:"):
+            missing_env_names.append(failure.split(":", 1)[1])
+        elif failure.startswith("missing_requirements:"):
+            missing_package_names.extend(name for name in failure.split(":", 1)[1].split(",") if name)
+        elif failure.startswith("version_mismatch_requirements:"):
+            version_mismatch_names.extend(name for name in failure.split(":", 1)[1].split(",") if name)
+        elif failure.startswith("missing_dependency:"):
+            package_name = failure.split(":", 1)[1]
+            if package_name.startswith("selected_model:"):
+                items.append("선택 모델 패키지 설치 필요 → " + package_name.split(":", 1)[1])
+            else:
+                missing_package_names.append(package_name)
+        elif failure.startswith("version_mismatch:mlflow"):
+            items.append("MLflow 서버/로컬 버전 불일치 → 서버 버전에 맞춰 로컬 mlflow 버전을 조정하세요.")
+        elif failure == "missing_dependency_file":
+            items.append("의존성 파일 없음 → requirements.txt, pyproject.toml, environment.yml 중 하나를 확인하세요.")
+        elif failure.startswith("missing_model_settings_file:"):
+            items.append("MLflow/AI Studio 설정 파일 또는 실행 파일 설정 블록 없음 → 실제 entrypoint에 설정값을 입력하세요.")
+
+    if missing_env_names:
+        items.append("환경변수 입력 필요 → " + ", ".join(sorted(set(missing_env_names))))
+    if missing_package_names:
+        items.append("패키지 설치 필요 → " + ", ".join(sorted(set(missing_package_names))))
+    if version_mismatch_names:
+        items.append("패키지 버전 불일치 → " + ", ".join(sorted(set(version_mismatch_names))))
+
+    unique_items = []
+    for item in items:
+        if item not in unique_items:
+            unique_items.append(item)
+    return unique_items
 
 
 def normalize_package_name(name: str) -> str:
@@ -983,6 +1030,9 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if package_version("mlflow") is None:
         failures.append("missing_dependency:mlflow")
         next_steps.append("Install or activate an environment that includes mlflow.")
+    if existing_model_flow and selected_required_package and selected_package_status == "missing":
+        failures.append(f"missing_dependency:selected_model:{selected_required_package}")
+        next_steps.append(f"선택 모델 실행에 필요한 패키지를 설치하세요: {selected_required_package}")
     if remote_mlflow.status == "version_mismatch" and remote_mlflow.server_version:
         failures.append(
             f"version_mismatch:mlflow remote {remote_mlflow.server_version} local {remote_mlflow.local_version or 'missing'}"
@@ -1039,6 +1089,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         model_settings=model_settings,
         export_ready=export_ready,
         blocked_summary=blocked_summary,
+        server_deploy_errors=server_deploy_error_items(failures, blocked_summary),
         failures=failures,
         next_steps=next_steps,
         tod_guide=tod_guide,
@@ -1121,6 +1172,10 @@ def print_text(report: EnvironmentReport):
         print("\n차단 항목 요약:")
         for index, item in enumerate(report.blocked_summary, start=1):
             print(f"{index}. {item}")
+    if report.server_deploy_errors:
+        print("\n서버 배포 오류사항:")
+        for item in report.server_deploy_errors:
+            print(f"- {item}")
     if report.failures:
         print("\nFailures:")
         for failure in report.failures:
