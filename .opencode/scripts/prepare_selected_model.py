@@ -223,6 +223,7 @@ class PreparedModelReport:
     prepared_paths: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
 
 
@@ -275,10 +276,30 @@ def scan_model_artifacts(project: Path) -> list[Path]:
     return sorted(set(found))
 
 
+def stored_selected_model_path(project: Path) -> Path | None:
+    mapping_path = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "mapping.json"
+    if not mapping_path.is_file():
+        return None
+    try:
+        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    source_path = payload.get("model", {}).get("source_path")
+    if not isinstance(source_path, str) or not source_path.strip():
+        return None
+    candidate = project / normalize_path_text(source_path.strip())
+    return candidate.resolve() if candidate.is_file() else None
+
+
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     if not raw:
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
+    if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
+        stored = stored_selected_model_path(project)
+        if stored is not None:
+            return stored, None
+        return None, "stored_model_selection_missing"
     if value.isdigit():
         index = int(value)
         if 1 <= index <= len(models):
@@ -1173,6 +1194,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
     if report.failures:
         return report
+    if args.model and normalize_path_text(args.model.strip()).isdigit() and selected_model:
+        stable_path = rel(selected_model, project)
+        report.warnings.append(f"numeric_model_selection_is_order_dependent:{args.model}->{stable_path}")
+        report.next_steps.append(f"다음 실행부터는 목록 순서가 바뀌어도 안전하게 실제 경로를 사용하세요: --model {stable_path}")
+        report.next_steps.append("이미 준비된 선택 모델을 다시 쓰려면: --model selected")
 
     copied, skipped, copy_failures = copy_aiu_studio_folder(project, args.execute)
     report.prepared_paths.extend(copied)
@@ -1264,6 +1290,10 @@ def print_report(report: PreparedModelReport) -> None:
         print("Skipped:")
         for item in report.skipped:
             print(f"- {item}")
+    if report.warnings:
+        print("Warnings:")
+        for warning in report.warnings:
+            print(f"- {warning}")
     if report.failures:
         print("Failures:")
         for failure in report.failures:

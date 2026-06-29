@@ -121,7 +121,10 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/<임의폴더>/model.joblib --execute
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
+python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model selected --execute
 ```
+
+숫자 선택은 현재 출력된 `model_artifact_paths` 순서에 의존한다. 목록이 바뀔 수 있으므로 자동 준비/재실행에는 실제 모델 경로 또는 `--model selected`를 우선 사용한다.
 
 출력 항목:
 

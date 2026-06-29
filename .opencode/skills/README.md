@@ -50,7 +50,8 @@
 Step 1. 루트/data 모델 목록 확인
         현재 --project 폴더와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 사용할 모델 선택
-        model_artifact_paths를 번호로 보여주고, 사용자는 번호 또는 경로로 선택한다.
+        model_artifact_paths를 번호로 보여주되, 자동 준비에는 실제 경로 선택을 우선한다.
+        번호는 현재 출력된 목록 순서에 의존한다. 이미 준비된 선택 모델은 --model selected로 재사용한다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 자동 준비 실행
         aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, 복사된 aiu_studio 파일들을 선택 모델 기준으로 변환/갱신한다.
