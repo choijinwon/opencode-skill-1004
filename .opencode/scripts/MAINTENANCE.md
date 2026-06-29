@@ -86,7 +86,7 @@ test_local_sample.py
 - 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
 - 실행 파일이 AI Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
 - 샘플 규격 폴더/파일 누락을 찾습니다.
-- MLflow 필수 5개 설정값을 소스 또는 환경 변수에서 확인합니다.
+- MLflow 입력값 3개와 자동값 2개를 소스 또는 환경 변수에서 확인합니다.
 - 산출물 후보를 확인합니다.
 
 주요 수정 위치:
@@ -207,7 +207,7 @@ build_tod_guide()          복사 후 사용자에게 보여줄 TOD 단계
 
 ```text
 ENV_KEYS                   확인할 MLFLOW 환경 변수
-AI_STUDIO_ENV_KEYS         소스 설정 필수 키 5개
+AI_STUDIO_ENV_KEYS         소스 설정 키 5개, 이 중 experiment/register 이름은 자동 기본값 허용
 MODEL_SETTING_FILES        설정을 읽을 파일 우선순위
 ENTRYPOINTS                실행 파일 후보
 SETTING_ALIASES            설정명 alias

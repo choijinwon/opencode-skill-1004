@@ -71,6 +71,10 @@ MLFLOW_SOURCE_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+AUTO_DEFAULT_SETTING_KEYS = {
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+}
 
 ENV_EXPORT_MAP = {
     "mlflow_tracking_url": "MLFLOW_TRACKING_URI",
@@ -538,6 +542,8 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
                 evidence.append(f"{source_key}: set")
         elif os.environ.get(env_key):
             evidence.append(f"{source_key}: exported")
+        elif source_key in AUTO_DEFAULT_SETTING_KEYS:
+            evidence.append(f"{source_key}: auto_default")
         else:
             missing.append(source_key)
 
@@ -548,11 +554,11 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
             "필수 MLflow 설정값이 아직 미입력 상태입니다.",
             [f"missing: {item}" for item in missing] + evidence,
             [
-                f"{rel(setting_file, project)} 설정 블록에 5개 값을 직접 입력하세요.",
+                f"{rel(setting_file, project)} 설정 블록에 tracking URL, username, password를 직접 입력하세요.",
                 "password 값은 화면에 출력하지 말고 set/missing 상태만 확인하세요.",
             ],
         )
-    return DoctorCheck("환경 변수 입력/export", "pass", "필수 5개 MLflow 설정값이 확인됐습니다.", evidence)
+    return DoctorCheck("환경 변수 입력/export", "pass", "MLflow 입력값 3개와 자동값 2개가 확인됐습니다.", evidence)
 
 
 def check_ai_studio_code(project: Path, setting_file_arg: str | None) -> DoctorCheck:

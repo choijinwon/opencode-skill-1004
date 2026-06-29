@@ -187,9 +187,10 @@ Step 9. 환경 검증
         Python, dependency, MLflow 설치 상태를 확인한다.
 
 Step 10. 모델 환경변수 체크
-        runtest_2.py 또는 확정 entrypoint의 MLflow 필수 5개 값을 확인한다.
-        mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password,
-        mlflow_experiment_name, mlflow_register_model_name 상태를 set/empty/missing으로만 표시한다.
+        runtest_2.py 또는 확정 entrypoint의 MLflow 입력값 3개와 자동값 2개를 확인한다.
+        사용자가 입력할 값: mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password.
+        자동 생성값: mlflow_experiment_name, mlflow_register_model_name.
+        상태는 set/empty/missing/auto_default로 표시한다.
 
 Step 11. 추론 테스트
         생성된 runtest_2.py 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.
@@ -214,24 +215,27 @@ The first Build step for an existing model is always listing project-root and `d
 
 For the confirmed entrypoint file, such as `run.py`, `runtest.py`, `train.py`, or `run_model.py`, guide the user to fill MLflow tracking settings directly in that file's setting block. Do not generate, infer, or print secret values.
 
-Required keys:
+Required user input keys:
 
 ```text
 mlflow_tracking_url          tracking server URL
 mlflow_tracking_username     username
 mlflow_tracking_password     password, never print the value
-mlflow_experiment_name       pytorch_sample by default for the PyTorch sample
-mlflow_register_model_name   pytorch_sample_model by default for the PyTorch sample
 ```
 
-Guide the user to write these values directly in the confirmed entrypoint file:
+Auto-generated keys:
+
+```text
+mlflow_experiment_name       generated from the project folder name
+mlflow_register_model_name   generated as <experiment_name>_model
+```
+
+Guide the user to write only these values directly in the confirmed entrypoint file:
 
 ```text
 mlflow_tracking_url=
 mlflow_tracking_username=
 mlflow_tracking_password=
-mlflow_experiment_name=
-mlflow_register_model_name=
 ```
 
 The confirmed entrypoint exports the setting block to:
@@ -244,7 +248,7 @@ MLFLOW_EXPERIMENT_NAME
 MLFLOW_REGISTER_MODEL_NAME
 ```
 
-For the PyTorch sample, guide these default values when the user has no preferred names:
+For generated sample files, these values may already be present:
 
 ```text
 mlflow_experiment_name=pytorch_sample

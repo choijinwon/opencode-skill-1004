@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from dataclasses import asdict, dataclass, field
@@ -122,6 +123,16 @@ def find_reference_entrypoint(project: Path) -> Path | None:
     return None
 
 
+def safe_mlflow_name(value: str, fallback: str) -> str:
+    normalized = re.sub(r"[^0-9A-Za-z_]+", "_", value).strip("_").lower()
+    return normalized or fallback
+
+
+def default_mlflow_names(project: Path) -> tuple[str, str]:
+    experiment_name = safe_mlflow_name(project.name, "aiu_studio")
+    return experiment_name, f"{experiment_name}_model"
+
+
 def copy_aiu_studio_template(project: Path, execute: bool) -> tuple[list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
@@ -142,6 +153,7 @@ def copy_aiu_studio_template(project: Path, execute: bool) -> tuple[list[str], l
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
     reference_relative = rel(reference, project)
+    default_experiment_name, default_register_model_name = default_mlflow_names(project)
     return f'''#!/usr/bin/env python3
 from __future__ import annotations
 
@@ -158,12 +170,14 @@ REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
 AI_STUDIO_DIR = PROJECT_DIR / "aiu_studio"
 
 # MLflow/AI Studio settings
-# 사용자가 직접 입력합니다. password 값은 출력하지 않습니다.
+# tracking URL, username, password는 사용자가 직접 입력합니다.
+# experiment/model name은 프로젝트명 기준으로 자동 생성됩니다.
+# password 값은 출력하지 않습니다.
 mlflow_tracking_url = ""
 mlflow_tracking_username = ""
 mlflow_tracking_password = ""
-mlflow_experiment_name = ""
-mlflow_register_model_name = ""
+mlflow_experiment_name = "{default_experiment_name}"
+mlflow_register_model_name = "{default_register_model_name}"
 
 
 def ensure_ai_studio_dirs() -> None:

@@ -92,7 +92,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 5. 실행 파일 확정
 6. AI Studio 코드 적합성
 7. 샘플 규격 폴더/파일
-8. MLflow 필수 5개 설정값 입력/export
+8. MLflow 입력값 3개와 자동값 2개 확인/export
 9. 루트/data 모델 원본 경로와 모델/메트릭/코드 산출물
 ```
 
@@ -148,7 +148,7 @@ python .opencode/scripts/adapt_ai_studio.py --project <model-project-folder> --e
 
 ```text
 - entrypoint 백업 생성: <file>.ai_studio.bak
-- MLflow 설정값 5개와 MLFLOW_* export helper 삽입
+- MLflow 입력값 3개, 자동 생성값 2개, MLFLOW_* export helper 삽입
 - ai_studio/metrics, ai_studio/code, ai_studio/tracking 경로 helper 삽입
 - aiu_custom/predict.py, local_serving/serve.py, saved_model/, input_example.json 보충
 - requirements.txt가 없으면 프레임워크/Import 기반 최소 패키지 작성
@@ -251,12 +251,17 @@ MLFLOW_EXPERIMENT_ID
 ai_studio.env
 ```
 
-필수 키:
+사용자가 직접 입력할 키:
 
 ```text
 mlflow_tracking_url
 mlflow_tracking_username
 mlflow_tracking_password
+```
+
+자동 생성되는 키:
+
+```text
 mlflow_experiment_name
 mlflow_register_model_name
 ```
@@ -267,11 +272,9 @@ mlflow_register_model_name
 mlflow_tracking_url=
 mlflow_tracking_username=
 mlflow_tracking_password=
-mlflow_experiment_name=
-mlflow_register_model_name=
 ```
 
-`runtest.py` 또는 `run_model.py`에서 이 값들을 자동 생성하지 않는다. 사용자가 해당 파일의 MLflow/AI Studio 설정 블록에 직접 입력한다.
+`mlflow_experiment_name`, `mlflow_register_model_name`은 프로젝트명 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AI Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
 
 ```text

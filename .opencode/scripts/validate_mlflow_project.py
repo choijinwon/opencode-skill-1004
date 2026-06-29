@@ -118,6 +118,10 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+AUTO_DEFAULT_SETTING_KEYS = {
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+}
 
 
 @dataclass
@@ -318,6 +322,9 @@ def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
     for key in AI_STUDIO_ENV_KEYS:
         found_in_env = key in values and values[key] != ""
         found_in_code = any(key in item for item in code_settings)
+        if key in AUTO_DEFAULT_SETTING_KEYS and not found_in_env and not found_in_code:
+            evidence.append(f"{key}: auto_default")
+            continue
         if not found_in_env and not found_in_code:
             missing.append(key)
         elif found_in_env:

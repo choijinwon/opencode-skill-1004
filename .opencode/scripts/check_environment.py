@@ -26,6 +26,10 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+AUTO_DEFAULT_SETTING_KEYS = {
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+}
 
 MODEL_SETTING_FILES = ["runtest_2.py", "runtest.py", "run_test.py", "run_model.py", "run.py"]
 ENTRYPOINTS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "run.py", "main.py", "app.py", "scripts/train.py"]
@@ -360,9 +364,9 @@ def ai_studio_env_status(project: Path) -> EnvFileStatus:
     statuses = []
     for key in AI_STUDIO_ENV_KEYS:
         if key not in values:
-            status = "missing"
+            status = "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "missing"
         elif values[key] == "":
-            status = "empty"
+            status = "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "empty"
         else:
             status = "set"
         statuses.append(EnvVarStatus(key, status))
@@ -435,9 +439,9 @@ def model_settings_status(project: Path, entrypoint_name: str | None = None) -> 
     statuses = []
     for key in AI_STUDIO_ENV_KEYS:
         if key not in values:
-            status = "local_default" if key == "mlflow_tracking_url" else "missing"
+            status = "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "missing"
         elif values[key] == "":
-            status = "local_default" if key == "mlflow_tracking_url" else "empty"
+            status = "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "empty"
         else:
             status = "set"
         statuses.append(EnvVarStatus(key, status))
@@ -455,8 +459,8 @@ def export_ready_status(project: Path, entrypoint_name: str | None = None) -> li
             status = "set"
         elif env_status(env_key) == "set":
             status = "exported"
-        elif setting_key == "mlflow_tracking_url":
-            status = "local_default"
+        elif setting_key in AUTO_DEFAULT_SETTING_KEYS:
+            status = "auto_default"
         else:
             status = "missing"
         statuses.append(EnvVarStatus(env_key, status))
@@ -465,7 +469,7 @@ def export_ready_status(project: Path, entrypoint_name: str | None = None) -> li
 
 def source_input_required_status(model_settings: EnvFileStatus | None) -> list[EnvVarStatus]:
     if model_settings is None:
-        return [EnvVarStatus(key, "missing") for key in AI_STUDIO_ENV_KEYS]
+        return [EnvVarStatus(key, "missing") for key in AI_STUDIO_ENV_KEYS if key not in AUTO_DEFAULT_SETTING_KEYS]
     required = []
     for item in model_settings.key_status:
         if item.name not in AI_STUDIO_ENV_KEYS:
@@ -508,7 +512,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             "2. 사용할 모델 선택: prepare_selected_model.py --model <번호|경로>로 선택한다.",
             "3. 자동 준비 실행: aiu_studio/ 템플릿 복사와 runtest_2.py 생성은 prepare_selected_model.py가 처리한다.",
             "4. 환경 검증: 현재 출력의 Python, dependency, MLflow 설치 상태를 확인한다.",
-            f"5. 모델 환경변수 체크: {entrypoint_display}의 MLflow 필수 5개 값을 set/empty/missing으로 확인한다.",
+            f"5. 모델 환경변수 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 set/empty/missing/auto_default로 확인한다.",
             f"6. 추론 테스트: python {entrypoint_display} 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.",
             "7. MLflow 검증: Run, artifact, registered model 기록을 확인한다.",
         ]

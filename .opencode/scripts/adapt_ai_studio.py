@@ -178,7 +178,7 @@ AI_STUDIO_TRACKING_DIR = AI_STUDIO_DIR / "tracking"
 mlflow_tracking_url = globals().get("mlflow_tracking_url", "")
 mlflow_tracking_username = globals().get("mlflow_tracking_username", "")
 mlflow_tracking_password = globals().get("mlflow_tracking_password", "")
-mlflow_experiment_name = globals().get("mlflow_experiment_name", "{framework}_model")
+mlflow_experiment_name = globals().get("mlflow_experiment_name", "{framework}")
 mlflow_register_model_name = globals().get("mlflow_register_model_name", "{framework}_model")
 
 

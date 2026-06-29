@@ -129,7 +129,8 @@ entrypoint를 찾지 못한 경우:
 - 자동으로 run.py를 생성하지 않는다.
 - 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣게 안내한다.
 - 파일을 넣은 뒤 --entrypoint <file>로 다시 실행한다.
-- MLflow 설정 값을 사용자가 직접 입력해야 함
+- tracking URL, username, password는 사용자가 직접 입력해야 함
+- mlflow_experiment_name, mlflow_register_model_name은 자동 생성 가능
 
 blocked:
 - 학습/모델 생성 entrypoint 없음
@@ -168,7 +169,7 @@ blocked:
 2. model_artifact_paths에서 사용할 모델 선택
 3. 자동 준비 실행: aiu_studio/ 템플릿 복사, MODEL_KIND 판별, runtest_2.py 생성
 4. Python 3.11.9와 requirements 설치/버전 확인
-5. MLflow 필수 5개 모델 환경변수 상태 확인
+5. MLflow 입력값 3개와 자동값 2개 상태 확인
 6. runtest_2.py 또는 aiu_custom/predict.py로 로드/추론 확인
 7. MLflow run, artifact, registered model 검증
 ```

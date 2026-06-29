@@ -23,6 +23,10 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+AUTO_DEFAULT_SETTING_KEYS = {
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+}
 MODEL_SETTING_FILES = ["runtest_2.py", "runtest.py", "run_test.py", "run_model.py"]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
@@ -268,7 +272,7 @@ def missing_ai_studio_env(project: Path, entrypoint: Path | None = None) -> list
     if not values:
         missing.append("entrypoint_or_ai_studio_env_settings")
     for key in AI_STUDIO_ENV_KEYS:
-        if key == "mlflow_tracking_url":
+        if key in AUTO_DEFAULT_SETTING_KEYS:
             continue
         if key not in values or values[key] == "":
             missing.append(key)
