@@ -44,7 +44,7 @@
 - 기존 `runtest.py`는 루트에 둘 수 있고, 읽기 전용으로만 참조한다.
 - 기존 `runtest.py`는 절대 수정하지 않고 `runtest_2.py`만 생성한다.
 - `runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.
-- 모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
+- 모델 경로/MODEL_KIND/로더는 선택 모델 실행/등록 연결부 기준으로 변환한다.
 - 선택된 모델 종류에 맞춰 `load_selected_model()`, `required_package`, `load_hint`를 생성한다.
 - 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
 - `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다.
@@ -61,7 +61,6 @@ Step 3. 선택 모델 환경 변환
         .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고, MODEL_KIND 판별 후 복사된 템플릿 파일들을 선택 모델 환경에 맞게 변환/갱신한다.
         PyTorch/safetensors 모델은 samples/pytorch_sample/ 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다.
         runtest_2.py 생성 시퀀스는 모델 선택, .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사, 모델 형식 확인, samples/pytorch_sample/ 기준 연결부 변환, 실행 코드 변환 순서다.
-        원본 주석/구조는 최대한 유지하고 일반 학습 로직이나 불필요한 변수명은 무리하게 치환하지 않는다.
         내부 일치 검증은 자동으로 수행하며 사용자에게 세부 파일 목록을 요구하지 않는다.
 Step 4. 모델 환경변수 체크
         입력값 3개와 자동값 2개 상태를 확인한다.

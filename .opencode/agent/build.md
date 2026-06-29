@@ -181,7 +181,6 @@ Step 6. 선택 모델 읽기/판별
 Step 7. 선택 모델 기준 변환
         PyTorch/safetensors 모델은 .opencode/samples/pytorch_sample/runtest.py를 기준으로 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다.
         선택 모델 경로, MODEL_KIND, 로더, input_example, MLflow 환경설정, artifact/code_paths 연결부를 변환 대상에 포함한다.
-        원본 주석/구조는 최대한 유지하고 일반 학습 로직이나 불필요한 변수명은 무리하게 치환하지 않는다.
 
 Step 8. runtest_2.py 변환/갱신
         워크스페이스 루트의 runtest_2.py 또는 참조 파일을 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.
@@ -190,10 +189,10 @@ Step 8. runtest_2.py 변환/갱신
         외부 데이터셋(FashionMNIST 등)은 자동 다운로드하지 않는다.
         runtest.py를 참조한 경우 REFERENCE_ENTRYPOINT와 실행 보조 파일 경로는 워크스페이스 루트 기준으로 생성한다.
         변환은 참조한 runtest.py 구조를 기반으로 한다.
-        함수 내부의 기존 모델 경로 문자열과 모델 로딩 호출은 선택 모델 기준 load_selected_model() 호출로 변환한다.
+        기존 모델 경로 문자열과 모델 로딩 호출은 선택 모델 실행/등록 연결부 기준으로 변환한다.
         선택 모델 로더와 맞지 않는 기존 모델 프레임워크 import는 주석 처리한다.
         mlflow.pyfunc.log_model의 code_paths=[] 또는 code_paths=None은 워크스페이스 내부의 실제 코드 폴더 경로인 AIU_CODE_PATHS로 변환한다.
-        모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
+        모델 경로/MODEL_KIND/로더는 선택 모델 실행/등록 연결부 기준으로 변환한다.
         기존 runtest.py는 절대 수정하지 않는다.
 
 Step 9. aiu_custom 파일 확인

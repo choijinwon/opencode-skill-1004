@@ -1436,7 +1436,6 @@ from aiu_custom.predict import ModelWrapper
 logging.getLogger("mlflow").setLevel(logging.ERROR)
 
 # 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환합니다.
-# 일반 학습 로직과 불필요한 변수명은 무리하게 치환하지 않습니다.
 
 RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}
 PROJECT_DIR = Path({absolute_path_text(project)!r})
