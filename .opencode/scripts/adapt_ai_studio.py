@@ -240,6 +240,16 @@ def write_ai_studio_summary(payload: dict | None = None) -> _AIStudioPath:
     return summary_path
 
 
+def log_ai_studio_tree_to_mlflow(root: _AIStudioPath, artifact_path: str) -> None:
+    if not root.exists():
+        return
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            relative_parent = path.parent.relative_to(root).as_posix()
+            target_path = artifact_path if relative_parent == "." else f"{{artifact_path}}/{{relative_parent}}"
+            mlflow.log_artifact(str(path), artifact_path=target_path)
+
+
 def log_ai_studio_artifacts_to_mlflow() -> None:
     try:
         import mlflow
@@ -251,10 +261,8 @@ def log_ai_studio_artifacts_to_mlflow() -> None:
         mlflow.set_tracking_uri(_ai_studio_os.environ["MLFLOW_TRACKING_URI"])
         mlflow.set_experiment(mlflow_experiment_name)
         with mlflow.start_run(run_name=mlflow_register_model_name):
-            if AI_STUDIO_CODE_DIR.exists():
-                mlflow.log_artifacts(str(AI_STUDIO_CODE_DIR), artifact_path="ai_studio/code")
-            if AI_STUDIO_METRICS_DIR.exists():
-                mlflow.log_artifacts(str(AI_STUDIO_METRICS_DIR), artifact_path="ai_studio/metrics")
+            log_ai_studio_tree_to_mlflow(AI_STUDIO_CODE_DIR, "ai_studio/code")
+            log_ai_studio_tree_to_mlflow(AI_STUDIO_METRICS_DIR, "ai_studio/metrics")
     except Exception as exc:
         print(f"MLflow logging failed; local ai_studio outputs are available. reason={{exc}}")
 

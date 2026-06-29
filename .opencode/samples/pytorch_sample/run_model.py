@@ -3,7 +3,6 @@ import io
 import json
 import sys
 import logging
-import tempfile
 from pathlib import Path
 
 
@@ -104,12 +103,7 @@ def log_mlflow_outputs(summary_path: Path) -> None:
             mlflow.log_param("sample", "pytorch")
             mlflow.log_metric("sample_accuracy", 0.97)
             mlflow.log_metric("sample_loss", 0.03)
-            with tempfile.TemporaryDirectory() as upload_root_name:
-                upload_root = Path(upload_root_name)
-                upload_code_dir = upload_root / "code"
-                upload_code_dir.mkdir(parents=True, exist_ok=True)
-                (upload_code_dir / summary_path.name).write_text(summary_path.read_text(encoding="utf-8"), encoding="utf-8")
-                mlflow.log_artifacts(str(upload_root), artifact_path="ai_studio")
+            mlflow.log_artifact(str(summary_path), artifact_path="ai_studio/code")
             active_run = mlflow.active_run()
             print(f"MLflow run created: {active_run.info.run_id if active_run else 'unknown'}")
     except Exception as exc:

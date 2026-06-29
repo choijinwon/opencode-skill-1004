@@ -75,10 +75,20 @@ MODEL_RELATED_SETTING_NAMES = {
     "SOURCE_MODEL_PATH",
     "DATA_MODEL_PATH",
     "MODEL_PATH",
+    "MODEL_OUTPUT_DIR",
+    "MODEL_OUTPUT_PATH",
+    "CONFIG_DIR",
+    "CONFIG_PATH",
     "MODEL_KIND",
     "source_model_path",
     "data_model_path",
     "model_path",
+    "model_dir",
+    "model_output_dir",
+    "model_output_path",
+    "saved_model_dir",
+    "config_dir",
+    "config_path",
     "MODEL_FILE",
     "model_file",
     "CHECKPOINT_PATH",
@@ -866,20 +876,32 @@ SOURCE_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_PATH = SOURCE_MODEL_PATH
 INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
+CONFIG_DIR = AI_STUDIO_DIR / "config"
+CONFIG_PATH = CONFIG_DIR / "config.json"
+MODEL_OUTPUT_DIR = AI_STUDIO_DIR / "saved_model"
+MODEL_OUTPUT_PATH = MODEL_OUTPUT_DIR / "model.pkl"
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 AIU_REQUIRED_PACKAGE = "{required_package}"
 AIU_LOAD_HINT = "{load_hint}"
 REFERENCE_ENTRYPOINT = {reference_expr}
 
-# 자주 쓰는 소문자 변수명도 같은 선택 모델을 보도록 맞춥니다.
+# 자주 쓰는 소문자 변수명도 선택 모델 및 aiu_studio 산출물 경로를 보도록 맞춥니다.
 source_model_path = str(SOURCE_MODEL_PATH)
 data_model_path = str(DATA_MODEL_PATH)
 model_path = str(MODEL_PATH)
 input_example_path = str(INPUT_EXAMPLE_PATH)
+config_dir = str(CONFIG_DIR)
+config_path = str(CONFIG_PATH)
+model_dir = str(MODEL_OUTPUT_DIR)
+model_output_dir = str(MODEL_OUTPUT_DIR)
+model_output_path = str(MODEL_OUTPUT_PATH)
+saved_model_dir = str(MODEL_OUTPUT_DIR)
 
 # Step 6 원격 MLflow 배포/등록 중 상대경로 산출물은 프로젝트 루트가 아니라 aiu_studio/ 아래에 생성되도록 고정합니다.
 _aiu_os.chdir(AI_STUDIO_DIR)
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def _aiu_existing_code_paths():
     candidates = [
@@ -958,6 +980,10 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "SOURCE_MODEL_PATH": f'PROJECT_DIR / "{selected_relative}"',
         "DATA_MODEL_PATH": "SOURCE_MODEL_PATH",
         "MODEL_PATH": "SOURCE_MODEL_PATH",
+        "CONFIG_DIR": 'AI_STUDIO_DIR / "config"',
+        "CONFIG_PATH": 'AI_STUDIO_DIR / "config" / "config.json"',
+        "MODEL_OUTPUT_DIR": 'AI_STUDIO_DIR / "saved_model"',
+        "MODEL_OUTPUT_PATH": 'AI_STUDIO_DIR / "saved_model" / "model.pkl"',
         "MODEL_KIND": repr(kind),
         "MODEL_LOAD_HINT": repr(load_hint),
         "INPUT_EXAMPLE_PATH": 'AI_STUDIO_DIR / "input_example.json"',
@@ -968,7 +994,13 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "sample_input_path": "str(INPUT_EXAMPLE_PATH)",
         "source_model_path": "str(SOURCE_MODEL_PATH)",
         "data_model_path": "str(DATA_MODEL_PATH)",
-        "model_path": "str(MODEL_PATH)",
+        "model_path": "str(MODEL_OUTPUT_PATH)",
+        "model_dir": 'str(AI_STUDIO_DIR / "saved_model")',
+        "model_output_dir": 'str(AI_STUDIO_DIR / "saved_model")',
+        "model_output_path": 'str(AI_STUDIO_DIR / "saved_model" / "model.pkl")',
+        "saved_model_dir": 'str(AI_STUDIO_DIR / "saved_model")',
+        "config_dir": 'str(AI_STUDIO_DIR / "config")',
+        "config_path": 'str(AI_STUDIO_DIR / "config" / "config.json")',
         "MODEL_FILE": "SOURCE_MODEL_PATH",
         "model_file": "str(MODEL_PATH)",
         "CHECKPOINT_PATH": "SOURCE_MODEL_PATH",
