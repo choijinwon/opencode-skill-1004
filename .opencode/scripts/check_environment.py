@@ -571,7 +571,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             "1. 루트/data 모델 목록 확인: 프로젝트 루트 전체와 data/**에서 사용할 모델 후보를 확인한다.",
             "2. 사용할 모델 선택: prepare_selected_model.py --model <번호|경로>로 선택한다.",
-            "3. 자동 준비 실행: aiu_studio/ 템플릿 폴더째 복사와 runtest_2.py 생성은 prepare_selected_model.py가 처리한다.",
+            "3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사와 runtest_2.py 생성은 prepare_selected_model.py가 처리한다.",
             "4. 환경 검증: 현재 출력의 Python, dependency, MLflow 설치 상태를 확인한다.",
             f"5. 모델 환경변수 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 set/empty/missing/auto_default/ssl_not_allowed로 확인한다.",
             f"6. 추론 테스트: python {entrypoint_display} 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.",

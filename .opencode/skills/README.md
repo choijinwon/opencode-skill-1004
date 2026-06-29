@@ -33,7 +33,8 @@
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 모델 파일은 `aiu_studio/`로 복사하지 않는다.
-- `.opencode/samples/aiu_studio/` 템플릿 폴더를 프로젝트 루트의 `aiu_studio/`로 폴더째 복사한다.
+- `.opencode/samples/aiu_studio/` 폴더를 프로젝트 루트의 `aiu_studio/`로 그대로 복사한다.
+- `aiu_studio/` 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
 - 선택된 모델은 원본 경로에서 직접 읽는다.
 - 기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에 둘 수 있고, 수정하지 않고 `runtest_2.py`를 생성한다.
 - 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
@@ -46,7 +47,7 @@ Step 1. 루트/data 모델 목록 확인
 Step 2. 사용할 모델 선택
         model_artifact_paths에서 번호 또는 경로로 선택한다.
 Step 3. 자동 준비 실행
-        aiu_studio/ 템플릿 폴더째 복사, MODEL_KIND 판별, runtest_2.py 생성을 처리한다.
+        aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, runtest_2.py 생성을 처리한다.
 Step 4. 환경 검증
         Python 3.11.9, dependency, MLflow 설치 상태를 확인한다.
 Step 5. 모델 환경변수 체크

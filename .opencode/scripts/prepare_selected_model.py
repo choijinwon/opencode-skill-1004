@@ -141,7 +141,7 @@ def default_mlflow_names(project: Path) -> tuple[str, str]:
     return experiment_name, f"{experiment_name}_model"
 
 
-def copy_aiu_studio_sample(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
@@ -150,7 +150,7 @@ def copy_aiu_studio_sample(project: Path, execute: bool) -> tuple[list[str], lis
         skipped.append(AIU_STUDIO_DIR_NAME + "/")
         return copied, skipped, failures
     if not AIU_STUDIO_SAMPLE_DIR.is_dir():
-        failures.append(f"aiu_studio_sample_missing:{AIU_STUDIO_SAMPLE_DIR}")
+        failures.append(f"aiu_studio_folder_missing:{AIU_STUDIO_SAMPLE_DIR}")
         return copied, skipped, failures
     if execute:
         shutil.copytree(AIU_STUDIO_SAMPLE_DIR, target)
@@ -334,7 +334,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
 
-    copied, skipped, copy_failures = copy_aiu_studio_sample(project, args.execute)
+    copied, skipped, copy_failures = copy_aiu_studio_folder(project, args.execute)
     report.copied_template_dirs.extend(copied)
     report.skipped.extend(skipped)
     report.failures.extend(copy_failures)
@@ -355,7 +355,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             ]
         )
     elif not report.failures:
-        report.next_steps.append("검토 후 --execute를 붙여 aiu_studio/ 템플릿 폴더와 runtest_2.py를 생성하세요.")
+        report.next_steps.append("검토 후 --execute를 붙여 aiu_studio/ 폴더를 그대로 복사하고 runtest_2.py를 생성하세요.")
     return report
 
 

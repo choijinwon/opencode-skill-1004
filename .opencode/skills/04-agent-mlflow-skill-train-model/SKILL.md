@@ -167,7 +167,7 @@ blocked:
 ```text
 1. 루트/data 모델 목록 확인
 2. model_artifact_paths에서 사용할 모델 선택
-3. 자동 준비 실행: aiu_studio/ 템플릿 폴더째 복사, MODEL_KIND 판별, runtest_2.py 생성
+3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, runtest_2.py 생성
 4. Python 3.11.9와 requirements 설치/버전 확인
 5. MLflow 입력값 3개와 자동값 2개 상태 확인
 6. runtest_2.py 또는 aiu_custom/predict.py로 로드/추론 확인
@@ -197,5 +197,6 @@ blocked:
 - secret 값은 출력하지 않는다.
 - Windows native/standalone executable 실행은 기본 경로로 안내하지 않는다.
 - 기존 루트/data 모델 원본을 이동하거나 aiu_studio/로 복사하지 않는다.
+- aiu_studio/ 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
 
 </details>
