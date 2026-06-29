@@ -25,6 +25,7 @@ If the user arrived here by switching from the Launch tab to the Build tab, do n
 - This `.opencode` package itself uses Python scripts and does not require a JavaScript package manager.
 - In closed-network WSL environments, prefer `.opencode/wsl/install_offline.sh` with `.opencode/wsl/wheelhouse/` before any network package install.
 - Do not install torch through SSL/HTTPS indexes. Use pre-copied wheels in `.opencode/wsl/wheelhouse/` or an internal `http://` PyPI mirror only.
+- If configuring an internal Nexus PyTorch CPU proxy, use `https://download.pytorch.org/whl/cpu` as the upstream reference URL, then point WSL to the internal `http://` Nexus URL.
 - On Windows, do not use `standaloneExecutable` launch paths. Run the bundled Python scripts with `python ...` from the workspace instead.
 - On Windows x86_64, do not default to native/standalone executable model runs because they are unstable. Prefer `python` entrypoints, `mlflow.pyfunc`, and `aiu_custom` wrappers.
 - If the task is destructive or overwrites existing project files, ask for confirmation first.

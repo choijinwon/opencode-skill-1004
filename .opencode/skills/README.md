@@ -147,5 +147,6 @@ tracking store  -> ai_studio/tracking/
 - JavaScript 패키지 설치가 필요하고 `package.json`이 있으면 `npm i`만 사용합니다.
 - 폐쇄망 WSL에서는 `.opencode/wsl/install_offline.sh`를 우선 사용합니다.
 - torch는 SSL/HTTPS 인덱스로 설치하지 않습니다. wheelhouse 또는 내부 `http://` PyPI 미러만 사용합니다.
+- PyTorch CPU wheel의 Nexus proxy upstream 참고 URL은 `https://download.pytorch.org/whl/cpu`입니다.
 - Windows에서는 `standaloneExecutable` 또는 native executable 흐름보다 Python script 흐름을 우선합니다.
 - 폐쇄망 응답이 느리면 `python .opencode/scripts/response_speed_check.py --project .` 후 `python .opencode/scripts/apply_index_ignore.py --project .`를 실행합니다.

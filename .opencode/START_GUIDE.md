@@ -21,6 +21,7 @@ Build 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow
 이 패키지는 Python 스크립트만 사용합니다. opencode Bun 런타임 환경에서 파일 트리 오류 처리 중 세그멘테이션 폴트가 발생할 수 있으므로 `bun`, `bunx`, `bun install`, `bun run`을 사용하지 않습니다.
 JavaScript 패키지 설치가 필요한 프로젝트이고 `package.json`이 있으면 `npm i`만 사용합니다.
 폐쇄망 WSL에서는 `.opencode/wsl/wheelhouse/`가 있으면 `bash .opencode/wsl/install_offline.sh`로 바로 설치하고, 없으면 내부 `http://` PyPI 미러나 별도 PC에서 wheel 파일을 준비합니다. torch도 SSL/HTTPS 인덱스로 설치하지 않습니다.
+PyTorch CPU wheel의 Nexus proxy upstream 참고 URL은 `https://download.pytorch.org/whl/cpu`입니다. 폐쇄망 WSL에서는 이 URL을 직접 쓰지 말고 내부 `http://` Nexus URL 또는 wheelhouse를 사용합니다.
 폐쇄망에서 OpenCode 응답이나 인덱싱이 느리면 먼저 `python .opencode/scripts/response_speed_check.py --project .`로 원인을 확인한 뒤 `python .opencode/scripts/apply_index_ignore.py --project .`로 `.venv`, wheelhouse, MLflow 산출물, 대용량 모델 파일을 인덱싱 제외합니다.
 Windows에서는 `standaloneExecutable` 실행 경로를 사용하지 않고, 워크스페이스에서 `python ...` 명령으로 스크립트를 직접 실행합니다.
 Windows x86_64에서는 native/standalone 모델 실행이 불안정할 수 있으므로 Python 스크립트, `mlflow.pyfunc`, `aiu_custom` wrapper 흐름을 우선합니다.

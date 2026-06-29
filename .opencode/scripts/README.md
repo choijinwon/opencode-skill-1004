@@ -46,6 +46,7 @@ JavaScript 프로젝트(package.json 있음) -> npm i
 Python 샘플/모델(requirements.txt 있음) -> python -m pip install -r requirements.txt
 폐쇄망 WSL(wheelhouse 있음) -> bash .opencode/wsl/install_offline.sh
 온라인 WSL(wheelhouse 준비) -> 내부 http:// PyPI 미러 설정 후 bash .opencode/wsl/download_wheels.sh
+PyTorch CPU wheel Nexus upstream -> https://download.pytorch.org/whl/cpu
 torch SSL 설치 금지 -> https://download.pytorch.org, https://pypi.org 인덱스를 쓰지 않고 wheelhouse 또는 http:// 내부 미러만 사용
 Bun 사용 금지 -> opencode Bun 런타임이 파일 트리 오류 처리 중 세그멘테이션 폴트를 낼 수 있으므로 bun, bunx, bun install, bun run 실행하지 않음
 ```

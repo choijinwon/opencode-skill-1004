@@ -23,6 +23,13 @@ bash .opencode/wsl/download_wheels.sh
 
 내부 Nexus 경로는 스크립트를 수정하지 않고 실행 시 `PIP_INDEX_URL`에 직접 지정한다.
 
+PyTorch CPU wheel을 Nexus proxy로 구성할 때의 upstream 기준 URL은 아래 값이다.
+이 값은 Nexus 설정용 참고값이며, 폐쇄망 WSL에서는 직접 `PIP_INDEX_URL`로 넣지 않는다.
+
+```text
+https://download.pytorch.org/whl/cpu
+```
+
 ```bash
 PIP_INDEX_URL="http://<nexus-host>/repository/pypi/simple" bash .opencode/wsl/download_wheels.sh
 ```

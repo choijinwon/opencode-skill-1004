@@ -14,6 +14,7 @@ reject_https_url() {
   if [[ "$value" == https://* ]]; then
     echo "SSL is not allowed: $name uses https://." >&2
     echo "Use an internal HTTP mirror, for example: export PIP_INDEX_URL=http://<internal-pypi>/simple" >&2
+    echo "For a Nexus PyTorch CPU proxy upstream, use: https://download.pytorch.org/whl/cpu" >&2
     echo "Or copy wheel files into $WHEELHOUSE manually and run install_offline.sh." >&2
     exit 1
   fi
@@ -38,6 +39,8 @@ elif [[ -z "${PIP_EXTRA_INDEX_URL:-}" ]]; then
   echo "SSL is not allowed and the default pip index uses HTTPS." >&2
   echo "Set an internal HTTP mirror first:" >&2
   echo "  export PIP_INDEX_URL=http://<internal-pypi>/simple" >&2
+  echo "PyTorch CPU Nexus upstream reference:" >&2
+  echo "  https://download.pytorch.org/whl/cpu" >&2
   echo "Then run this script again, or manually copy wheels into:" >&2
   echo "  $WHEELHOUSE" >&2
   exit 1

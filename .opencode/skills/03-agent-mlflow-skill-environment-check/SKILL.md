@@ -84,6 +84,9 @@ wheelhouse 준비:
 export PIP_INDEX_URL=http://<internal-pypi>/simple
 bash .opencode/wsl/download_wheels.sh
 
+PyTorch CPU wheel Nexus upstream 참고:
+https://download.pytorch.org/whl/cpu
+
 torch SSL 설치 금지:
 https://download.pytorch.org, https://pypi.org 인덱스를 사용하지 않는다.
 wheelhouse 오프라인 설치 또는 내부 http:// PyPI 미러만 사용한다.
