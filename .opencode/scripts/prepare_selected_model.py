@@ -1543,9 +1543,6 @@ if __name__ == "__main__":
 
 
 def generated_model_text(project: Path, selected_model: Path, kind: str) -> str:
-    selected_relative = rel(selected_model, project)
-    aiu_studio_path = project / AIU_STUDIO_DIR_NAME
-    profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
     load_hint = details.get("load_hint", "custom loader required")
@@ -1553,25 +1550,57 @@ def generated_model_text(project: Path, selected_model: Path, kind: str) -> str:
         "loader",
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
     )
+    loader = loader.replace("MODEL_PATH", "_resolve_model_path()")
     return f'''from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
-AIU_CUSTOM_DIR = {runtime_path_expr(aiu_studio_path / "aiu_custom", "Path")}
-AI_STUDIO_DIR = {runtime_path_expr(aiu_studio_path, "Path")}
-PROJECT_DIR = {runtime_path_expr(project, "Path")}
-ORIGINAL_MODEL_PATH = {runtime_path_expr(selected_model, "Path")}
-SOURCE_MODEL_PATH = {runtime_path_expr(selected_model, "Path")}
-DATA_MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_KIND = "{kind}"
-MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
-AIU_REQUIRED_PACKAGE = "{required_package}"
-AIU_LOAD_HINT = "{load_hint}"
+def _load_mapping():
+    mapping_path = Path(__file__).resolve().with_name("mapping.json")
+    if not mapping_path.is_file():
+        return {{}}
+    return json.loads(mapping_path.read_text(encoding="utf-8"))
 
-# AIU Studio 변환: 선택 모델 원본 경로 {selected_relative} 기준 model.py입니다.
-# 모델 파일은 aiu_studio/로 복사하지 않고 프로젝트 내 원본 위치에서 직접 읽습니다.
+
+def _mapping_model():
+    mapping = _load_mapping()
+    model = mapping.get("model", {{}})
+    return model if isinstance(model, dict) else {{}}
+
+
+def _mapping_runtime():
+    mapping = _load_mapping()
+    runtime = mapping.get("runtime", {{}})
+    return runtime if isinstance(runtime, dict) else {{}}
+
+
+def _resolve_model_path():
+    model = _mapping_model()
+    runtime = _mapping_runtime()
+    raw_path = model.get("source_path") or model.get("absolute_path") or model.get("relative_path")
+    if not raw_path:
+        raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
+    path = Path(str(raw_path))
+    if path.is_absolute():
+        return path
+    project_dir = runtime.get("project_dir")
+    if project_dir:
+        return Path(str(project_dir)) / path
+    return Path(__file__).resolve().parents[2] / path
+
+
+def _model_kind():
+    return str(_mapping_model().get("kind") or "{kind}")
+
+
+MODEL_KIND = _model_kind()
+AIU_REQUIRED_PACKAGE = str(_mapping_model().get("required_package") or "{required_package}")
+AIU_LOAD_HINT = str(_mapping_model().get("load_hint") or "{load_hint}")
+
+# AIU Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
+# 모델 위치와 종류는 aiu_custom/mapping.json에서 읽습니다.
 # MODEL_KIND={kind}, loader={load_hint}
 
 {loader}
@@ -1614,7 +1643,7 @@ class ModelWrapper:
         return {{
             "status": "loaded",
             "model_kind": MODEL_KIND,
-            "model_path": str(MODEL_PATH),
+            "model_path": str(_resolve_model_path()),
             "input": payload,
         }}
 
@@ -1635,7 +1664,7 @@ def _predict_torch_like(model, payload):
         return {{
             "status": "loaded",
             "model_kind": MODEL_KIND,
-            "model_path": str(MODEL_PATH),
+            "model_path": str(_resolve_model_path()),
             "input": payload,
             "inference_error": str(exc),
         }}
@@ -1791,6 +1820,13 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             continue
 
         text = path.read_text(encoding="utf-8", errors="ignore")
+        if display_path == "aiu_studio/aiu_custom/model.py":
+            if "mapping.json" not in text or "_resolve_model_path" not in text:
+                failures.append("model_py_mapping_loader_missing:aiu_studio/aiu_custom/model.py")
+            if selected_relative in text or selected_absolute in text:
+                failures.append("selected_model_path_should_not_be_embedded:aiu_studio/aiu_custom/model.py")
+            continue
+
         if selected_relative not in text and selected_absolute not in text:
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_absolute}")
         if f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
