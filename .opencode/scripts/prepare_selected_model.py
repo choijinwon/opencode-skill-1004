@@ -38,7 +38,7 @@ AIU_STUDIO_DIR_NAME = "aiu_studio"
 AIU_STUDIO_SAMPLE_DIR_NAME = "aiu_studio"
 AIU_STUDIO_SAMPLE_DIR = ROOT / "samples" / AIU_STUDIO_SAMPLE_DIR_NAME
 PYTORCH_REFERENCE_ENTRYPOINT = ROOT / "samples" / "pytorch_sample" / "runtest.py"
-AIU_STUDIO_COPY_IGNORE_DIRS = {"code", "metrics", "tracking"}
+AIU_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
     ".mypy_cache",

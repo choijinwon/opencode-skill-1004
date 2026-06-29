@@ -2,6 +2,7 @@ import argparse
 import json
 import shutil
 import sys
+from argparse import Namespace
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -285,6 +286,7 @@ def main():
     parser = argparse.ArgumentParser(description="Bootstrap one bundled offline model sample folder into a workspace.")
     parser.add_argument("--project", default=".", help="target workspace root")
     parser.add_argument("--sample", choices=sorted(SAMPLES), help="sample key: sklearn, pytorch, tensorflow")
+    parser.add_argument("--model", help="existing-model compatibility: delegate to prepare_selected_model.py")
     parser.add_argument("--copy-mode", choices=["folder", "root"], default="folder", help="copy sample as a folder by default; use root to copy contents directly")
     parser.add_argument("--scaffold-existing", action="store_true", help="copy only missing sample-spec scaffold files into an existing model project without overwriting")
     parser.add_argument("--list", action="store_true", help="list selectable samples")
@@ -292,6 +294,25 @@ def main():
     parser.add_argument("--force", action="store_true", help="allow overwriting existing files")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
+
+    if args.model:
+        from prepare_selected_model import build_report as build_selected_model_report
+        from prepare_selected_model import print_report as print_selected_model_report
+
+        delegated_args = Namespace(
+            project=args.project,
+            model=args.model,
+            execute=args.execute,
+            force=args.force,
+            json=args.json,
+        )
+        report = build_selected_model_report(delegated_args)
+        if args.json:
+            print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
+        else:
+            print("[route] --model은 기존 모델 변환 흐름이므로 prepare_selected_model.py로 처리합니다.")
+            print_selected_model_report(report)
+        return
 
     if args.list:
         rows = list_samples()
