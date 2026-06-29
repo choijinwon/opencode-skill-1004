@@ -105,7 +105,7 @@ def main() -> int:
     print("- 다음 단계:")
     if model_found:
         print("  - 샘플은 사용하지 않고 본인 모델 경로 기준으로 모델 있음 12단계를 진행하세요.")
-        print("  - 모델 파일은 data/** 원본 경로에서 직접 읽고 ai_studio/로 복사하지 않습니다.")
+        print("  - 모델 파일은 data/** 원본 경로에서 직접 읽고 aiu_studio/로 복사하지 않습니다.")
         print("  - 실제 분석/환경 검증/모델 실행은 OpenCode 빌드모드에서 선택해주세요.")
         print("  - 추천 요청: 내 모델 경로 기준으로 MLflow 모델 있음 프로세스 분석해줘.")
     else:

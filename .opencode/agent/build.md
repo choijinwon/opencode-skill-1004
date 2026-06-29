@@ -131,8 +131,8 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 Existing model assumptions:
 
 - The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Supported suffixes are `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.keras`, `.h5`, `.safetensors`, `.bst`, and `.ubj`. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
-- Do not copy the selected model file into `ai_studio/`.
-- `ai_studio/` is for execution templates and generated outputs only.
+- Do not copy the selected model file into `aiu_studio/`.
+- `aiu_studio/` is the copied execution template folder for existing-model flow.
 - The confirmed entrypoint must read the selected model from its original project path.
 - Prefer generated `runtest_2.py` for selected-model tests. Do not modify the existing `runtest.py`.
 - Secret values must never be printed; report only `set`, `empty`, or `missing`.
@@ -155,9 +155,9 @@ Step 4. 모델 형식 판별
         확장자 기준으로 MODEL_KIND를 결정한다.
         예: .pkl -> sklearn_pickle, .pt -> pytorch, .onnx -> onnx
 
-Step 5. ai_studio 템플릿 폴더 준비
-        ai_studio/ 실행 템플릿 폴더만 프로젝트 루트에 준비한다.
-        모델 파일은 ai_studio/로 복사하지 않는다.
+Step 5. aiu_studio 템플릿 폴더 복사
+        .opencode/templates/aiu_studio/ 실행 템플릿 폴더만 프로젝트 루트로 복사한다.
+        모델 파일은 aiu_studio/로 복사하지 않는다.
 
 Step 6. 선택 모델 직접 읽기
         선택된 원본 모델 파일을 직접 읽도록 설정한다.

@@ -9,7 +9,7 @@ Build   -> 생성/수정/설치/실행
 모델 있음  -> 루트/data 모델 목록 -> 모델 선택 -> 환경변수 체크
 모델 없음  -> 1 sklearn / 2 pytorch / 3 tensorflow
 
-주의 -> 모델 파일은 ai_studio/로 복사하지 않음, secret 값은 출력하지 않음
+주의 -> 모델 파일은 aiu_studio/로 복사하지 않음, secret 값은 출력하지 않음
 ```
 
 ## Mode Priority

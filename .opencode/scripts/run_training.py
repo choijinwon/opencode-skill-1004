@@ -33,6 +33,7 @@ MODEL_SCAN_SKIP_DIRS = {
     ".venv",
     "__pycache__",
     "ai_studio",
+    "aiu_studio",
     "build",
     "dist",
     "env",
@@ -166,8 +167,9 @@ def find_artifacts(project: Path) -> list[str]:
         path = project / name
         if path.is_file() or (path.is_dir() and any(child.name != ".gitkeep" for child in path.iterdir())):
             found.append(str(path))
-    ai_studio = project / "ai_studio"
-    if ai_studio.exists():
+    for ai_studio in [project / "aiu_studio", project / "ai_studio"]:
+        if not ai_studio.exists():
+            continue
         for path in ai_studio.rglob("*"):
             if path.name == "meta.yaml":
                 continue
@@ -352,7 +354,7 @@ def main():
         process_checklist = [
             EnvVarStatus("1. 루트/data 모델 목록 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("2. 사용할 모델 선택", "done" if artifacts else "needs_input"),
-            EnvVarStatus("3. 자동 준비 실행", "done" if (work_path / "ai_studio").exists() and (work_path / "runtest_2.py").exists() else "pending"),
+            EnvVarStatus("3. 자동 준비 실행", "done" if (work_path / "aiu_studio").exists() and (work_path / "runtest_2.py").exists() else "pending"),
             EnvVarStatus("4. 환경 검증", "manual_check"),
             EnvVarStatus("5. 모델 환경변수 체크", "done" if not missing_env else "needs_input"),
             EnvVarStatus("6. 추론 테스트", "done" if args.execute and return_code == 0 else "pending"),

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -22,7 +23,10 @@ SUPPORTED_MODEL_KINDS = {
 }
 
 REFERENCE_ENTRYPOINTS = ["runtest.py", "run_test.py"]
-AI_STUDIO_TEMPLATE_DIRS = ["ai_studio", "ai_studio/code", "ai_studio/metrics", "ai_studio/tracking"]
+ROOT = Path(__file__).resolve().parents[1]
+AIU_STUDIO_DIR_NAME = "aiu_studio"
+AIU_STUDIO_TEMPLATE_DIR = ROOT / "templates" / AIU_STUDIO_DIR_NAME
+AIU_STUDIO_TEMPLATE_SUBDIRS = ["code", "metrics", "tracking"]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
     ".mypy_cache",
@@ -32,6 +36,7 @@ MODEL_SCAN_SKIP_DIRS = {
     ".venv",
     "__pycache__",
     "ai_studio",
+    "aiu_studio",
     "build",
     "dist",
     "env",
@@ -117,17 +122,20 @@ def find_reference_entrypoint(project: Path) -> Path | None:
     return None
 
 
-def create_ai_studio_template_dirs(project: Path, execute: bool) -> tuple[list[str], list[str]]:
+def copy_aiu_studio_template(project: Path, execute: bool) -> tuple[list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
-    for name in AI_STUDIO_TEMPLATE_DIRS:
-        path = project / name
-        if path.exists():
-            skipped.append(name + "/")
-            continue
-        if execute:
-            path.mkdir(parents=True, exist_ok=True)
-        copied.append(name + "/")
+    target = project / AIU_STUDIO_DIR_NAME
+    if target.exists():
+        skipped.append(AIU_STUDIO_DIR_NAME + "/")
+        return copied, skipped
+    if execute:
+        if AIU_STUDIO_TEMPLATE_DIR.exists():
+            shutil.copytree(AIU_STUDIO_TEMPLATE_DIR, target)
+        else:
+            for relative in AIU_STUDIO_TEMPLATE_SUBDIRS:
+                (target / relative).mkdir(parents=True, exist_ok=True)
+    copied.append(AIU_STUDIO_DIR_NAME + "/")
     return copied, skipped
 
 
@@ -147,7 +155,7 @@ DATA_MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_KIND = "{kind}"
 REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
-AI_STUDIO_DIR = PROJECT_DIR / "ai_studio"
+AI_STUDIO_DIR = PROJECT_DIR / "aiu_studio"
 
 # MLflow/AI Studio settings
 # 사용자가 직접 입력합니다. password 값은 출력하지 않습니다.
@@ -215,7 +223,7 @@ def write_selection_summary() -> None:
         "source_model_path": str(SOURCE_MODEL_PATH),
         "model_kind": MODEL_KIND,
         "reference_entrypoint": str(REFERENCE_ENTRYPOINT),
-        "note": "Model file remains in the project source path and is not copied into ai_studio/.",
+        "note": "Model file remains in the project source path and is not copied into aiu_studio/.",
     }}
     (AI_STUDIO_DIR / "code" / "selected_model.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
@@ -301,7 +309,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
 
-    copied, skipped = create_ai_studio_template_dirs(project, args.execute)
+    copied, skipped = copy_aiu_studio_template(project, args.execute)
     report.copied_template_dirs.extend(copied)
     report.skipped.extend(skipped)
     changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
@@ -319,7 +327,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             ]
         )
     elif not report.failures:
-        report.next_steps.append("검토 후 --execute를 붙여 ai_studio/ 템플릿 폴더와 runtest_2.py를 생성하세요.")
+        report.next_steps.append("검토 후 --execute를 붙여 aiu_studio/ 템플릿 폴더와 runtest_2.py를 생성하세요.")
     return report
 
 
@@ -359,7 +367,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Select a project-root or data/** model artifact and generate runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
-    parser.add_argument("--execute", action="store_true", help="create ai_studio/ template dirs and runtest_2.py")
+    parser.add_argument("--execute", action="store_true", help="copy aiu_studio/ template folder and create runtest_2.py")
     parser.add_argument("--force", action="store_true", help="overwrite existing runtest_2.py")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()

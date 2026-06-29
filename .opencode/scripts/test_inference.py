@@ -13,6 +13,7 @@ MODEL_SCAN_SKIP_DIRS = {
     ".venv",
     "__pycache__",
     "ai_studio",
+    "aiu_studio",
     "mlruns",
     "node_modules",
     "venv",
@@ -45,8 +46,9 @@ def find_input_example(project: Path) -> Path | None:
 
 
 def find_model_path(project: Path) -> Path | None:
-    selected_model = project / "ai_studio" / "code" / "selected_model.json"
-    if selected_model.exists():
+    for selected_model in [project / "aiu_studio" / "code" / "selected_model.json", project / "ai_studio" / "code" / "selected_model.json"]:
+        if not selected_model.exists():
+            continue
         try:
             payload = json.loads(selected_model.read_text(encoding="utf-8"))
             model_path = payload.get("source_model_path") or payload.get("model_path")
@@ -65,7 +67,7 @@ def find_model_path(project: Path) -> Path | None:
             continue
         if path.is_file() and path.suffix.lower() in DATA_MODEL_SUFFIXES:
             return path
-    for name in ["ai_studio", "saved_model", "model", "artifacts"]:
+    for name in ["aiu_studio", "ai_studio", "saved_model", "model", "artifacts"]:
         candidate = project / name
         if candidate.exists():
             return candidate

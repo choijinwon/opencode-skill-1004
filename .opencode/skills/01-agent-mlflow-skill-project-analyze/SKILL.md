@@ -165,6 +165,6 @@ python .opencode/scripts/bootstrap_sample_project.py --project <model-project-fo
 - 샘플 규격 보충은 기존 모델 파일을 덮어쓰지 않는다.
 - secret 값은 출력하지 않는다.
 - 발견한 artifact를 이동하거나 복사하지 않는다.
-- 루트/data 모델 원본을 ai_studio/로 복사하지 않는다.
+- 루트/data 모델 원본을 aiu_studio/로 복사하지 않는다.
 
 </details>
