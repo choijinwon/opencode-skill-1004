@@ -582,12 +582,11 @@ def reference_display_path(reference: Path) -> str:
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 확인: {rel(selected_model, project)}",
-        f"2. MODEL_KIND 판별: {kind}",
-        f"3. 모델 형식별 샘플 참조: {reference_display_path(reference)}",
-        "4. aiu_studio/runtest_2.py 파일 생성",
-        "5. 모델 로더와 데이터 준비를 선택 모델 환경에 맞게 변환",
-        "6. input_example, MLflow 경로, local serving, 주석을 선택 모델 기준으로 변환",
-        "7. 모델 파일은 복사하지 않고 선택 모델 원본 경로에 연결",
+        "2. aiu_studio/ 폴더 복사",
+        f"3. 모델 형식 확인: MODEL_KIND={kind}",
+        f"4. 형식별 샘플 참조: {reference_display_path(reference)}",
+        "5. aiu_studio/runtest_2.py 생성 및 선택 모델 경로 연결",
+        "6. 선택 모델 형식에 맞게 실행 코드 변환",
     ]
 
 
@@ -2025,7 +2024,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 모델 형식별 샘플 참조 -> aiu_studio/runtest_2.py 파일 생성 -> 선택 모델 환경 변환",
+                "runtest_2.py 생성 시퀀스 완료: 모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
                 "PowerShell에서는 선택 프로젝트의 aiu_studio 폴더로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project / AIU_STUDIO_DIR_NAME)}",
                 "python runtest_2.py",

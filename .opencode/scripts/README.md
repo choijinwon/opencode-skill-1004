@@ -130,7 +130,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 `aiu_studio/aiu_custom/predict.py`는 코드 변환 대상이 아니며 선택 모델 required_package import 상태만 확인한다.
 기존 `runtest.py` 또는 `aiu_studio/runtest.py`는 수정하지 않는다.
 선택 모델 형식에 맞는 `.opencode/samples/*` 샘플을 우선 참조한다. PyTorch/safetensors는 `.opencode/samples/pytorch_sample/runtest.py`, sklearn/joblib/xgboost는 `.opencode/samples/sklearn_sample/run_model.py`, tensorflow/keras/h5는 `.opencode/samples/tensorflow_sample/run_model.py`를 참조해 변환한다.
-`runtest_2.py` 생성 시퀀스는 `모델 형식별 샘플 참조 -> aiu_studio/runtest_2.py 파일 생성 -> 선택 모델 환경 변환` 순서로 수행한다.
+`runtest_2.py` 생성 시퀀스는 `모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환` 순서로 수행한다.
 
 ```text
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
