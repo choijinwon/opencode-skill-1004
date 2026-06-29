@@ -131,6 +131,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 `runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
 기존 `runtest.py`는 수정하지 않는다.
 PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환해줘.
+선택 모델 경로와 `MODEL_KIND`를 반영한다.
 `runtest_2.py` 생성 시퀀스는 `모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> samples/pytorch_sample/ 기준 연결부 변환 -> 실행 코드 변환` 순서로 수행한다.
 
 ```text
