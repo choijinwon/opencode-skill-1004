@@ -246,7 +246,7 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 Describe that one command to the user as:
 
 ```text
-다음 작업 수행(한 번에): 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성
+다음 작업 수행(한 번에): aiu_studio/ 복사 + runtest_2.py + predict.py + mapping.json + localservingtest.py
 ```
 
 The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `aiu_studio/runtest_2.py` from `aiu_studio/runtest.py`, `runtest.py`, or `run_test.py`. Do not assume `run_model.py`. If none of those reference files exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.

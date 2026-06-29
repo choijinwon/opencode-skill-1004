@@ -1041,7 +1041,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                "모델 선택 후 다음 작업 수행(1~4 한 번에): python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+                "모델 선택 후 자동 준비 실행: python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -1139,6 +1139,25 @@ def print_report(report: PreparedModelReport) -> None:
         print("Failures:")
         for failure in report.failures:
             print(f"- {failure}")
+    print("TOD Guide:")
+    model_selected = bool(report.selected_model_path)
+    auto_ready = all(
+        path in report.prepared_paths or f"{path} (refreshed)" in report.prepared_paths
+        for path in [
+            "aiu_studio/runtest_2.py",
+            "aiu_studio/aiu_custom/predict.py",
+            "aiu_studio/aiu_custom/mapping.json",
+            "aiu_studio/local_serving/localservingtest.py",
+        ]
+    )
+    print("1. 루트/data 모델 목록 확인 - 완료" if report.model_artifact_paths else "1. 루트/data 모델 목록 확인 - 모델 없음")
+    print("2. 사용할 모델 선택 - 완료" if model_selected else "2. 사용할 모델 선택 - 대기")
+    print("3. 자동 준비 실행 - 완료" if auto_ready else "3. 자동 준비 실행 - 대기")
+    print("4. 환경 검증 - 다음")
+    print("5. 모델 환경변수 체크 - 다음")
+    print("6. runtest_2.py 실행 - 다음")
+    print("7. 로컬 추론 테스트 - 다음")
+    print("8. MLflow 검증 - 다음")
     if report.next_steps:
         print("Next steps:")
         for step in report.next_steps:
