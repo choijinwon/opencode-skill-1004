@@ -447,6 +447,8 @@ def check_aiu_custom(project: Path, entrypoints: list[Path]) -> Check:
         missing.append("aiu_custom/model_wrapper.py or aiu_custom/predict.py")
     if predict_file.exists() and "ModelWrapper" not in predict_text:
         missing.append("ModelWrapper class")
+    if re.search(r"\bcode_paths\s*=\s*(\[\s*\]|None)(?:\s*[,)]|\s*$)", entrypoint_text):
+        missing.append("code_paths must include existing aiu_studio/ folder paths such as aiu_studio/local_serving/")
 
     if missing:
         return Check(

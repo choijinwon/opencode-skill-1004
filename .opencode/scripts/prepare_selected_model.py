@@ -79,6 +79,10 @@ MODEL_RELATED_SETTING_NAMES = {
     "model_load_hint",
     "REQUIRED_PACKAGE",
     "required_package",
+    "CODE_PATHS",
+    "code_paths",
+    "MLFLOW_CODE_PATHS",
+    "mlflow_code_paths",
 }
 MODEL_PATH_VARIABLE_NAMES = {
     "SOURCE_MODEL_PATH",
@@ -296,6 +300,16 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
     }
 
 
+def runtime_project_path_expr(project: Path, path: Path) -> str:
+    relative = rel(path, project)
+    aiu_prefix = AIU_STUDIO_DIR_NAME + "/"
+    if relative == AIU_STUDIO_DIR_NAME:
+        return "AI_STUDIO_DIR"
+    if relative.startswith(aiu_prefix):
+        return f'AI_STUDIO_DIR / "{relative[len(aiu_prefix):]}"'
+    return f'PROJECT_DIR / "{relative}"'
+
+
 def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
@@ -442,6 +456,20 @@ def rewrite_model_loader_line(line: str, kind: str, load_hint: str) -> str:
     return f"{converted_code}  {converted_comment}{suffix}"
 
 
+def rewrite_code_paths_argument(line: str) -> str:
+    if "code_paths" not in line:
+        return line
+    suffix = "\n" if line.endswith("\n") else ""
+    body = line.rstrip("\n")
+    converted = re.sub(r"\bcode_paths\s*=\s*\[\s*\]", "code_paths=AIU_CODE_PATHS", body)
+    converted = re.sub(r"\bcode_paths\s*=\s*None\b", "code_paths=AIU_CODE_PATHS", converted)
+    if converted == body:
+        return line
+    code, comment = split_inline_comment(converted)
+    converted_comment = comment or "# AIU Studio 변환: aiu_studio/ 내부 실제 코드 폴더 경로를 사용합니다."
+    return f"{code}  {converted_comment}{suffix}"
+
+
 def import_package_for_line(line: str) -> tuple[str, str] | None:
     stripped = line.strip()
     match = re.match(r"import\s+([A-Za-z_][A-Za-z0-9_]*)\b", stripped)
@@ -478,6 +506,7 @@ def rewrite_reference_line(line: str, selected_relative: str, kind: str, load_hi
     if import_converted != line:
         return import_converted
     converted = rewrite_model_string_literals(line, selected_relative, kind, load_hint)
+    converted = rewrite_code_paths_argument(converted)
     return rewrite_model_loader_line(converted, kind, load_hint)
 
 
@@ -538,6 +567,10 @@ def transform_reference_text(
             continue
 
         name, raw_value = match.groups()
+        if stripped.rstrip("\n").rstrip().endswith(",") and name in {"CODE_PATHS", "code_paths", "MLFLOW_CODE_PATHS", "mlflow_code_paths"}:
+            output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
+            continue
+
         expression = replacement_expression(name, replacements)
         if expression is None:
             output.append(rewrite_reference_line(line, selected_relative, kind, load_hint, required_package))
@@ -567,7 +600,7 @@ def transform_reference_text(
 
 def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
-    reference_relative = rel(reference, project)
+    reference_expr = runtime_project_path_expr(project, reference)
     default_experiment_name, default_register_model_name = default_mlflow_names(project)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
@@ -595,12 +628,26 @@ MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 AIU_REQUIRED_PACKAGE = "{required_package}"
 AIU_LOAD_HINT = "{load_hint}"
-REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
+REFERENCE_ENTRYPOINT = {reference_expr}
 
 # 자주 쓰는 소문자 변수명도 같은 선택 모델을 보도록 맞춥니다.
 source_model_path = str(SOURCE_MODEL_PATH)
 data_model_path = str(DATA_MODEL_PATH)
 model_path = str(MODEL_PATH)
+
+def _aiu_existing_code_paths():
+    candidates = [
+        AI_STUDIO_DIR / "aiu_custom",
+        AI_STUDIO_DIR / "local_serving",
+    ]
+    return [str(path) for path in candidates if path.exists()]
+
+# MLflow pyfunc log_model(code_paths=...)에는 aiu_studio/ 내부의 실제 코드 폴더만 전달합니다.
+AIU_CODE_PATHS = _aiu_existing_code_paths()
+CODE_PATHS = AIU_CODE_PATHS
+code_paths = AIU_CODE_PATHS
+MLFLOW_CODE_PATHS = AIU_CODE_PATHS
+mlflow_code_paths = AIU_CODE_PATHS
 
 # MLflow/AI Studio settings
 # tracking URL, username, password는 사용자가 직접 입력합니다.
@@ -654,6 +701,10 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "model_load_hint": "AIU_LOAD_HINT",
         "REQUIRED_PACKAGE": "AIU_REQUIRED_PACKAGE",
         "required_package": "AIU_REQUIRED_PACKAGE",
+        "CODE_PATHS": "AIU_CODE_PATHS",
+        "code_paths": "AIU_CODE_PATHS",
+        "MLFLOW_CODE_PATHS": "AIU_CODE_PATHS",
+        "mlflow_code_paths": "AIU_CODE_PATHS",
         "mlflow_tracking_url": '""',
         "mlflow_tracking_username": '""',
         "mlflow_tracking_password": '""',
@@ -674,7 +725,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
 
 def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
-    reference_relative = rel(reference, project)
+    reference_expr = runtime_project_path_expr(project, reference)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -701,7 +752,7 @@ MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 AIU_REQUIRED_PACKAGE = "{required_package}"
 AIU_LOAD_HINT = "{load_hint}"
-REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
+REFERENCE_ENTRYPOINT = {reference_expr}
 
 # AIU Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
 # 모델 파일은 aiu_studio/로 복사하지 않고 원본 경로에서 직접 읽습니다.
@@ -712,7 +763,7 @@ REFERENCE_ENTRYPOINT = PROJECT_DIR / "{reference_relative}"
 
 def load_input_example():
     for name in ["input_example.json", "sample_input.json", "example.json"]:
-        candidate = PROJECT_DIR / name
+        candidate = AI_STUDIO_DIR / name
         if candidate.is_file():
             return json.loads(candidate.read_text(encoding="utf-8"))
     return {{}}
@@ -720,7 +771,7 @@ def load_input_example():
 
 def load_aiu_custom_wrapper():
     for relative in ["aiu_custom/model_wrapper.py", "aiu_custom/predict.py"]:
-        wrapper_path = PROJECT_DIR / relative
+        wrapper_path = AI_STUDIO_DIR / relative
         if not wrapper_path.is_file():
             continue
         spec = importlib.util.spec_from_file_location("aiu_custom_model_wrapper", wrapper_path)
@@ -763,6 +814,108 @@ if __name__ == "__main__":
 '''
 
 
+def generated_predict_text(project: Path, selected_model: Path, kind: str) -> str:
+    selected_relative = rel(selected_model, project)
+    profile = model_profile(project, selected_model, kind)
+    details = MODEL_KIND_DETAILS.get(kind, {})
+    required_package = details.get("required_package", "unknown")
+    load_hint = details.get("load_hint", "custom loader required")
+    loader = details.get(
+        "loader",
+        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
+    )
+    return f'''from __future__ import annotations
+
+from pathlib import Path
+
+
+AIU_CUSTOM_DIR = Path(__file__).resolve().parent
+AI_STUDIO_DIR = AIU_CUSTOM_DIR.parent
+PROJECT_DIR = AI_STUDIO_DIR.parent
+SOURCE_MODEL_PATH = PROJECT_DIR / "{selected_relative}"
+DATA_MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_KIND = "{kind}"
+MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
+AIU_REQUIRED_PACKAGE = "{required_package}"
+AIU_LOAD_HINT = "{load_hint}"
+
+# AIU Studio 변환: 선택 모델 {selected_relative} 기준 predict.py입니다.
+# 모델 파일은 aiu_studio/로 복사하지 않고 원본 경로에서 직접 읽습니다.
+# MODEL_KIND={kind}, loader={load_hint}
+
+{loader}
+
+
+def _payload_to_model_input(payload):
+    if isinstance(payload, dict):
+        for key in ["data", "inputs", "instances", "features", "x"]:
+            if key in payload:
+                return payload[key]
+    return payload
+
+
+class ModelWrapper:
+    def __init__(self):
+        self.model = None
+
+    def load_context(self, context=None):
+        if self.model is None:
+            self.model = load_selected_model()
+        return self.model
+
+    def predict(self, context, model_input):
+        model = self.load_context(context)
+        payload = _payload_to_model_input(model_input)
+
+        if MODEL_KIND == "onnx":
+            input_name = model.get_inputs()[0].name
+            return model.run(None, {{input_name: payload}})
+
+        if MODEL_KIND in {{"pytorch", "safetensors"}}:
+            return _predict_torch_like(model, payload)
+
+        if hasattr(model, "predict"):
+            return model.predict(payload)
+
+        if callable(model):
+            return model(payload)
+
+        return {{
+            "status": "loaded",
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+            "input": payload,
+        }}
+
+
+def _predict_torch_like(model, payload):
+    try:
+        import torch
+
+        if hasattr(model, "eval"):
+            model.eval()
+        tensor_input = payload if hasattr(payload, "shape") else torch.tensor(payload)
+        with torch.no_grad():
+            result = model(tensor_input) if callable(model) else model
+        if hasattr(result, "detach"):
+            result = result.detach().cpu().numpy()
+        return result
+    except Exception as exc:
+        return {{
+            "status": "loaded",
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+            "input": payload,
+            "inference_error": str(exc),
+        }}
+
+
+def predict(payload):
+    return ModelWrapper().predict(None, payload)
+'''
+
+
 def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool, force: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / AIU_STUDIO_DIR_NAME / "runtest_2.py"
     changed: list[str] = []
@@ -796,6 +949,19 @@ def write_localservingtest(project: Path, selected_model: Path, kind: str, refer
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
     changed.append("aiu_studio/local_serving/localservingtest.py (refreshed)" if existed_before else "aiu_studio/local_serving/localservingtest.py")
+    return changed, skipped, failures
+
+
+def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "predict.py"
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    existed_before = target.exists()
+    if execute:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(generated_predict_text(project, selected_model, kind), encoding="utf-8")
+    changed.append("aiu_studio/aiu_custom/predict.py (refreshed)" if existed_before else "aiu_studio/aiu_custom/predict.py")
     return changed, skipped, failures
 
 
@@ -871,10 +1037,15 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.skipped.extend(inference_skipped)
     report.failures.extend(inference_failures)
 
+    predict_changed, predict_skipped, predict_failures = write_aiu_predict(project, selected_model, selected_kind, args.execute)
+    report.prepared_paths.extend(predict_changed)
+    report.skipped.extend(predict_skipped)
+    report.failures.extend(predict_failures)
+
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/local_serving/localservingtest.py 생성",
+                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/aiu_custom/predict.py 변환 + aiu_studio/local_serving/localservingtest.py 생성",
                 "python aiu_studio/runtest_2.py",
                 "python aiu_studio/local_serving/localservingtest.py",
                 "추론 테스트 결과는 화면에 출력합니다.",

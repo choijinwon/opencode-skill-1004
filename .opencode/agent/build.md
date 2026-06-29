@@ -178,13 +178,20 @@ Step 7. runtest.py 참조
 Step 8. runtest_2.py 생성
         선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/runtest_2.py를 생성한다.
         MODEL_KIND별 load_selected_model()과 required_package/load_hint를 생성한다.
+        aiu_studio/runtest.py를 참조한 경우 REFERENCE_ENTRYPOINT와 실행 보조 파일 경로는 복사된 aiu_studio/ 기준으로 생성한다.
         변환은 참조한 runtest.py 구조를 기반으로 한다.
         함수 내부의 기존 모델 경로 문자열과 모델 로딩 호출은 선택 모델 기준 load_selected_model() 호출로 변환한다.
         선택 모델 로더와 맞지 않는 기존 모델 프레임워크 import는 주석 처리한다.
+        mlflow.pyfunc.log_model의 code_paths=[] 또는 code_paths=None은 aiu_studio/ 내부의 실제 코드 폴더 경로인 AIU_CODE_PATHS로 변환한다.
         모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
         기존 runtest.py는 절대 수정하지 않는다.
 
-사용자에게 보여줄 TOD는 자동 처리 단계 3-8을 `자동 준비 실행` 하나로 묶어 간략히 표시한다. 모델 선택 이후에는 Launch 규칙이나 긴 세부 규칙을 다시 보여주지 않는다.
+Step 9. aiu_custom/predict.py 변환
+        선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/aiu_custom/predict.py를 변환한다.
+        ModelWrapper는 선택 모델을 원본 data/** 경로에서 직접 로드한다.
+        추론 테스트는 변환된 ModelWrapper를 우선 사용한다.
+
+사용자에게 보여줄 TOD는 자동 처리 단계 3-9를 `자동 준비 실행` 하나로 묶어 간략히 표시한다. 모델 선택 이후에는 Launch 규칙이나 긴 세부 규칙을 다시 보여주지 않는다.
 
 ```text
 1. 루트/data 모델 목록 확인
