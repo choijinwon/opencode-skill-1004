@@ -138,6 +138,7 @@ Existing model assumptions:
 - Do not copy the selected model file into runtime template folders. Generated/converted code must read the selected project model path directly.
 - If Linux paths contain Windows separators such as `\`, `＼`, `￦`, or `₩`, normalize them to `/` during generated file conversion.
 - `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한다.
+- Do not include legacy or backward-compatibility path notes in the user-facing process; show only the current copy/transform flow.
 - The confirmed generated entrypoint must reflect the selected model path, MODEL_KIND, loader, wrapper, and mapping.
 - Prefer generated `runtest_2.py` for selected-model tests. Do not modify the existing `runtest.py`.
 - Secret values must never be printed; report only `set`, `empty`, or `missing`.
