@@ -19,6 +19,29 @@ bash .opencode/wsl/download_wheels.sh
 
 내부 미러 없이 SSL 문제로 `torch` 다운로드가 막히면, 인터넷이 되는 별도 PC에서 wheel 파일을 받아 `.opencode/wsl/wheelhouse/`에 직접 복사한다. 폐쇄망 PC에서는 다운로드하지 않고 `install_offline.sh`만 실행한다.
 
+## Nexus URL 지정 위치
+
+내부 Nexus 경로는 스크립트를 수정하지 않고 실행 시 `PIP_INDEX_URL`에 직접 지정한다.
+
+```bash
+PIP_INDEX_URL="http://<nexus-host>/repository/pypi/simple" bash .opencode/wsl/download_wheels.sh
+```
+
+필요하면 환경 변수로 먼저 지정해도 된다.
+
+```bash
+export PIP_INDEX_URL="http://<nexus-host>/repository/pypi/simple"
+bash .opencode/wsl/download_wheels.sh
+```
+
+Nexus가 별도 trusted host 값을 요구하면 `PIP_TRUSTED_HOST`를 함께 지정한다.
+
+```bash
+export PIP_INDEX_URL="http://<nexus-host>/repository/pypi/simple"
+export PIP_TRUSTED_HOST="<nexus-host>"
+bash .opencode/wsl/download_wheels.sh
+```
+
 ## 2. 폐쇄망으로 복사
 
 온라인 환경에서 생성된 아래 폴더를 폐쇄망 워크스페이스의 같은 위치로 복사한다.
