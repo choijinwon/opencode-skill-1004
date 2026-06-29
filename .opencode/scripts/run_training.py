@@ -436,8 +436,9 @@ def main():
             EnvVarStatus("3. 자동 준비 실행", "done" if (work_path / "aiu_studio" / "runtest_2.py").exists() else "pending"),
             EnvVarStatus("4. 환경 검증", "manual_check"),
             EnvVarStatus("5. 모델 환경변수 체크", "done" if not missing_env else "needs_input"),
-            EnvVarStatus("6. 추론 테스트", "done" if args.execute and return_code == 0 else "pending"),
-            EnvVarStatus("7. MLflow 검증", "pending"),
+            EnvVarStatus("6. runtest_2.py 실행", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("7. 추론 테스트", "pending"),
+            EnvVarStatus("8. MLflow 검증", "pending"),
         ]
     else:
         process_checklist = [

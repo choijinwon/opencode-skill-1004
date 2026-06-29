@@ -56,9 +56,11 @@ Step 4. 환경 검증
         Python 3.11.9, dependency, MLflow 설치 상태를 확인한다.
 Step 5. 모델 환경변수 체크
         입력값 3개와 자동값 2개 상태를 확인한다.
-Step 6. 추론 테스트
-        aiu_studio/runtest_2.py 또는 aiu_custom/predict.py 기준으로 로드/추론을 확인한다.
-Step 7. MLflow 검증
+Step 6. runtest_2.py 실행
+        aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
+Step 7. 추론 테스트
+        aiu_custom/predict.py 또는 test_inference.py 기준으로 입력/출력 스키마를 확인한다.
+Step 8. MLflow 검증
         Run, artifact, registered model 기록을 확인한다.
 ```
 

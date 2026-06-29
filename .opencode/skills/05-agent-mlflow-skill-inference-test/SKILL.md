@@ -30,7 +30,8 @@ metadata:
 4. 모델 로드 방식 결정
 5. predict 실행
 6. 출력 schema 확인
-7. MLflow 검증으로 이동
+7. 추론 테스트 완료
+8. MLflow 검증으로 이동
 ```
 
 ## What To Do Now

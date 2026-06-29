@@ -187,8 +187,9 @@ Step 8. runtest_2.py 생성
 3. 자동 준비 실행
 4. 환경 검증
 5. 모델 환경변수 체크
-6. 추론 테스트
-7. MLflow 검증
+6. runtest_2.py 실행
+7. 추론 테스트
+8. MLflow 검증
 ```
 
 Step 9. 환경 검증
@@ -200,10 +201,13 @@ Step 10. 모델 환경변수 체크
         자동 생성값: mlflow_experiment_name, mlflow_register_model_name.
         상태는 set/empty/missing/auto_default로 표시한다.
 
-Step 11. 추론 테스트
-        생성된 aiu_studio/runtest_2.py 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.
+Step 11. runtest_2.py 실행
+        생성된 aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 
-Step 12. MLflow 검증
+Step 12. 추론 테스트
+        aiu_custom/predict.py 또는 test_inference.py 기준으로 입력/출력 스키마를 확인한다.
+
+Step 13. MLflow 검증
         Run, artifact, registered model 기록을 확인한다.
 ```
 

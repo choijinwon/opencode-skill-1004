@@ -29,8 +29,9 @@ metadata:
 3. 자동 준비 실행
 4. 환경 검증
 5. 모델 환경변수 체크
-6. 추론 테스트
-7. MLflow 검증
+6. runtest_2.py 실행
+7. 추론 테스트
+8. MLflow 검증
 ```
 
 ## What To Do Now

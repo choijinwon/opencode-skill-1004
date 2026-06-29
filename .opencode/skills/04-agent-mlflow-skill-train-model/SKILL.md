@@ -29,8 +29,9 @@ metadata:
 3. 자동 준비 실행
 4. 환경 검증
 5. 모델 환경변수 체크
-6. 추론 테스트
-7. MLflow 검증
+6. runtest_2.py 실행
+7. 추론 테스트
+8. MLflow 검증
 ```
 
 ## What To Do Now
@@ -170,8 +171,9 @@ blocked:
 3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사, MODEL_KIND 판별, runtest.py 구조/주석 기반 aiu_studio/runtest_2.py 생성
 4. Python 3.11.9와 requirements 설치/버전 확인
 5. MLflow 입력값 3개와 자동값 2개 상태 확인
-6. aiu_studio/runtest_2.py 또는 aiu_custom/predict.py로 로드/추론 확인
-7. MLflow run, artifact, registered model 검증
+6. aiu_studio/runtest_2.py 실행
+7. aiu_custom/predict.py 또는 test_inference.py로 추론 입력/출력 확인
+8. MLflow run, artifact, registered model 검증
 ```
 
 샘플 모델 흐름:

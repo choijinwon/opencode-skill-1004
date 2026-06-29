@@ -31,11 +31,13 @@ Step 4  환경 검증
 Step 5  모델 환경변수 체크
         check_environment.py
 
-Step 6  추론 테스트
+Step 6  runtest_2.py 실행
         aiu_studio/runtest_2.py
+
+Step 7  추론 테스트
         test_inference.py
 
-Step 7  MLflow 검증
+Step 8  MLflow 검증
         verify_mlflow.py
 ```
 

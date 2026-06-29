@@ -645,8 +645,9 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             "3. 자동 준비 실행: aiu_studio/ 폴더 그대로 복사와 aiu_studio/runtest_2.py 생성은 prepare_selected_model.py가 처리한다.",
             "4. 환경 검증: 현재 출력의 Python, dependency, MLflow 설치 상태를 확인한다.",
             f"5. 모델 환경변수 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 set/empty/missing/auto_default/ssl_not_allowed로 확인한다.",
-            f"6. 추론 테스트: python {entrypoint_display} 또는 aiu_custom/predict.py 기준으로 로드/추론 확인한다.",
-            "7. MLflow 검증: Run, artifact, registered model 기록을 확인한다.",
+            f"6. runtest_2.py 실행: python {entrypoint_display} 로 선택 모델 기준 변환/실행 파일을 먼저 실행한다.",
+            "7. 추론 테스트: aiu_custom/predict.py 또는 test_inference.py 기준으로 입력/출력 스키마를 확인한다.",
+            "8. MLflow 검증: Run, artifact, registered model 기록을 확인한다.",
         ]
         if entrypoint is None:
             if entrypoint_candidates:
