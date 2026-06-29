@@ -441,7 +441,7 @@ def match_model_by_text(project: Path, models: list[Path], raw: str) -> tuple[Pa
 
 
 def stored_selected_model_path(project: Path) -> Path | None:
-    mapping_path = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "mapping.json"
+    mapping_path = project / "aiu_custom" / "mapping.json"
     if not mapping_path.is_file():
         return None
     try:
@@ -593,10 +593,10 @@ def reference_display_path(reference: Path) -> str:
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 확인: {rel(selected_model, project)}",
-        "2. aiu_studio/ 폴더 복사",
+        "2. .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사",
         f"3. 현재 프로젝트 루트/data/** 검색 결과에서 모델 형식 확인: MODEL_KIND={kind}",
         f"4. 형식별 샘플 참조: {reference_display_path(reference)}",
-        "5. aiu_studio/runtest_2.py 생성 및 선택 모델 경로 연결",
+        "5. runtest_2.py 생성 및 선택 모델 경로 연결",
         "6. 선택 모델 형식에 맞게 실행 코드 변환",
     ]
 
@@ -605,12 +605,12 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
     copied: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    target = project / AIU_STUDIO_DIR_NAME
+    target = project
     if not AIU_STUDIO_SAMPLE_DIR.is_dir():
         failures.append(f"aiu_studio_folder_missing:{AIU_STUDIO_SAMPLE_DIR}")
         return copied, skipped, failures
     if target.exists() and not target.is_dir():
-        failures.append(f"aiu_studio_target_not_directory:{target}")
+        failures.append(f"workspace_target_not_directory:{target}")
         return copied, skipped, failures
     if execute:
         shutil.copytree(
@@ -619,7 +619,7 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns(*AIU_STUDIO_COPY_IGNORE_DIRS),
         )
-    copied.append(AIU_STUDIO_DIR_NAME + "/")
+    copied.append(".opencode/samples/aiu_studio/* -> workspace root")
     return copied, skipped, failures
 
 
@@ -1107,7 +1107,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
     selected_relative = rel(selected_model, project)
     reference_expr = runtime_project_path_expr(project, reference)
     project_expr = runtime_path_expr(project)
-    aiu_studio_path = project / AIU_STUDIO_DIR_NAME
+    aiu_studio_path = project
     aiu_studio_expr = runtime_path_expr(aiu_studio_path)
     selected_model_expr = runtime_path_expr(selected_model)
     input_example_expr = runtime_path_expr(aiu_studio_path / "input_example.json")
@@ -1130,7 +1130,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
 
 # --- AIU Studio selected model conversion ---
 # 선택된 모델을 먼저 판별하고, 원본 모델 경로를 직접 읽도록 변환합니다.
-# MODEL_KIND에 맞는 load_selected_model()을 생성해 aiu_studio/ 템플릿 코드를 선택 모델 기준으로 갱신합니다.
+# MODEL_KIND에 맞는 load_selected_model()을 생성해 워크스페이스 템플릿 코드를 선택 모델 기준으로 갱신합니다.
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
 import os as _aiu_os
 import atexit as _aiu_atexit
@@ -1167,7 +1167,7 @@ model_output_dir = str(MODEL_OUTPUT_DIR)
 model_output_path = str(MODEL_OUTPUT_PATH)
 saved_model_dir = str(MODEL_OUTPUT_DIR)
 
-# Step 6 모델 학습 서버 배포 중 상대경로 산출물은 프로젝트 루트가 아니라 aiu_studio/ 아래에 생성되도록 고정합니다.
+# Step 6 모델 학습 서버 배포 중 상대경로 산출물은 선택한 워크스페이스 루트 아래에 생성되도록 고정합니다.
 _aiu_os.chdir(AI_STUDIO_DIR)
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1179,7 +1179,7 @@ def _aiu_existing_code_paths():
     ]
     return [str(path) for path in candidates if path.exists()]
 
-# MLflow pyfunc log_model(code_paths=...)에는 aiu_studio/ 내부의 실제 코드 폴더만 전달합니다.
+# MLflow pyfunc log_model(code_paths=...)에는 워크스페이스 내부의 실제 코드 폴더만 전달합니다.
 AIU_CODE_PATHS = _aiu_existing_code_paths()
 CODE_PATHS = AIU_CODE_PATHS
 code_paths = AIU_CODE_PATHS
@@ -1397,7 +1397,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     sequence = runtest_2_sequence(project, selected_model, kind, reference)
     preserve_code = preserve_reference_code(reference)
     path_constructor = "Path" if preserve_code else "_AIUPath"
-    aiu_studio_path = project / AIU_STUDIO_DIR_NAME
+    aiu_studio_path = project
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -1514,7 +1514,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
 def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
     reference_expr = runtime_path_expr(reference, "Path")
-    aiu_studio_path = project / AIU_STUDIO_DIR_NAME
+    aiu_studio_path = project
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -1833,7 +1833,7 @@ def generated_mapping_json(project: Path, selected_model: Path, kind: str) -> st
         },
         "runtime": {
             "project_dir": absolute_path_text(project),
-            "aiu_studio_dir": absolute_path_text(project / AIU_STUDIO_DIR_NAME),
+            "workspace_dir": absolute_path_text(project),
             "model_entrypoint": "aiu_custom/model.py",
             "predict_entrypoint": "aiu_custom/predict.py",
             "deployment_entrypoint": "aiu_custom/predict.py",
@@ -1851,7 +1851,7 @@ def generated_mapping_json(project: Path, selected_model: Path, kind: str) -> st
 
 
 def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool, force: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / AIU_STUDIO_DIR_NAME / "runtest_2.py"
+    target = project / "runtest_2.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
@@ -1864,12 +1864,12 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("aiu_studio/runtest_2.py sequence generated + transformed (refreshed)" if existed_before else "aiu_studio/runtest_2.py sequence generated + transformed")
+    changed.append("runtest_2.py sequence generated + transformed (refreshed)" if existed_before else "runtest_2.py sequence generated + transformed")
     return changed, skipped, failures
 
 
 def write_localservingtest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / AIU_STUDIO_DIR_NAME / "local_serving" / "localservingtest.py"
+    target = project / "local_serving" / "localservingtest.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
@@ -1882,12 +1882,12 @@ def write_localservingtest(project: Path, selected_model: Path, kind: str, refer
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("aiu_studio/local_serving/localservingtest.py (refreshed)" if existed_before else "aiu_studio/local_serving/localservingtest.py")
+    changed.append("local_serving/localservingtest.py (refreshed)" if existed_before else "local_serving/localservingtest.py")
     return changed, skipped, failures
 
 
 def write_aiu_model(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "model.py"
+    target = project / "aiu_custom" / "model.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
@@ -1895,27 +1895,27 @@ def write_aiu_model(project: Path, selected_model: Path, kind: str, execute: boo
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(generated_model_text(project, selected_model, kind), encoding="utf-8")
-    changed.append("aiu_studio/aiu_custom/model.py (refreshed)" if existed_before else "aiu_studio/aiu_custom/model.py")
+    changed.append("aiu_custom/model.py (refreshed)" if existed_before else "aiu_custom/model.py")
     return changed, skipped, failures
 
 
 def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "predict.py"
+    target = project / "aiu_custom" / "predict.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
     if not execute:
-        skipped.append("aiu_studio/aiu_custom/predict.py deployment entrypoint:dry_run")
+        skipped.append("aiu_custom/predict.py deployment entrypoint:dry_run")
         return changed, skipped, failures
     existed_before = target.exists()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(generated_predict_text(project, selected_model, kind), encoding="utf-8")
-    changed.append("aiu_studio/aiu_custom/predict.py deployment entrypoint (refreshed)" if existed_before else "aiu_studio/aiu_custom/predict.py deployment entrypoint")
+    changed.append("aiu_custom/predict.py deployment entrypoint (refreshed)" if existed_before else "aiu_custom/predict.py deployment entrypoint")
     return changed, skipped, failures
 
 
 def write_aiu_mapping(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "mapping.json"
+    target = project / "aiu_custom" / "mapping.json"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
@@ -1923,7 +1923,7 @@ def write_aiu_mapping(project: Path, selected_model: Path, kind: str, execute: b
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(generated_mapping_json(project, selected_model, kind), encoding="utf-8")
-    changed.append("aiu_studio/aiu_custom/mapping.json (refreshed)" if existed_before else "aiu_studio/aiu_custom/mapping.json")
+    changed.append("aiu_custom/mapping.json (refreshed)" if existed_before else "aiu_custom/mapping.json")
     return changed, skipped, failures
 
 
@@ -1934,10 +1934,10 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     selected_relative = rel(selected_model, project)
     selected_absolute = absolute_path_text(selected_model)
     required_text_files = [
-        project / AIU_STUDIO_DIR_NAME / "runtest_2.py",
-        project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "model.py",
-        project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "predict.py",
-        project / AIU_STUDIO_DIR_NAME / "local_serving" / "localservingtest.py",
+        project / "runtest_2.py",
+        project / "aiu_custom" / "model.py",
+        project / "aiu_custom" / "predict.py",
+        project / "local_serving" / "localservingtest.py",
     ]
     changed = ["선택 모델 기준 변환 검증"]
     failures: list[str] = []
@@ -1949,18 +1949,18 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             continue
 
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if display_path == "aiu_studio/aiu_custom/model.py":
+        if display_path == "aiu_custom/model.py":
             if "mapping.json" not in text or "_resolve_model_path" not in text:
-                failures.append("model_py_mapping_loader_missing:aiu_studio/aiu_custom/model.py")
+                failures.append("model_py_mapping_loader_missing:aiu_custom/model.py")
             if selected_relative in text or selected_absolute in text:
-                failures.append("selected_model_path_should_not_be_embedded:aiu_studio/aiu_custom/model.py")
+                failures.append("selected_model_path_should_not_be_embedded:aiu_custom/model.py")
             continue
 
-        if display_path == "aiu_studio/aiu_custom/predict.py":
+        if display_path == "aiu_custom/predict.py":
             if "model.py" not in text or "ModelWrapper" not in text or "_load_model_module" not in text:
-                failures.append("predict_py_deployment_delegate_missing:aiu_studio/aiu_custom/predict.py")
+                failures.append("predict_py_deployment_delegate_missing:aiu_custom/predict.py")
             if selected_relative in text or selected_absolute in text:
-                failures.append("selected_model_path_should_not_be_embedded:aiu_studio/aiu_custom/predict.py")
+                failures.append("selected_model_path_should_not_be_embedded:aiu_custom/predict.py")
             if f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
                 failures.append(f"selected_model_kind_not_reflected:{display_path}:{kind}")
             continue
@@ -1976,14 +1976,14 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             if other_relative != selected_relative and (other_relative in text or other_absolute in text):
                 failures.append(f"stale_model_path_in_generated:{display_path}:{other_relative}")
 
-    mapping_path = project / AIU_STUDIO_DIR_NAME / "aiu_custom" / "mapping.json"
+    mapping_path = project / "aiu_custom" / "mapping.json"
     if not mapping_path.is_file():
-        failures.append("selected_model_conversion_missing:aiu_studio/aiu_custom/mapping.json")
+        failures.append("selected_model_conversion_missing:aiu_custom/mapping.json")
     else:
         try:
             mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            failures.append("selected_model_mapping_invalid_json:aiu_studio/aiu_custom/mapping.json")
+            failures.append("selected_model_mapping_invalid_json:aiu_custom/mapping.json")
         else:
             model_mapping = mapping.get("model", {})
             if model_mapping.get("source_path") not in {selected_relative, selected_absolute}:
@@ -2016,8 +2016,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         selected_model_path=rel(selected_model, project) if selected_model else None,
         model_kind=selected_kind,
         reference_entrypoint=None,
-        generated_entrypoint="aiu_studio/runtest_2.py",
-        generated_inference_test="aiu_studio/local_serving/localservingtest.py",
+        generated_entrypoint="runtest_2.py",
+        generated_inference_test="local_serving/localservingtest.py",
         execute=args.execute,
     )
 
@@ -2056,7 +2056,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.reference_entrypoint = rel(reference, project) if reference else None
     if reference is None:
         report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
-        report.next_steps.append("aiu_studio/ 또는 프로젝트 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
+        report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
         return report
 
     changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
@@ -2095,11 +2095,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
-                "PowerShell에서는 선택 프로젝트의 aiu_studio 폴더로 이동한 뒤 실행하세요.",
-                f"cd {powershell_quote_path(project / AIU_STUDIO_DIR_NAME)}",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환",
+                "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
+                f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
-                f"cd {powershell_quote_path(project / AIU_STUDIO_DIR_NAME / 'local_serving')}",
+                f"cd {powershell_quote_path(project / 'local_serving')}",
                 "python localservingtest.py",
                 "추론 테스트 결과는 화면에 출력합니다.",
                 f"cd {powershell_quote_path(project)}",
@@ -2115,7 +2115,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             ]
         )
     elif not report.failures:
-        report.next_steps.append("검토 후 --execute를 붙여 aiu_studio/ 폴더를 그대로 복사하고 aiu_studio/runtest_2.py를 생성하세요.")
+        report.next_steps.append("검토 후 --execute를 붙여 .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 runtest_2.py를 생성하세요.")
     return report
 
 
@@ -2166,11 +2166,11 @@ def print_report(report: PreparedModelReport) -> None:
         or f"{path} (refreshed)" in report.prepared_paths
         or any(item.startswith(f"{path} ") for item in report.prepared_paths)
         for path in [
-            "aiu_studio/runtest_2.py",
-            "aiu_studio/aiu_custom/model.py",
-            "aiu_studio/aiu_custom/predict.py",
-            "aiu_studio/aiu_custom/mapping.json",
-            "aiu_studio/local_serving/localservingtest.py",
+            "runtest_2.py",
+            "aiu_custom/model.py",
+            "aiu_custom/predict.py",
+            "aiu_custom/mapping.json",
+            "local_serving/localservingtest.py",
         ]
     )
     print("1. 모델 목록 확인 - 완료" if report.model_artifact_paths else "1. 모델 목록 확인 - 모델 없음")
@@ -2187,11 +2187,11 @@ def print_report(report: PreparedModelReport) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate aiu_studio/runtest_2.py without modifying runtest.py.")
+    parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate workspace-root runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
-    parser.add_argument("--execute", action="store_true", help="copy samples/aiu_studio/ into project-root aiu_studio/ and create aiu_studio/runtest_2.py")
-    parser.add_argument("--force", action="store_true", help="kept for compatibility; aiu_studio/runtest_2.py is refreshed for the selected model")
+    parser.add_argument("--execute", action="store_true", help="copy samples/aiu_studio/ contents into the workspace root and create runtest_2.py")
+    parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 

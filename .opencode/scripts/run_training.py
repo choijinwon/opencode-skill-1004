@@ -12,8 +12,8 @@ SAMPLES_DIR = ROOT / "samples"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = [
-    "aiu_studio/runtest_2.py",
     "runtest_2.py",
+    "aiu_studio/runtest_2.py",
     "aiu_studio/runtest.py",
     "aiu_studio/run_test.py",
     "aui_studio/runtest.py",
@@ -43,8 +43,8 @@ AUTO_DEFAULT_SETTING_KEYS = {
     "mlflow_register_model_name",
 }
 MODEL_SETTING_FILES = [
-    "aiu_studio/runtest_2.py",
     "runtest_2.py",
+    "aiu_studio/runtest_2.py",
     "aiu_studio/runtest.py",
     "aiu_studio/run_test.py",
     "aui_studio/runtest.py",
@@ -139,8 +139,8 @@ def has_model_project(project: Path) -> bool:
     if is_opencode_sample_source(project):
         return False
     markers = [
-        "aiu_studio/runtest_2.py",
         "runtest_2.py",
+        "aiu_studio/runtest_2.py",
         "runtest.py",
         "run_test.py",
         "aiu_studio/runtest.py",
@@ -432,7 +432,7 @@ def main():
         process_checklist = [
             EnvVarStatus("1. 모델 목록 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("2. 모델 경로로 선택", "done" if artifacts else "needs_input"),
-            EnvVarStatus("3. 선택 모델 환경 변환", "done" if (work_path / "aiu_studio" / "runtest_2.py").exists() else "pending"),
+            EnvVarStatus("3. 선택 모델 환경 변환", "done" if (work_path / "runtest_2.py").exists() else "pending"),
             EnvVarStatus("4. 모델 환경변수 체크", "done" if not missing_env else "needs_input"),
             EnvVarStatus("5. 모델 학습 서버 배포", "done" if args.execute and return_code == 0 else "pending"),
             EnvVarStatus("6. 추론 스모크 테스트", "pending"),

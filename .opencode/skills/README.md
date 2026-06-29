@@ -16,7 +16,7 @@
    Python 3.11.9, dependency, MLflow 3.13.0, 원격 MLflow 서버 version, 설정 상태 확인
 
 04. Train Model
-   선택 모델 기준 aiu_studio/runtest_2.py 생성 또는 실제 entrypoint 실행
+   선택 모델 기준 runtest_2.py 생성 또는 실제 entrypoint 실행
 
 05. Inference Test
    input_example 기반 predict contract와 schema 확인
@@ -34,13 +34,14 @@
 - 상위 폴더, 홈 디렉터리, 드라이브 루트, 임의 하위 폴더, 번들 샘플 폴더를 자동 검색하지 않는다.
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
-- 선택 모델 파일은 `aiu_studio/`로 복사하지 않고, 변환된 `aiu_studio/` 코드는 선택 모델 원본 경로에 연결한다.
-- `.opencode/samples/aiu_studio/` 폴더를 프로젝트 루트의 `aiu_studio/`로 그대로 복사한다.
-- `aiu_studio/` 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
+- 선택 모델 파일은 템플릿 폴더로 복사하지 않고, 변환된 코드는 선택 모델 원본 경로에 연결한다.
+- `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한다.
+- `aiu_custom/` 내부 템플릿 파일도 워크스페이스 루트의 `aiu_custom/`으로 함께 복사한다.
+- 복사된 템플릿 파일 구성은 고정하지 않고 비교/수정하지 않는다.
 - `data/` 원본에는 새 파일을 생성하지 않는다.
-- 기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에 둘 수 있고, 읽기 전용으로만 참조한다.
-- 기존 `runtest.py`는 절대 수정하지 않고 `aiu_studio/runtest_2.py`만 생성한다.
-- `aiu_studio/runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.
+- 기존 `runtest.py`는 루트에 둘 수 있고, 읽기 전용으로만 참조한다.
+- 기존 `runtest.py`는 절대 수정하지 않고 `runtest_2.py`만 생성한다.
+- `runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.
 - 모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
 - 선택된 모델 종류에 맞춰 `load_selected_model()`, `required_package`, `load_hint`를 생성한다.
 - 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
@@ -55,16 +56,16 @@ Step 2. 모델 경로로 선택
         번호는 현재 출력된 목록 순서에 의존한다. 이미 준비된 선택 모델은 --model selected로 재사용한다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 선택 모델 환경 변환
-        aiu_studio/ 폴더를 그대로 복사하고, MODEL_KIND 판별 후 복사된 aiu_studio 파일들을 선택 모델 환경에 맞게 변환/갱신한다.
+        .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고, MODEL_KIND 판별 후 복사된 템플릿 파일들을 선택 모델 환경에 맞게 변환/갱신한다.
         변환 기준은 선택 모델 형식에 맞는 .opencode/samples/* 샘플이다. PyTorch/safetensors는 pytorch_sample/runtest.py를 참조한다.
-        runtest_2.py 생성 시퀀스는 모델 선택, aiu_studio/ 폴더 복사, 모델 형식 확인, 형식별 샘플 참조, runtest_2.py 생성/연결, 실행 코드 변환 순서다.
+        runtest_2.py 생성 시퀀스는 모델 선택, .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사, 모델 형식 확인, 형식별 샘플 참조, runtest_2.py 생성/연결, 실행 코드 변환 순서다.
         변환 대상은 model.py 로더/헬퍼, predict.py 배포 엔트리포인트, 데이터 준비, input_example, MLflow 경로, local serving, 선택 모델 관련 주석이다.
         내부 일치 검증은 자동으로 수행하며 사용자에게 파일별 확인 목록을 요구하지 않는다.
         predict.py는 AI Studio 배포 엔트리포인트로 갱신하고 model.py의 ModelWrapper에 위임한다.
 Step 4. 모델 환경변수 체크
         입력값 3개와 자동값 2개 상태를 확인한다.
 Step 5. 모델 학습 서버 배포
-        aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
+        runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 6. 추론 스모크 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
         기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않는다.

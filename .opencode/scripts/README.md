@@ -3,11 +3,11 @@
 이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 현재 프로젝트 루트 바로 아래와 `data/**` 모델 목록 확인부터 시작하는 7단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
-사용자 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있으며, 자동 준비 시 모델 파일을 `aiu_studio/`로 복사하지 않고 선택한 원본 경로에 연결하도록 코드를 변환한다.
+사용자 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있으며, 자동 준비 시 모델 파일을 템플릿 폴더로 복사하지 않고 선택한 원본 경로에 연결하도록 코드를 변환한다.
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
-모델 있음 흐름에서는 `.opencode/samples/aiu_studio/` 폴더를 프로젝트 루트의 `aiu_studio/`로 그대로 복사한다. 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
-기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에서 참조하고, 수정하지 않고 복사된 `aiu_studio/` 파일들을 선택 모델 원본 경로 기준으로 변환/갱신한다.
+모델 있음 흐름에서는 `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한다. `aiu_custom/` 내부 템플릿 파일도 워크스페이스 루트의 `aiu_custom/`으로 함께 복사된다. 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
+기존 `runtest.py`는 루트에서 참조하고, 수정하지 않고 복사된 템플릿 파일들을 선택 모델 원본 경로 기준으로 변환/갱신한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
 
 유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.
@@ -30,23 +30,23 @@ Step 4  모델 환경변수 체크
         오류 사항이 있으면 경로/환경변수/패키지/버전 기준 서버 배포 오류사항 목록을 함께 보여준다.
 
 Step 5  모델 학습 서버 배포
-        aiu_studio/runtest_2.py
-        input_example.json은 프로젝트 루트가 아니라 aiu_studio/input_example.json에 있어야 하며, 상대경로 산출물도 aiu_studio/ 아래에 생성되도록 실행 시 작업 디렉터리를 aiu_studio/로 고정한다.
+        runtest_2.py
+        input_example.json은 워크스페이스 루트의 input_example.json에 있어야 하며, 상대경로 산출물도 워크스페이스 루트 아래에 생성되도록 실행 시 작업 디렉터리를 프로젝트 루트로 고정한다.
 
 Step 6  추론 스모크 테스트
-        aiu_studio/local_serving/localservingtest.py
+        local_serving/localservingtest.py
 
 Step 7  MLflow 검증
         verify_mlflow.py
 ```
 
-기존 모델 흐름에서 `aiu_studio/runtest_2.py`가 있으면 Build 모드 숫자 입력은 TOD 단계로 처리한다.
+기존 모델 흐름에서 `runtest_2.py`가 있으면 Build 모드 숫자 입력은 TOD 단계로 처리한다.
 
 ```text
 3 -> python .opencode/scripts/prepare_selected_model.py --project . --model selected --execute
-4 -> python .opencode/scripts/check_environment.py --project . --entrypoint aiu_studio/runtest_2.py
-5 -> python aiu_studio/runtest_2.py
-6 -> python aiu_studio/local_serving/localservingtest.py
+4 -> python .opencode/scripts/check_environment.py --project . --entrypoint runtest_2.py
+5 -> python runtest_2.py
+6 -> python local_serving/localservingtest.py
 7 -> python .opencode/scripts/verify_mlflow.py --tracking-uri <tracking-uri> --experiment-name <experiment-name>
 ```
 
@@ -126,12 +126,12 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 ### prepare_selected_model.py
 
-현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `aiu_studio/` 폴더를 루트에 그대로 복사하고 `aiu_studio/runtest_2.py`, `aiu_studio/aiu_custom/model.py`, `aiu_studio/aiu_custom/predict.py`를 준비한다. 기존 모델 경로 문자열, 모델 로딩 호출, 데이터 준비, 관련 주석은 선택 모델 기준으로 변환한다.
-`runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `aiu_studio/input_example.json`을 생성한다.
-`aiu_studio/aiu_custom/model.py`는 선택 모델 로더/헬퍼이고, `aiu_studio/aiu_custom/predict.py`는 AI Studio 배포 엔트리포인트로 갱신되어 `model.py`에 위임한다.
-기존 `runtest.py` 또는 `aiu_studio/runtest.py`는 수정하지 않는다.
+현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사하고 `runtest_2.py`, `aiu_custom/model.py`, `aiu_custom/predict.py`를 준비한다. 기존 모델 경로 문자열, 모델 로딩 호출, 데이터 준비, 관련 주석은 선택 모델 기준으로 변환한다.
+`runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
+`aiu_custom/model.py`는 선택 모델 로더/헬퍼이고, `aiu_custom/predict.py`는 AI Studio 배포 엔트리포인트로 갱신되어 `model.py`에 위임한다.
+기존 `runtest.py`는 수정하지 않는다.
 선택 모델 형식에 맞는 `.opencode/samples/*` 샘플을 우선 참조한다. PyTorch/safetensors는 `.opencode/samples/pytorch_sample/runtest.py`, sklearn/joblib/xgboost는 `.opencode/samples/sklearn_sample/run_model.py`, tensorflow/keras/h5는 `.opencode/samples/tensorflow_sample/run_model.py`를 참조해 변환한다.
-`runtest_2.py` 생성 시퀀스는 `모델 선택 -> aiu_studio/ 폴더 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환` 순서로 수행한다.
+`runtest_2.py` 생성 시퀀스는 `모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환` 순서로 수행한다.
 
 ```text
 python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
@@ -151,7 +151,7 @@ model_artifact_paths
 selected_model_path
 MODEL_KIND
 reference_entrypoint: aiu_studio/runtest.py, runtest.py, run_test.py 중 하나
-generated_entrypoint: aiu_studio/runtest_2.py
+generated_entrypoint: runtest_2.py
 ```
 
 지원 모델 형식:
@@ -364,13 +364,13 @@ python .opencode/scripts/test_local_sample.py --sample sklearn
 python .opencode/scripts/test_local_sample.py --sample all
 ```
 
-### aiu_studio/local_serving/localservingtest.py
+### local_serving/localservingtest.py
 
 `prepare_selected_model.py --execute`가 생성하는 선택 모델 기준 추론 테스트 파일이다. 선택 모델 경로, `MODEL_KIND`, `load_selected_model()`이 반영된다.
 
 기본 실행은 화면 출력만 수행하며 프로젝트 루트 `local_serving/` 폴더를 만들지 않는다.
 
-PowerShell에서는 선택 프로젝트의 `aiu_studio/local_serving` 폴더로 이동한 뒤 실행한다.
+PowerShell에서는 선택 프로젝트의 `local_serving` 폴더로 이동한 뒤 실행한다.
 
 ```powershell
 cd '<selected-project-path>\aiu_studio\local_serving'
