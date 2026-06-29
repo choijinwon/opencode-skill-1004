@@ -178,12 +178,9 @@ Step 6. 선택 모델 읽기/판별
         선택한 모델 경로를 읽어 MODEL_KIND와 로더 기준을 판별한다.
         MODEL_PATH = SOURCE_MODEL_PATH
 
-Step 7. 모델 형식별 샘플 참조
-        선택 모델 MODEL_KIND에 맞는 .opencode/samples/* 샘플을 우선 읽기 전용으로 참조한다.
-        PyTorch/safetensors는 .opencode/samples/pytorch_sample/runtest.py를 참조한다.
-        sklearn/joblib/xgboost는 .opencode/samples/sklearn_sample/run_model.py를 참조한다.
-        tensorflow/keras/h5는 .opencode/samples/tensorflow_sample/run_model.py를 참조한다.
-        형식별 샘플이 없을 때만 루트 runtest.py, run_test.py 순서로 참조한다.
+Step 7. 선택 모델 기준 변환
+        PyTorch/safetensors 모델은 .opencode/samples/pytorch_sample/runtest.py를 기준으로 선택 모델에 맞게 변환한다.
+        선택 모델 경로, MODEL_KIND, 로더, 데이터 준비, 주석을 변환 대상에 포함한다.
 
 Step 8. runtest_2.py 변환/갱신
         워크스페이스 루트의 runtest_2.py 또는 참조 파일을 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.
@@ -247,7 +244,8 @@ For `4`, always report it as `모델 환경변수 체크`. The output must show 
 
 Step 3. 선택 모델 환경 변환
         사용자가 선택한 모델 경로와 MODEL_KIND를 기준으로 .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 모델 환경에 맞게 변환한다.
-        runtest_2.py 생성 시퀀스는 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 형식별 샘플 참조 -> runtest_2.py 생성/연결 -> 실행 코드 변환 순서로 수행한다.
+        PyTorch/safetensors 모델은 .opencode/samples/pytorch_sample/runtest.py를 기준으로 선택 모델에 맞게 변환한다.
+        runtest_2.py 생성 시퀀스는 모델 선택 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> 모델 형식 확인 -> 선택 모델 기준 변환 -> runtest_2.py 생성/연결 -> 실행 코드 변환 순서로 수행한다.
         변환 대상은 model.py 로더/헬퍼, predict.py 배포 엔트리포인트, 데이터 준비, input_example, MLflow artifact/code_paths, local serving 동작, 선택 모델 관련 주석이다.
         내부 일치 검증은 자동으로 수행하되 사용자에게 파일별 확인 목록을 길게 보여주지 않는다.
 
@@ -299,7 +297,7 @@ Describe that one command to the user as:
 다음 작업 수행(한 번에): 선택 모델 환경 변환
 ```
 
-The first Build step for an existing model is always listing model artifacts directly under the currently selected project root and under that project's `data/**` tree, selecting one model, choosing the sample reference by `MODEL_KIND`, and generating `runtest_2.py`. Use `.opencode/samples/pytorch_sample/runtest.py` for PyTorch/safetensors, `.opencode/samples/sklearn_sample/run_model.py` for sklearn/joblib/xgboost, and `.opencode/samples/tensorflow_sample/run_model.py` for tensorflow/keras/h5. If no kind-specific sample exists, fall back to `runtest.py` or `run_test.py`. Do not create a fake reference file automatically; ask the user to place the real reference file in the project when fallback also fails.
+The first Build step for an existing model is always listing model artifacts directly under the currently selected project root and under that project's `data/**` tree, selecting one model, converting from the current model context, and generating `runtest_2.py`. For PyTorch/safetensors, use `.opencode/samples/pytorch_sample/runtest.py` as the conversion baseline. Do not create a fake reference file automatically; ask the user to place the real reference file in the project when fallback also fails.
 
 ## MLflow Tracking Guide
 

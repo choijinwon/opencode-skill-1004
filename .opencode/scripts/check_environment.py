@@ -994,7 +994,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             "1. 모델 목록 확인: 현재 프로젝트 루트 바로 아래와 data/**에서 사용할 모델 후보를 확인한다.",
             "2. 모델 경로로 선택: prepare_selected_model.py --model <경로> 또는 --model selected로 선택한다.",
-            "3. 선택 모델 환경 변환: .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 모델 형식 확인, 형식별 샘플 참조, runtest_2.py 생성/연결, 실행 코드 변환을 수행한다.",
+            "3. 선택 모델 환경 변환: .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 모델 형식 확인, 선택 모델 기준 변환, runtest_2.py 생성/연결, 실행 코드 변환을 수행한다.",
             f"4. 모델 환경변수 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 set/empty/missing/auto_default/ssl_not_allowed로 확인한다.",
             f"5. 모델 학습 서버 배포: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
             "6. 추론 스모크 테스트: 선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.",

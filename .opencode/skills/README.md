@@ -59,8 +59,8 @@ Step 2. 모델 경로로 선택
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 선택 모델 환경 변환
         .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고, MODEL_KIND 판별 후 복사된 템플릿 파일들을 선택 모델 환경에 맞게 변환/갱신한다.
-        변환 기준은 선택 모델 형식에 맞는 .opencode/samples/* 샘플이다. PyTorch/safetensors는 pytorch_sample/runtest.py를 참조한다.
-        runtest_2.py 생성 시퀀스는 모델 선택, .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사, 모델 형식 확인, 형식별 샘플 참조, runtest_2.py 생성/연결, 실행 코드 변환 순서다.
+        PyTorch/safetensors 모델은 pytorch_sample/runtest.py를 기준으로 선택 모델에 맞게 변환한다.
+        runtest_2.py 생성 시퀀스는 모델 선택, .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사, 모델 형식 확인, 선택 모델 기준 변환, runtest_2.py 생성/연결, 실행 코드 변환 순서다.
         변환 대상은 model.py 로더/헬퍼, predict.py 배포 엔트리포인트, 데이터 준비, input_example, MLflow 경로, local serving, 선택 모델 관련 주석이다.
         내부 일치 검증은 자동으로 수행하며 사용자에게 파일별 확인 목록을 요구하지 않는다.
         predict.py는 AI Studio 배포 엔트리포인트로 갱신하고 model.py의 ModelWrapper에 위임한다.
