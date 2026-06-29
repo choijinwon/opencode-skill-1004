@@ -39,8 +39,9 @@ metadata:
 1. Python 실행 파일과 버전을 확인한다.
 2. dependency 파일과 핵심 패키지를 확인한다.
 3. MLflow 3.13.0 설치/version을 확인한다.
-4. run_model.py, runtest.py 또는 aiu_studio/runtest.py 설정 블록을 확인한다.
-5. 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
+4. mlflow_tracking_url이 있으면 원격 MLflow 서버 version을 확인한다.
+5. run_model.py, runtest.py 또는 aiu_studio/runtest.py 설정 블록을 확인한다.
+6. 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
 ```
 
 ## Output Contract
@@ -52,6 +53,7 @@ metadata:
 - dependency 파일 상태
 - requirements.txt 필요 패키지 / 설치 여부 / 설치 버전 / 요구 버전 / 버전 불일치
 - MLflow 3.13.0 설치/version 상태
+- 원격 MLflow 서버 version / 로컬 MLflow version / 불일치 여부
 - 환경 변수 상태
 - 실행 파일명이 다른 경우 --entrypoint <file> 사용 여부
 - 입력이 필요한 값
@@ -66,6 +68,7 @@ metadata:
 판단 결과: warn
 Python: version_mismatch, current=<현재버전>, expected=3.11.9
 MLflow: set
+Remote MLflow: version_match | version_mismatch | unreachable | skipped
 Secrets: mlflow_tracking_password=set, value hidden
 입력이 필요한 값: mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password
 ```
@@ -111,12 +114,14 @@ tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 pass:
 - Python 3.11.9
 - MLflow 3.13.0 설치됨
+- 원격 MLflow 서버 version과 로컬 mlflow version 일치
 - 핵심 dependency 확인됨
 - 필수 MLflow 설정이 소스 또는 환경에 있음
 
 warn:
 - Python 버전만 기대값과 다름
 - 폐쇄망 설치 준비가 필요하지만 다음 단계 안내 가능
+- 원격 MLflow 서버 version 확인 실패(unreachable)지만 URL/인증을 다시 확인할 수 있음
 
 needs_user_input:
 - mlflow_tracking_url, username, password 입력 필요
@@ -126,6 +131,7 @@ blocked:
 - 프로젝트 경로 없음
 - 실행 파일 없음
 - requirements/config를 읽을 수 없음
+- 원격 MLflow 서버 version과 로컬/requirements mlflow version 불일치
 ```
 
 사용자가 직접 입력할 설정:

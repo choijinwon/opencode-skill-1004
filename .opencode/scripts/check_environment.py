@@ -1,11 +1,14 @@
 import argparse
 import ast
+import base64
 import importlib.metadata
 import json
 import os
 import platform
 import re
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -182,6 +185,11 @@ EXPECTED_PACKAGE_VERSIONS = {
     "mlflow": "==3.13.0",
 }
 REQUIREMENT_OPERATORS = ["==", "!=", ">=", "<=", "~=", ">", "<"]
+REMOTE_MLFLOW_VERSION_ENDPOINTS = [
+    "version",
+    "api/2.0/mlflow/version",
+]
+REMOTE_MLFLOW_TIMEOUT_SECONDS = 3
 
 
 @dataclass
@@ -215,6 +223,17 @@ class EnvFileStatus:
 
 
 @dataclass
+class RemoteMlflowStatus:
+    tracking_uri_status: str
+    status: str
+    server_version: str | None = None
+    local_version: str | None = None
+    required_version: str | None = None
+    endpoint: str | None = None
+    detail: str | None = None
+
+
+@dataclass
 class EnvironmentReport:
     project_path: str
     os: str
@@ -239,6 +258,7 @@ class EnvironmentReport:
     selected_model_kind: str | None = None
     selected_required_package: str | None = None
     selected_package_status: str | None = None
+    remote_mlflow: RemoteMlflowStatus | None = None
 
 
 def package_version(name: str) -> str | None:
@@ -416,7 +436,8 @@ def is_unselected_framework_requirement(item: RequirementStatus, selected_requir
     return item_name in FRAMEWORK_PACKAGES and item_name != selected
 
 
-def requirement_statuses(project: Path) -> list[RequirementStatus]:
+def requirement_statuses(project: Path, expected_package_versions: dict[str, str] | None = None) -> list[RequirementStatus]:
+    expected_package_versions = expected_package_versions or EXPECTED_PACKAGE_VERSIONS
     statuses: list[RequirementStatus] = []
     seen: set[str] = set()
     requirements_path = project / "requirements.txt"
@@ -442,7 +463,7 @@ def requirement_statuses(project: Path) -> list[RequirementStatus]:
                     status=status,
                 )
             )
-    for name, required_spec in EXPECTED_PACKAGE_VERSIONS.items():
+    for name, required_spec in expected_package_versions.items():
         normalized = normalize_package_name(name)
         if normalized in seen:
             continue
@@ -562,6 +583,35 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def usable_setting_value(value: str | None) -> str | None:
+    if value is None or value == "" or todo_placeholder(value):
+        return None
+    return value
+
+
+def resolved_mlflow_settings(project: Path, entrypoint_name: str | None = None) -> dict[str, str]:
+    values: dict[str, str] = {}
+    env_file_values = parse_env_file(project / "ai_studio.env")
+    for key in AI_STUDIO_ENV_KEYS:
+        value = usable_setting_value(env_file_values.get(key))
+        if value is not None:
+            values[key] = value
+
+    for setting_key, env_key in EXPORT_ENV_MAP.items():
+        value = usable_setting_value(os.environ.get(env_key))
+        if value is not None:
+            values[setting_key] = value
+
+    setting_file = resolve_setting_file(project, entrypoint_name)
+    if setting_file is not None and setting_file.exists():
+        source_values = parse_python_string_assignments(setting_file)
+        for key in AI_STUDIO_ENV_KEYS:
+            value = usable_setting_value(source_values.get(key))
+            if value is not None:
+                values[key] = value
+    return values
+
+
 def ssl_not_allowed(value: str | None) -> bool:
     return bool(value and value.strip().lower().startswith("https://"))
 
@@ -583,6 +633,109 @@ def setting_value_status(key: str, value: str | None, missing_status: str = "mis
     if key in SSL_BLOCKED_SETTING_KEYS and ssl_not_allowed(value):
         return "ssl_not_allowed"
     return "set"
+
+
+def extract_mlflow_version(payload: str) -> str | None:
+    stripped = payload.strip()
+    if not stripped:
+        return None
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        data = None
+    if isinstance(data, dict):
+        for key in ["version", "mlflow_version", "server_version"]:
+            value = data.get(key)
+            if isinstance(value, str):
+                return value.strip()
+    match = re.search(r"\d+(?:\.\d+){1,3}(?:[A-Za-z0-9_.+-]*)?", stripped)
+    return match.group(0) if match else None
+
+
+def remote_version_status(server_version: str | None, local_version: str | None) -> tuple[str, str | None]:
+    if not server_version:
+        return "version_unchecked", None
+    required_spec = f"=={server_version}"
+    if local_version is None:
+        return "missing_local_mlflow", required_spec
+    return version_constraint_status(local_version, required_spec), required_spec
+
+
+def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = None) -> RemoteMlflowStatus:
+    settings = resolved_mlflow_settings(project, entrypoint_name)
+    tracking_uri = settings.get("mlflow_tracking_url")
+    local_version = package_version("mlflow")
+
+    if tracking_uri is None:
+        return RemoteMlflowStatus(
+            tracking_uri_status="missing",
+            status="skipped",
+            local_version=local_version,
+            detail="mlflow_tracking_url is missing",
+        )
+    if ssl_not_allowed(tracking_uri):
+        return RemoteMlflowStatus(
+            tracking_uri_status="ssl_not_allowed",
+            status="skipped",
+            local_version=local_version,
+            detail="https tracking URI is not allowed",
+        )
+    if tracking_uri.lower().startswith("file://"):
+        return RemoteMlflowStatus(
+            tracking_uri_status="local_file",
+            status="skipped",
+            local_version=local_version,
+            detail="file tracking URI has no remote server version",
+        )
+    if not tracking_uri.lower().startswith(("http://", "https://")):
+        return RemoteMlflowStatus(
+            tracking_uri_status="unsupported",
+            status="skipped",
+            local_version=local_version,
+            detail="tracking URI must start with http:// for remote version check",
+        )
+
+    username = settings.get("mlflow_tracking_username")
+    password = settings.get("mlflow_tracking_password")
+    auth_header = None
+    if username and password:
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+        auth_header = f"Basic {token}"
+
+    base_uri = tracking_uri.rstrip("/")
+    last_error = None
+    for endpoint_name in REMOTE_MLFLOW_VERSION_ENDPOINTS:
+        endpoint = f"{base_uri}/{endpoint_name}"
+        headers = {"Accept": "application/json, text/plain"}
+        if auth_header:
+            headers["Authorization"] = auth_header
+        request = urllib.request.Request(endpoint, headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=REMOTE_MLFLOW_TIMEOUT_SECONDS) as response:
+                payload = response.read(4096).decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_error = exc
+            continue
+        server_version = extract_mlflow_version(payload)
+        if not server_version:
+            last_error = ValueError("remote version response did not include a version")
+            continue
+        status, required_spec = remote_version_status(server_version, local_version)
+        return RemoteMlflowStatus(
+            tracking_uri_status="set",
+            status=status,
+            server_version=server_version,
+            local_version=local_version,
+            required_version=required_spec,
+            endpoint=endpoint,
+        )
+
+    return RemoteMlflowStatus(
+        tracking_uri_status="set",
+        status="unreachable",
+        local_version=local_version,
+        detail=f"remote version check failed: {type(last_error).__name__ if last_error else 'unknown'}",
+    )
 
 
 def ai_studio_env_status(project: Path) -> EnvFileStatus:
@@ -748,22 +901,25 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     python_version = platform.python_version()
     deps = dependency_files(project)
     selected_path, selected_kind, selected_required_package, selected_package_status = selected_model_status(project)
+    env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
+    ai_env = ai_studio_env_status(project)
+    model_settings = model_settings_status(project, entrypoint_name)
+    export_ready = export_ready_status(project, entrypoint_name)
+    source_input_required = source_input_required_status(model_settings)
+    remote_mlflow = check_remote_mlflow_version(project, entrypoint_name)
+    effective_expected_package_versions = dict(EXPECTED_PACKAGE_VERSIONS)
+    if remote_mlflow.server_version:
+        effective_expected_package_versions["mlflow"] = f"=={remote_mlflow.server_version}"
     packages = []
     package_names = list(CORE_PACKAGES)
     if selected_required_package and selected_required_package not in {normalize_package_name(name) for name in package_names}:
         package_names.append(selected_required_package)
     for package in package_names:
         version = package_version(package)
-        required_spec = EXPECTED_PACKAGE_VERSIONS.get(normalize_package_name(package), "any")
+        required_spec = effective_expected_package_versions.get(normalize_package_name(package), "any")
         status = "missing" if version is None else ("set" if required_spec == "any" else version_constraint_status(version, required_spec))
         packages.append(PackageStatus(package, status, version, required_spec))
-    requirements = requirement_statuses(project)
-
-    env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
-    ai_env = ai_studio_env_status(project)
-    model_settings = model_settings_status(project, entrypoint_name)
-    export_ready = export_ready_status(project, entrypoint_name)
-    source_input_required = source_input_required_status(model_settings)
+    requirements = requirement_statuses(project, effective_expected_package_versions)
     blocked_summary: list[str] = []
     failures: list[str] = []
     next_steps: list[str] = []
@@ -828,6 +984,26 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if package_version("mlflow") is None:
         failures.append("missing_dependency:mlflow")
         next_steps.append("Install or activate an environment that includes mlflow.")
+    if remote_mlflow.status == "version_mismatch" and remote_mlflow.server_version:
+        failures.append(
+            f"version_mismatch:mlflow remote {remote_mlflow.server_version} local {remote_mlflow.local_version or 'missing'}"
+        )
+        next_steps.append(f"원격 MLflow 서버 버전에 맞춰 로컬/업로드 환경의 mlflow를 {remote_mlflow.required_version}로 설치하세요.")
+    elif remote_mlflow.status == "missing_local_mlflow" and remote_mlflow.server_version:
+        failures.append(f"missing_dependency:mlflow remote {remote_mlflow.server_version}")
+        next_steps.append(f"원격 MLflow 서버 버전에 맞춰 mlflow{remote_mlflow.required_version}를 설치하세요.")
+    elif remote_mlflow.status == "unreachable":
+        next_steps.append("원격 MLflow 서버 버전 확인에 실패했습니다. 서버 URL/방화벽/인증 정보를 확인하세요.")
+    if remote_mlflow.server_version:
+        for item in requirements:
+            if normalize_package_name(item.name) != "mlflow":
+                continue
+            if version_constraint_status(remote_mlflow.server_version, item.required_version) == "version_mismatch":
+                failures.append(
+                    f"version_mismatch_requirements:mlflow remote {remote_mlflow.server_version} not_allowed_by {item.required_version}"
+                )
+                next_steps.append(f"requirements.txt의 mlflow 요구 버전을 mlflow=={remote_mlflow.server_version}로 수정하세요.")
+                break
     tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported"} for item in export_ready)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
         next_steps.append("Confirm local or remote MLFLOW_TRACKING_URI before MLflow verification.")
@@ -872,6 +1048,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         selected_model_kind=selected_kind,
         selected_required_package=selected_required_package,
         selected_package_status=selected_package_status,
+        remote_mlflow=remote_mlflow,
     )
 
 
@@ -893,6 +1070,17 @@ def print_text(report: EnvironmentReport):
         suffix = f" {package.version}" if package.version else ""
         expected = f" (expected: {package.required_version})" if package.required_version != "any" else ""
         print(f"- {package.name}: {package.status}{suffix}{expected}")
+    if report.remote_mlflow:
+        print("\nRemote MLflow server:")
+        print(f"- tracking URI: {report.remote_mlflow.tracking_uri_status}")
+        print(f"- status: {report.remote_mlflow.status}")
+        print(f"- server version: {report.remote_mlflow.server_version or 'unchecked'}")
+        print(f"- local version: {report.remote_mlflow.local_version or 'missing'}")
+        print(f"- required version: {report.remote_mlflow.required_version or 'unchecked'}")
+        if report.remote_mlflow.endpoint:
+            print(f"- version endpoint: {report.remote_mlflow.endpoint}")
+        if report.remote_mlflow.detail:
+            print(f"- detail: {report.remote_mlflow.detail}")
     if report.requirements:
         print("\nDependency check from requirements.txt:")
         for item in report.requirements:
