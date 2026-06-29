@@ -564,7 +564,7 @@ def runtime_project_path_expr(project: Path, path: Path) -> str:
     relative = rel(path, project)
     if Path(relative).is_absolute():
         return f'_AIUPath({relative!r})'
-    return f'PROJECT_DIR / "{relative}"'
+    return f'AI_STUDIO_DIR / "{relative}"'
 
 
 def reference_display_path(reference: Path) -> str:
@@ -587,7 +587,7 @@ def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference
         f"2. 현재 프로젝트 루트/data/** 검색 결과에서 모델 형식 확인: MODEL_KIND={kind}",
         "3. .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사",
         conversion_reference_step(kind, reference),
-        f"5. 선택 모델 경로와 MODEL_KIND를 반영해 실행/등록 연결부 변환: {rel(selected_model, project)} / {kind}",
+        f"5. 선택 모델 경로와 MODEL_KIND 확인: {rel(selected_model, project)} / {kind}",
         "6. 변환 결과 검증",
     ]
 
@@ -1069,21 +1069,18 @@ def transform_reference_text(
 def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
     reference_expr = runtime_project_path_expr(project, reference)
-    project_expr = runtime_path_expr(project)
     aiu_studio_path = project
-    aiu_studio_expr = runtime_path_expr(aiu_studio_path)
-    selected_model_expr = runtime_path_expr(selected_model)
-    input_example_expr = runtime_path_expr(aiu_studio_path / "input_example.json")
-    config_dir_expr = runtime_path_expr(aiu_studio_path / "config")
-    config_path_expr = runtime_path_expr(aiu_studio_path / "config" / "config.json")
-    model_output_dir_expr = runtime_path_expr(aiu_studio_path / "saved_model")
-    model_output_path_expr = runtime_path_expr(aiu_studio_path / "saved_model" / "model.pkl")
+    selected_model_expr = runtime_project_path_expr(project, selected_model)
+    input_example_expr = 'AI_STUDIO_DIR / "input_example.json"'
+    config_dir_expr = 'AI_STUDIO_DIR / "config"'
+    config_path_expr = 'AI_STUDIO_DIR / "config" / "config.json"'
+    model_output_dir_expr = 'AI_STUDIO_DIR / "saved_model"'
+    model_output_path_expr = 'AI_STUDIO_DIR / "saved_model" / "model.pkl"'
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
     load_hint = details.get("load_hint", "custom loader required")
-    sequence = runtest_2_sequence(project, selected_model, kind, reference)
     loader = details.get(
         "loader",
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
@@ -1100,9 +1097,7 @@ import atexit as _aiu_atexit
 import json as _aiu_json
 from pathlib import Path as _AIUPath
 
-RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}
-AI_STUDIO_DIR = {aiu_studio_expr}
-PROJECT_DIR = {project_expr}
+AI_STUDIO_DIR = _AIUPath(__file__).resolve().parent
 ORIGINAL_MODEL_PATH = {selected_model_expr}
 SOURCE_MODEL_PATH = {selected_model_expr}
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
@@ -1309,41 +1304,8 @@ def insert_preserved_data_prep_block(text: str, kind: str) -> str:
     return text.rstrip() + block
 
 
-def runtest_sequence_block(sequence: list[str]) -> str:
-    return (
-        "\n# --- AIU Studio runtest_2.py generation sequence ---\n"
-        f"RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}\n"
-        "# --- /AIU Studio runtest_2.py generation sequence ---\n"
-    )
-
-
-def insert_runtest_sequence_block(text: str, sequence: list[str]) -> str:
-    if "RUNTEST_2_SEQUENCE" in text:
-        return text
-    lines = text.splitlines(keepends=True)
-    future_import_pattern = re.compile(r"^\s*from\s+__future__\s+import\s+")
-    import_pattern = re.compile(
-        r"^\s*(import\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?|from\s+[A-Za-z_][A-Za-z0-9_.]*\s+import\s+.+)"
-    )
-
-    insert_at = 0
-    if lines and lines[0].startswith("#!"):
-        insert_at = 1
-    while insert_at < len(lines) and re.match(r"^#.*coding[:=]", lines[insert_at]):
-        insert_at += 1
-    while insert_at < len(lines):
-        line = lines[insert_at]
-        if not line.strip() or future_import_pattern.match(line) or import_pattern.match(line):
-            insert_at += 1
-            continue
-        break
-    lines.insert(insert_at, runtest_sequence_block(sequence))
-    return "".join(lines)
-
-
 def generated_selected_model_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
-    sequence = runtest_2_sequence(project, selected_model, kind, reference)
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -1366,20 +1328,16 @@ from aiu_custom.predict import ModelWrapper
 
 logging.getLogger("mlflow").setLevel(logging.ERROR)
 
-# 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환해줘.
-
-RUNTEST_2_SEQUENCE = {json.dumps(sequence, ensure_ascii=False, indent=4)}
-PROJECT_DIR = Path({absolute_path_text(project)!r})
-AI_STUDIO_DIR = PROJECT_DIR
-SOURCE_MODEL_PATH = Path({absolute_path_text(selected_model)!r})
+AI_STUDIO_DIR = Path(__file__).resolve().parent
+SOURCE_MODEL_PATH = AI_STUDIO_DIR / {selected_relative!r}
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_KIND = {kind!r}
 MODEL_LOAD_HINT = {load_hint!r}
 AIU_REQUIRED_PACKAGE = {required_package!r}
-REFERENCE_ENTRYPOINT = Path({absolute_path_text(reference)!r})
-INPUT_EXAMPLE_PATH = PROJECT_DIR / "input_example.json"
-CONFIG_DIR = PROJECT_DIR / "config"
+REFERENCE_ENTRYPOINT = {reference_display_path(reference)!r}
+INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
+CONFIG_DIR = AI_STUDIO_DIR / "config"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
 # AI 환경 설정
@@ -1502,7 +1460,6 @@ if __name__ == "__main__":
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     reference_text = reference.read_text(encoding="utf-8", errors="ignore")
     selected_relative = rel(selected_model, project)
-    sequence = runtest_2_sequence(project, selected_model, kind, reference)
     preserve_code = preserve_reference_code(reference)
     if preserve_code:
         return generated_selected_model_runtest_text(project, selected_model, kind, reference)
@@ -1513,23 +1470,23 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     required_package = details.get("required_package", "unknown")
     load_hint = details.get("load_hint", "custom loader required")
     replacements = {
-        "AI_STUDIO_DIR": runtime_path_expr(aiu_studio_path, path_constructor),
-        "PROJECT_DIR": runtime_path_expr(project, path_constructor),
-        "AI_STUDIO_CODE_DIR": runtime_path_expr(aiu_studio_path / "code", path_constructor),
-        "AI_STUDIO_METRICS_DIR": runtime_path_expr(aiu_studio_path / "metrics", path_constructor),
+        "AI_STUDIO_DIR": f"{path_constructor}(__file__).resolve().parent",
+        "PROJECT_DIR": f"{path_constructor}(__file__).resolve().parent",
+        "AI_STUDIO_CODE_DIR": 'AI_STUDIO_DIR / "code"',
+        "AI_STUDIO_METRICS_DIR": 'AI_STUDIO_DIR / "metrics"',
         "AI_STUDIO_TRACKING_DIR": "AI_STUDIO_DIR",
-        "SOURCE_MODEL_PATH": runtime_path_expr(selected_model, path_constructor),
+        "SOURCE_MODEL_PATH": f'AI_STUDIO_DIR / "{selected_relative}"',
         "DATA_MODEL_PATH": "SOURCE_MODEL_PATH",
         "MODEL_PATH": "SOURCE_MODEL_PATH",
-        "CONFIG_DIR": runtime_path_expr(aiu_studio_path / "config", path_constructor),
-        "CONFIG_PATH": runtime_path_expr(aiu_studio_path / "config" / "config.json", path_constructor),
-        "MODEL_OUTPUT_DIR": runtime_path_expr(aiu_studio_path / "saved_model", path_constructor),
-        "MODEL_OUTPUT_PATH": runtime_path_expr(aiu_studio_path / "saved_model" / "model.pkl", path_constructor),
+        "CONFIG_DIR": 'AI_STUDIO_DIR / "config"',
+        "CONFIG_PATH": 'AI_STUDIO_DIR / "config" / "config.json"',
+        "MODEL_OUTPUT_DIR": 'AI_STUDIO_DIR / "saved_model"',
+        "MODEL_OUTPUT_PATH": 'AI_STUDIO_DIR / "saved_model" / "model.pkl"',
         "MODEL_KIND": repr(kind),
         "MODEL_LOAD_HINT": repr(load_hint),
         "classifier": "load_selected_model()",
         "clf": "load_selected_model()",
-        "INPUT_EXAMPLE_PATH": runtime_path_expr(aiu_studio_path / "input_example.json", path_constructor),
+        "INPUT_EXAMPLE_PATH": 'AI_STUDIO_DIR / "input_example.json"',
         "dataset": "_aiu_model_input_example()",
         "dataloader": '_aiu_model_input_example()["inputs"]',
         "features": '_aiu_model_input_example()["inputs"][0]["data"]',
@@ -1613,7 +1570,6 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     )
     if preserve_code:
         transformed = insert_preserved_data_prep_block(transformed, kind)
-    transformed = insert_runtest_sequence_block(transformed, sequence)
     transformed = transformed.replace(
         "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
         "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
@@ -1623,8 +1579,6 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
 
 def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
-    reference_expr = runtime_path_expr(reference, "Path")
-    aiu_studio_path = project
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -1641,18 +1595,17 @@ import json
 from pathlib import Path
 
 
-LOCAL_SERVING_DIR = {runtime_path_expr(aiu_studio_path / "local_serving", "Path")}
-AI_STUDIO_DIR = {runtime_path_expr(aiu_studio_path, "Path")}
-PROJECT_DIR = {runtime_path_expr(project, "Path")}
-ORIGINAL_MODEL_PATH = {runtime_path_expr(selected_model, "Path")}
-SOURCE_MODEL_PATH = {runtime_path_expr(selected_model, "Path")}
+LOCAL_SERVING_DIR = Path(__file__).resolve().parent
+AI_STUDIO_DIR = LOCAL_SERVING_DIR.parent
+ORIGINAL_MODEL_PATH = AI_STUDIO_DIR / {selected_relative!r}
+SOURCE_MODEL_PATH = ORIGINAL_MODEL_PATH
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_PATH = SOURCE_MODEL_PATH
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 AIU_REQUIRED_PACKAGE = "{required_package}"
 AIU_LOAD_HINT = "{load_hint}"
-REFERENCE_ENTRYPOINT = {reference_expr}
+REFERENCE_ENTRYPOINT = {reference_display_path(reference)!r}
 
 # AIU Studio 변환: 선택 모델 원본 경로 {selected_relative} 기준 추론 테스트입니다.
 # 모델 파일은 템플릿 폴더로 복사하지 않고 프로젝트 내 원본 위치에서 직접 읽습니다.
@@ -1768,17 +1721,13 @@ def _mapping_runtime():
 
 def _resolve_model_path():
     model = _mapping_model()
-    runtime = _mapping_runtime()
-    raw_path = model.get("relative_path") or model.get("source_path") or model.get("absolute_path")
+    raw_path = model.get("relative_path") or model.get("source_path")
     if not raw_path:
         raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
     path = Path(str(raw_path))
     if path.is_absolute():
         return path
-    project_dir = runtime.get("project_dir")
-    if project_dir:
-        return Path(str(project_dir)) / path
-    return Path(__file__).resolve().parents[2] / path
+    return Path(__file__).resolve().parents[1] / path
 
 
 def _model_kind():
@@ -1930,21 +1879,18 @@ def predict(payload):
 
 def generated_mapping_json(project: Path, selected_model: Path, kind: str) -> str:
     selected_relative = rel(selected_model, project)
-    selected_absolute = absolute_path_text(selected_model)
     details = MODEL_KIND_DETAILS.get(kind, {})
     mapping = {
         "model": {
             "name": selected_model.name,
             "kind": kind,
             "relative_path": selected_relative,
-            "absolute_path": selected_absolute,
-            "source_path": selected_absolute,
+            "source_path": selected_relative,
             "load_hint": details.get("load_hint", "custom loader required"),
             "required_package": details.get("required_package", "unknown"),
         },
         "runtime": {
-            "project_dir": absolute_path_text(project),
-            "workspace_dir": absolute_path_text(project),
+            "workspace_root": ".",
             "model_entrypoint": "aiu_custom/model.py",
             "predict_entrypoint": "aiu_custom/predict.py",
             "deployment_entrypoint": "aiu_custom/predict.py",
@@ -2080,7 +2026,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         project / "aiu_custom" / "predict.py",
         project / "local_serving" / "localservingtest.py",
     ]
-    changed = ["선택 모델 실행/등록 연결부 변환 검증"]
+    changed = ["선택 모델 실행/등록 연결부 별도 변환 검증"]
     failures: list[str] = []
 
     for path in required_text_files:
@@ -2241,7 +2187,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> 모델 형식 확인 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> samples/pytorch_sample/ 내부 참조 -> 선택 모델 경로와 MODEL_KIND를 반영해 실행/등록 연결부 변환 -> 변환 결과 검증",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 루트/data/** 모델 선택 -> 모델 형식 확인 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> samples/pytorch_sample/ 내부 참조 -> 선택 모델 경로와 MODEL_KIND 확인 -> 변환 결과 검증",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
@@ -2293,8 +2239,8 @@ def print_report(report: PreparedModelReport) -> None:
         print("Prepared:")
         if report.selected_model_path:
             print("- .opencode/samples/aiu_studio/* -> workspace root")
-            print("- samples/pytorch_sample/ 내부 참조 기준으로 선택 모델 실행/등록 연결부 변환")
-            print("- 선택 모델 실행/등록 연결부 변환 검증")
+            print("- 선택 모델 실행/등록 연결부 별도 변환")
+            print("- 선택 모델 실행/등록 연결부 별도 변환 검증")
         else:
             for item in report.prepared_paths:
                 print(f"- {item}")
