@@ -33,10 +33,10 @@
 - 모델 검색은 현재 `--project` 폴더 안에서만 수행한다. 상위 폴더, 홈 디렉터리, 드라이브 루트, 번들 샘플 폴더를 자동 검색하지 않는다.
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
-- 모델 파일은 `aiu_studio/`로 복사하지 않는다.
+- 선택 모델 파일은 `aiu_studio/models/<MODEL_KIND>/<filename>`로 복사하고, 생성 파일은 이 복사본을 읽는다.
 - `.opencode/samples/aiu_studio/` 폴더를 프로젝트 루트의 `aiu_studio/`로 그대로 복사한다.
 - `aiu_studio/` 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
-- 선택된 모델은 원본 경로에서 직접 읽는다.
+- `data/` 원본에는 새 파일을 생성하지 않는다.
 - 기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에 둘 수 있고, 읽기 전용으로만 참조한다.
 - 기존 `runtest.py`는 절대 수정하지 않고 `aiu_studio/runtest_2.py`만 생성한다.
 - `aiu_studio/runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.

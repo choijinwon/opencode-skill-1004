@@ -134,9 +134,10 @@ If `model_found: true`, do not ask the user to choose a sample. Continue with th
 Existing model assumptions:
 
 - The user's model file may be directly under the project root or anywhere under the recursive `data/**` tree. The folder name under `data/` is user-defined, not fixed. Supported suffixes are `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.keras`, `.h5`, `.safetensors`, `.bst`, and `.ubj`. Examples: `model.pkl`, `models/model.joblib`, `data/<any-folder>/model.joblib`, `data/checkpoints/model.pt`, or `data/models/model.safetensors`.
-- Do not copy the selected model file into `aiu_studio/`.
+- Copy the selected model file into `aiu_studio/models/<MODEL_KIND>/<filename>` and use that copied path for generated execution files.
+- If Linux paths contain Windows separators such as `\`, `＼`, `￦`, or `₩`, normalize them to `/` during generated file conversion.
 - Only `.opencode/samples/aiu_studio/` is copied to the project root as `aiu_studio/` for existing-model flow.
-- The confirmed entrypoint must read the selected model from its original project path.
+- The confirmed generated entrypoint must read the selected model from `aiu_studio/models/<MODEL_KIND>/<filename>`.
 - Prefer generated `aiu_studio/runtest_2.py` for selected-model tests. Do not modify the existing `runtest.py`.
 - Secret values must never be printed; report only `set`, `empty`, or `missing`.
 
@@ -165,10 +166,10 @@ Step 5. aiu_studio 폴더 복사
         .opencode/samples/aiu_studio/ 폴더를 프로젝트 루트의 aiu_studio/로 그대로 복사한다.
         aiu_studio/ 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
         기존 aiu_studio/가 있어도 skip 판단하지 않고 같은 이름 파일은 복사본으로 갱신한다.
-        모델 파일은 aiu_studio/로 복사하지 않는다.
+        선택 모델은 aiu_studio/models/<MODEL_KIND>/<filename>로 복사한다.
 
-Step 6. 선택 모델 직접 읽기
-        선택된 원본 모델 파일을 직접 읽도록 설정한다.
+Step 6. 선택 모델 복사본 읽기
+        선택된 모델 복사본을 aiu_studio/ 폴더 안에서 읽도록 설정한다.
         MODEL_PATH = SOURCE_MODEL_PATH
 
 Step 7. runtest.py 참조
@@ -189,7 +190,7 @@ Step 8. runtest_2.py 생성
 Step 9. aiu_custom/predict.py 변환
         선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/aiu_custom/predict.py를 변환한다.
         aiu_studio/aiu_custom/mapping.json도 선택 모델 기준으로 생성한다.
-        ModelWrapper는 선택 모델을 원본 data/** 경로에서 직접 로드한다.
+        ModelWrapper는 aiu_studio/models/<MODEL_KIND>/<filename> 복사본을 로드한다.
         추론 테스트는 변환된 ModelWrapper를 우선 사용한다.
 
 사용자에게 보여줄 TOD는 자동 처리 단계 3-9를 `자동 준비 실행` 하나로 묶어 간략히 표시한다. 모델 선택 이후에는 Launch 규칙이나 긴 세부 규칙을 다시 보여주지 않는다.
@@ -198,7 +199,7 @@ Step 9. aiu_custom/predict.py 변환
 1. 루트/data 모델 목록 확인
 2. 사용할 모델 선택
 3. 자동 준비 실행
-   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/aiu_custom/predict.py 변환 + aiu_studio/aiu_custom/mapping.json 생성 + aiu_studio/local_serving/localservingtest.py 생성
+   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + aiu_studio/models/<MODEL_KIND>/ 모델 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/aiu_custom/predict.py 변환 + aiu_studio/aiu_custom/mapping.json 생성 + aiu_studio/local_serving/localservingtest.py 생성
 4. 환경 검증
 5. 모델 환경변수 체크
 6. runtest_2.py 실행

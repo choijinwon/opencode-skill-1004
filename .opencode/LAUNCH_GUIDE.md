@@ -11,8 +11,8 @@ OpenCode MLflow Launch
    루트/data 모델 목록을 번호로 보여줍니다.
    사용자는 번호 또는 경로로 사용할 모델을 선택합니다.
    Build에서 자동 준비 실행 1번으로 처리합니다.
-   포함 작업: aiu_studio/ 복사 + runtest_2.py + predict.py + mapping.json + localservingtest.py
-   모델 파일은 aiu_studio/로 복사하지 않습니다.
+   포함 작업: aiu_studio/ 복사 + aiu_studio/models/<MODEL_KIND>/ 모델 복사 + runtest_2.py + predict.py + mapping.json + localservingtest.py
+   data/ 원본에는 생성하지 않습니다.
 
 3. 모델 없음
    Build에서 샘플 선택: 1 sklearn / 2 pytorch / 3 tensorflow
