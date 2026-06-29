@@ -28,7 +28,7 @@ Step 3  선택 모델 환경 변환
 Step 4  모델 환경변수 체크
         check_environment.py
 
-Step 5  원격 MLflow 배포/등록 실행
+Step 5  모델 학습 서버 배포
         aiu_studio/runtest_2.py
         input_example.json은 프로젝트 루트가 아니라 aiu_studio/input_example.json에 있어야 하며, 상대경로 산출물도 aiu_studio/ 아래에 생성되도록 실행 시 작업 디렉터리를 aiu_studio/로 고정한다.
 

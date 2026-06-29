@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 6. 원격 MLflow 배포/등록 실행
+현재 단계: 6. 모델 학습 서버 배포
 현재 대상: selected_project_path 또는 copied sample folder
 핵심 판단: entrypoint 확정, 실행 성공, ai_studio 산출물 생성
 다음 단계: 추론 테스트
@@ -28,7 +28,7 @@ metadata:
 2. 모델 경로로 선택
 3. 선택 모델 환경 변환
 4. 모델 환경변수 체크
-5. 원격 MLflow 배포/등록 실행
+5. 모델 학습 서버 배포
 6. 추론 스모크 테스트
 7. MLflow 검증
 ```
@@ -77,7 +77,7 @@ MLflow artifact:
 실행 파일 자동 판단:
 python .opencode/scripts/run_training.py --project <project>
 
-원격 MLflow 배포/등록 실행:
+모델 학습 서버 배포:
 python .opencode/scripts/run_training.py --project <project> --execute
 
 명시적 entrypoint 실행:
@@ -169,7 +169,7 @@ blocked:
 2. 모델 경로로 선택
 3. 선택 모델 환경 변환
 4. MLflow 입력값 3개와 자동값 2개 상태 확인
-5. aiu_studio/runtest_2.py 원격 MLflow 배포/등록 실행
+5. aiu_studio/runtest_2.py 모델 학습 서버 배포
 6. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
 7. MLflow run, artifact, registered model 검증
 ```

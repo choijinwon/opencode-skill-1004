@@ -18,7 +18,7 @@ metadata:
 현재 단계: 2. 환경 검증
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
-다음 단계: 샘플 규격 확인/보충 또는 원격 MLflow 배포/등록 실행
+다음 단계: 샘플 규격 확인/보충 또는 모델 학습 서버 배포
 ```
 
 ## Workflow
@@ -29,7 +29,7 @@ metadata:
 3. 샘플 규격 확인/보충
 4. 환경 변수 입력/export
 5. 패키지 설치
-6. 원격 MLflow 배포/등록 실행
+6. 모델 학습 서버 배포
 7. 산출물 확인
 ```
 

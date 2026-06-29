@@ -434,7 +434,7 @@ def main():
             EnvVarStatus("2. 모델 경로로 선택", "done" if artifacts else "needs_input"),
             EnvVarStatus("3. 선택 모델 환경 변환", "done" if (work_path / "aiu_studio" / "runtest_2.py").exists() else "pending"),
             EnvVarStatus("4. 모델 환경변수 체크", "done" if not missing_env else "needs_input"),
-            EnvVarStatus("5. 원격 MLflow 배포/등록 실행", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("5. 모델 학습 서버 배포", "done" if args.execute and return_code == 0 else "pending"),
             EnvVarStatus("6. 추론 스모크 테스트", "pending"),
             EnvVarStatus("7. MLflow 검증", "pending"),
         ]

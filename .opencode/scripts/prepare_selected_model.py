@@ -1167,7 +1167,7 @@ model_output_dir = str(MODEL_OUTPUT_DIR)
 model_output_path = str(MODEL_OUTPUT_PATH)
 saved_model_dir = str(MODEL_OUTPUT_DIR)
 
-# Step 6 원격 MLflow 배포/등록 중 상대경로 산출물은 프로젝트 루트가 아니라 aiu_studio/ 아래에 생성되도록 고정합니다.
+# Step 6 모델 학습 서버 배포 중 상대경로 산출물은 프로젝트 루트가 아니라 aiu_studio/ 아래에 생성되도록 고정합니다.
 _aiu_os.chdir(AI_STUDIO_DIR)
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1223,7 +1223,7 @@ def _aiu_print_existing_model_tod():
     print("- 2. 모델 경로로 선택 - 완료")
     print("- 3. 선택 모델 환경 변환 - 완료")
     print("- 4. 모델 환경변수 체크 - 다음")
-    print("- 5. 원격 MLflow 배포/등록 실행 - 완료")
+    print("- 5. 모델 학습 서버 배포 - 완료")
     print("- 6. 추론 스모크 테스트 - 다음")
     print("- 7. MLflow 검증 - 다음")
 
@@ -1601,7 +1601,7 @@ def _print_tod(local_status="완료"):
     print("- 2. 모델 경로로 선택 - 완료")
     print("- 3. 선택 모델 환경 변환 - 완료")
     print("- 4. 모델 환경변수 체크 - 다음")
-    print("- 5. 원격 MLflow 배포/등록 실행 - 완료")
+    print("- 5. 모델 학습 서버 배포 - 완료")
     print(f"- 6. 추론 스모크 테스트 - {{local_status}}")
     print("- 7. MLflow 검증 - 다음")
 
@@ -2177,7 +2177,7 @@ def print_report(report: PreparedModelReport) -> None:
     print("2. 모델 경로로 선택 - 완료" if model_selected else "2. 모델 경로로 선택 - 대기")
     print("3. 선택 모델 환경 변환 - 완료" if auto_ready else "3. 선택 모델 환경 변환 - 대기")
     print("4. 모델 환경변수 체크 - 다음")
-    print("5. 원격 MLflow 배포/등록 실행 - 다음")
+    print("5. 모델 학습 서버 배포 - 다음")
     print("6. 추론 스모크 테스트 - 다음")
     print("7. MLflow 검증 - 다음")
     if report.next_steps:

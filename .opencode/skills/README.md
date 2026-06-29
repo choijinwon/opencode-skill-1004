@@ -63,7 +63,7 @@ Step 3. 선택 모델 환경 변환
         predict.py는 AI Studio 배포 엔트리포인트로 갱신하고 model.py의 ModelWrapper에 위임한다.
 Step 4. 모델 환경변수 체크
         입력값 3개와 자동값 2개 상태를 확인한다.
-Step 5. 원격 MLflow 배포/등록 실행
+Step 5. 모델 학습 서버 배포
         aiu_studio/runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 6. 추론 스모크 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.

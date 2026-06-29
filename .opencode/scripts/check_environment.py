@@ -939,7 +939,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             "2. 모델 경로로 선택: prepare_selected_model.py --model <경로> 또는 --model selected로 선택한다.",
             "3. 선택 모델 환경 변환: aiu_studio/를 복사하고 모델 형식 확인, 형식별 샘플 참조, runtest_2.py 생성/연결, 실행 코드 변환을 수행한다.",
             f"4. 모델 환경변수 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 set/empty/missing/auto_default/ssl_not_allowed로 확인한다.",
-            f"5. 원격 MLflow 배포/등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
+            f"5. 모델 학습 서버 배포: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
             "6. 추론 스모크 테스트: 선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.",
             "7. MLflow 검증: Run, artifact, registered model 기록을 확인한다.",
         ]

@@ -133,7 +133,7 @@ def log_mlflow_outputs(summary_path: Path) -> None:
 def main() -> None:
     missing = missing_mlflow_settings()
     if missing:
-        print("원격 MLflow 배포/등록을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.")
+        print("모델 학습 서버 배포를 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.")
         print("missing settings:")
         for name in missing:
             print(f"- {name}")
