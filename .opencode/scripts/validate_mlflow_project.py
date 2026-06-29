@@ -10,11 +10,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLES_DIR = ROOT / "samples"
-
-# When no project path is provided, selectable sample projects are inspected in
-# this order. They match the bootstrap choices exposed to users.
-SAMPLE_PRIORITY = ["sklearn_sample", "pytorch_sample", "tensorflow_sample"]
 
 # The skill pack does not require a fixed file name. These common names are
 # used only as hints when detecting a registration or inference entrypoint.
@@ -215,24 +210,15 @@ def score_project(path: Path) -> int:
 
 
 def select_project(explicit: str | None) -> tuple[Path, str]:
-    # Priority:
-    # 1. explicit user path
-    # 2. current directory when it looks like a model project
-    # 3. bundled samples, using SAMPLE_PRIORITY as a tie breaker
     if explicit:
         project = Path(explicit).expanduser().resolve()
         return project, "explicit path"
 
-    cwd = Path.cwd().resolve()
-    if has_project_markers(cwd):
-        return cwd, "current directory has model project markers"
+    return Path.cwd().resolve(), "current directory only"
 
-    for name in SAMPLE_PRIORITY:
-        candidate = SAMPLES_DIR / name
-        if candidate.exists() and score_project(candidate) > 0:
-            return candidate.resolve(), f"sample priority: {candidate.name}"
 
-    raise FileNotFoundError("No model project candidate found. Provide --project.")
+def is_filesystem_root(path: Path) -> bool:
+    return path.parent == path
 
 
 def iter_files(path: Path, max_depth: int = 4):
@@ -641,6 +627,9 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if not project.exists():
         checks.append(Check("local model path selection", "block", "selected project path does not exist", [str(project)]))
         return ValidationReport(str(project), reason, platform.platform(), sys.version.split()[0], checks, ["Provide a valid --project path."])
+    if is_filesystem_root(project):
+        checks.append(Check("local model path selection", "block", "drive/root scan is not allowed", [str(project)]))
+        return ValidationReport(str(project), reason, platform.platform(), sys.version.split()[0], checks, ["Run the command from the model project folder or pass --project <current-project-folder>."])
 
     checks.append(Check("local model path selection", "pass", "project selected", [str(project), reason]))
 

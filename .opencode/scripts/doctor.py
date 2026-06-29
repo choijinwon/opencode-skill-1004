@@ -404,6 +404,10 @@ def find_model_artifacts(project: Path, max_depth: int = 4) -> list[Path]:
     return sorted(set(artifacts))
 
 
+def is_filesystem_root(path: Path) -> bool:
+    return path.parent == path
+
+
 def check_python_version() -> DoctorCheck:
     current = platform.python_version()
     if current == EXPECTED_PYTHON_VERSION:
@@ -783,6 +787,8 @@ def main() -> int:
         raise SystemExit(f"workspace not found: {workspace}")
     if not project.exists():
         raise SystemExit(f"project not found: {project}")
+    if is_filesystem_root(project):
+        raise SystemExit("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
 
     report = build_report(workspace, project, args.sample, args.entrypoint)
     if args.json:

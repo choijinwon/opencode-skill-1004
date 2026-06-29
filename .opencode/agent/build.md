@@ -29,6 +29,7 @@ If the user arrived here by switching from the Launch tab to the Build tab, do n
 - On Windows, do not use `standaloneExecutable` launch paths. Run the bundled Python scripts with `python ...` from the workspace instead.
 - On Windows x86_64, do not default to native/standalone executable model runs because they are unstable. Prefer `python` entrypoints, `mlflow.pyfunc`, and `aiu_custom` wrappers.
 - If the task is destructive or overwrites existing project files, ask for confirmation first.
+- Project/model scans must stay inside the current `--project` folder only. Do not search parent folders, bundled samples, home directories, or drive roots.
 
 ## First Build Step
 
@@ -143,7 +144,8 @@ Model-found detailed process:
 
 ```text
 Step 1. 루트/data 모델 목록 확인
-        프로젝트 루트 전체를 스캔하되 .opencode, .git, .venv, ai_studio, mlruns 같은 생성/도구 폴더는 제외한다.
+        현재 --project 폴더 안에서만 스캔하되 .opencode, .git, .venv, ai_studio, mlruns 같은 생성/도구 폴더는 제외한다.
+        상위 폴더, 홈 디렉터리, 드라이브 루트, 번들 샘플 폴더를 자동 검색하지 않는다.
         .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 model_artifact_paths로 표시한다.
 
 Step 2. 사용할 모델 선택

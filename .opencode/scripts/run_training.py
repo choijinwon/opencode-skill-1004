@@ -337,6 +337,10 @@ def checklist_status(condition: bool) -> str:
     return "done" if condition else "pending"
 
 
+def is_filesystem_root(path: Path) -> bool:
+    return path.parent == path
+
+
 def run_command(cmd: list[str], cwd: Path) -> int:
     result = subprocess.run(cmd, cwd=cwd)
     return result.returncode
@@ -356,6 +360,8 @@ def main():
     project = Path(args.project).expanduser().resolve()
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
+    if is_filesystem_root(project):
+        raise ValueError("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
 
     failures: list[str] = []
     next_steps: list[str] = []

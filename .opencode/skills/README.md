@@ -30,6 +30,7 @@
 전제:
 
 - 사용자가 가져온 모델 파일은 프로젝트 루트 바로 아래 또는 `data/**` 하위 트리 어디에나 둘 수 있다.
+- 모델 검색은 현재 `--project` 폴더 안에서만 수행한다. 상위 폴더, 홈 디렉터리, 드라이브 루트, 번들 샘플 폴더를 자동 검색하지 않는다.
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 모델 파일은 `aiu_studio/`로 복사하지 않는다.
@@ -43,7 +44,7 @@
 
 ```text
 Step 1. 루트/data 모델 목록 확인
-        프로젝트 루트와 data/**에서 지원 모델 확장자 10개를 검색한다.
+        현재 --project 폴더와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 사용할 모델 선택
         model_artifact_paths에서 번호 또는 경로로 선택한다.
 Step 3. 자동 준비 실행

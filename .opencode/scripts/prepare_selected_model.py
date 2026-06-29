@@ -82,6 +82,10 @@ def model_kind(path: Path) -> str | None:
     return SUPPORTED_MODEL_KINDS.get(path.suffix.lower())
 
 
+def is_filesystem_root(path: Path) -> bool:
+    return path.parent == path
+
+
 def scan_model_artifacts(project: Path) -> list[Path]:
     found = []
     for path in project.rglob("*"):
@@ -296,6 +300,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     project = Path(args.project).expanduser().resolve()
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
+    if is_filesystem_root(project):
+        raise ValueError("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
 
     data_root = project / "data"
     models = scan_model_artifacts(project)

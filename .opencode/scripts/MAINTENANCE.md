@@ -152,7 +152,7 @@ adapt_entrypoint()          백업 생성과 adapter block 삽입
 주요 수정 위치:
 
 ```text
-SAMPLE_PRIORITY            모델이 없을 때 샘플 우선순위
+select_project()           명시 경로 또는 현재 폴더만 선택
 ENTRYPOINT_NAMES           일반 실행 파일 후보
 TRAINING_ENTRYPOINT_NAMES  로컬 학습/모델 생성 실행 후보
 REQUIRED_DIRS              필수 샘플 폴더

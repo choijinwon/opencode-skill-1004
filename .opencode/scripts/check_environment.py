@@ -348,6 +348,10 @@ def dependency_files(project: Path) -> list[str]:
     return [name for name in names if (project / name).exists()]
 
 
+def is_filesystem_root(path: Path) -> bool:
+    return path.parent == path
+
+
 def has_model_project(project: Path) -> bool:
     if any((project / name).exists() for name in MODEL_MARKERS):
         return True
@@ -541,6 +545,28 @@ def source_input_required_status(model_settings: EnvFileStatus | None) -> list[E
 
 
 def build_report(project: Path, entrypoint_name: str | None = None) -> EnvironmentReport:
+    if is_filesystem_root(project):
+        return EnvironmentReport(
+            project_path=str(project),
+            os=f"{platform.system()} {platform.release()}",
+            python_executable=sys.executable,
+            python_version=platform.python_version(),
+            expected_python_version=EXPECTED_PYTHON_VERSION,
+            python_version_status="blocked",
+            virtual_env=os.environ.get("VIRTUAL_ENV") or os.environ.get("CONDA_PREFIX") or "not detected",
+            dependency_files=[],
+            packages=[],
+            requirements=[],
+            env_vars=[],
+            ai_studio_env=None,
+            model_settings=None,
+            export_ready=[],
+            blocked_summary=["드라이브/파일시스템 루트 검색은 허용하지 않습니다."],
+            failures=["drive_root_scan_not_allowed"],
+            next_steps=["현재 모델 프로젝트 폴더에서 실행하거나 --project <current-project-folder>를 지정하세요."],
+            tod_guide=[],
+            source_input_required=[],
+        )
     python_version = platform.python_version()
     deps = dependency_files(project)
     packages = []
