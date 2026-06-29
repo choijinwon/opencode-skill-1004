@@ -7,7 +7,7 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `models/model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 `.opencode/samples/aiu_studio/` 폴더를 프로젝트 루트의 `aiu_studio/`로 그대로 복사한다. 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
-기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에서 참조하고, 수정하지 않고 선택 모델 복사본 기준의 `aiu_studio/runtest_2.py`를 생성한다.
+기존 `runtest.py`는 루트 또는 `aiu_studio/` 아래에서 참조하고, 수정하지 않고 복사된 `aiu_studio/` 파일들을 선택 모델 복사본 기준으로 변환/갱신한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
 
 유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.

@@ -176,8 +176,8 @@ Step 7. runtest.py 참조
         aiu_studio/runtest.py를 우선 읽기 전용으로 참조한다.
         없으면 프로젝트 루트 runtest.py, run_test.py 순서로 참조한다.
 
-Step 8. runtest_2.py 생성
-        선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/runtest_2.py를 생성한다.
+Step 8. runtest_2.py 변환/갱신
+        복사된 aiu_studio/runtest_2.py 또는 참조 파일을 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.
         MODEL_KIND별 load_selected_model()과 required_package/load_hint를 생성한다.
         aiu_studio/runtest.py를 참조한 경우 REFERENCE_ENTRYPOINT와 실행 보조 파일 경로는 복사된 aiu_studio/ 기준으로 생성한다.
         변환은 참조한 runtest.py 구조를 기반으로 한다.
@@ -187,9 +187,9 @@ Step 8. runtest_2.py 생성
         모델 경로/MODEL_KIND/로더 관련 주석은 선택 모델 기준으로 변환하고, 그 외 주석은 유지한다.
         기존 runtest.py는 절대 수정하지 않는다.
 
-Step 9. aiu_custom/predict.py 변환
-        선택 모델 경로와 MODEL_KIND 기준으로 aiu_studio/aiu_custom/predict.py를 변환한다.
-        aiu_studio/aiu_custom/mapping.json도 선택 모델 기준으로 생성한다.
+Step 9. aiu_custom 파일 변환/갱신
+        복사된 aiu_studio/aiu_custom/predict.py를 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.
+        aiu_studio/aiu_custom/mapping.json도 선택 모델 기준으로 변환/갱신한다.
         ModelWrapper는 aiu_studio/models/<MODEL_KIND>/<filename> 복사본을 로드한다.
         추론 테스트는 변환된 ModelWrapper를 우선 사용한다.
 
@@ -199,7 +199,7 @@ Step 9. aiu_custom/predict.py 변환
 1. 루트/data 모델 목록 확인
 2. 사용할 모델 선택
 3. 자동 준비 실행
-   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + aiu_studio/models/<MODEL_KIND>/ 모델 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/aiu_custom/predict.py 변환 + aiu_studio/aiu_custom/mapping.json 생성 + aiu_studio/local_serving/localservingtest.py 생성
+   포함: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + aiu_studio/models/<MODEL_KIND>/ 모델 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 변환/갱신 + aiu_studio/aiu_custom/predict.py 변환/갱신 + aiu_studio/aiu_custom/mapping.json 변환/갱신 + aiu_studio/local_serving/localservingtest.py 변환/갱신
 4. 환경 검증
 5. 모델 환경변수 체크
 6. runtest_2.py 실행
@@ -247,7 +247,7 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 Describe that one command to the user as:
 
 ```text
-다음 작업 수행(한 번에): aiu_studio/ 복사 + runtest_2.py + predict.py + mapping.json + localservingtest.py
+다음 작업 수행(한 번에): aiu_studio/ 복사 + 모델 복사 + runtest_2.py/predict.py/mapping.json/localservingtest.py 변환
 ```
 
 The first Build step for an existing model is always listing project-root and `data/**` model artifacts, selecting one model, and generating `aiu_studio/runtest_2.py` from `aiu_studio/runtest.py`, `runtest.py`, or `run_test.py`. Do not assume `run_model.py`. If none of those reference files exists, do not create a fake reference file automatically; ask the user to place the real reference file in the project.

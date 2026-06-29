@@ -1195,7 +1195,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 생성/복사 + 선택 모델 aiu_studio/models/<MODEL_KIND>/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성 + aiu_studio/aiu_custom/predict.py 변환 + aiu_studio/aiu_custom/mapping.json 생성 + aiu_studio/local_serving/localservingtest.py 생성",
+                "자동 준비 완료: 모델 프로젝트 구조 분석 + aiu_studio/ 폴더 복사 + 선택 모델 aiu_studio/models/<MODEL_KIND>/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 변환/갱신 + aiu_studio/aiu_custom/predict.py 변환/갱신 + aiu_studio/aiu_custom/mapping.json 변환/갱신 + aiu_studio/local_serving/localservingtest.py 변환/갱신",
                 "python aiu_studio/runtest_2.py",
                 "python aiu_studio/local_serving/localservingtest.py",
                 "추론 테스트 결과는 화면에 출력합니다.",
@@ -1228,8 +1228,8 @@ def print_report(report: PreparedModelReport) -> None:
     print(f"Selected model: {report.selected_model_path or 'missing'}")
     print(f"MODEL_KIND: {report.model_kind or 'missing'}")
     print(f"Reference entrypoint: {report.reference_entrypoint or 'missing'}")
-    print(f"Generated entrypoint: {report.generated_entrypoint}")
-    print(f"Generated inference test: {report.generated_inference_test}")
+    print(f"Transformed entrypoint: {report.generated_entrypoint}")
+    print(f"Transformed inference test: {report.generated_inference_test}")
     print(f"Execute: {report.execute}")
     if report.prepared_paths:
         print("Prepared:")
