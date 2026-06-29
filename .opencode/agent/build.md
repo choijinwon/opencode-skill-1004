@@ -183,6 +183,8 @@ Step 7. runtest.py 참조
 Step 8. runtest_2.py 변환/갱신
         복사된 aiu_studio/runtest_2.py 또는 참조 파일을 선택 모델 경로와 MODEL_KIND 기준으로 변환/갱신한다.
         MODEL_KIND별 load_selected_model()과 required_package/load_hint를 생성한다.
+        데이터 준비 블록도 MODEL_KIND 기준으로 변환한다. PyTorch/safetensors는 synthetic image tensor, sklearn/joblib/xgboost는 synthetic tabular input, onnx/tensorflow는 synthetic tensor input을 aiu_studio/input_example.json에 생성한다.
+        외부 데이터셋(FashionMNIST 등)은 자동 다운로드하지 않는다.
         aiu_studio/runtest.py를 참조한 경우 REFERENCE_ENTRYPOINT와 실행 보조 파일 경로는 복사된 aiu_studio/ 기준으로 생성한다.
         변환은 참조한 runtest.py 구조를 기반으로 한다.
         함수 내부의 기존 모델 경로 문자열과 모델 로딩 호출은 선택 모델 기준 load_selected_model() 호출로 변환한다.

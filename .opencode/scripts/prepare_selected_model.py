@@ -895,6 +895,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
         "loader",
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
     )
+    data_prep = aiu_data_prep_block()
     return f'''
 
 # --- AIU Studio selected model conversion ---
@@ -903,6 +904,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
 import os as _aiu_os
 import atexit as _aiu_atexit
+import json as _aiu_json
 from pathlib import Path as _AIUPath
 
 AI_STUDIO_DIR = _AIUPath(__file__).resolve().parent
@@ -967,6 +969,8 @@ effective_mlflow_tracking_uri = mlflow_tracking_url
 
 {loader}
 
+{data_prep}
+
 if not mlflow_tracking_url:
     raise ValueError("mlflow_tracking_url_required: set remote MLflow tracking URL before deployment")
 if mlflow_tracking_url.lower().startswith("https://"):
@@ -997,6 +1001,109 @@ _aiu_atexit.register(_aiu_print_existing_model_tod)
 # --- /AIU Studio selected model conversion ---
 
 '''
+
+
+def aiu_data_prep_block() -> str:
+    return r'''# 데이터 준비
+# 선택 모델 종류에 맞는 최소 input_example을 생성합니다.
+# 외부 데이터셋(FashionMNIST 등)을 다운로드하지 않고 원격 배포/검증용 synthetic 입력만 만듭니다.
+import json as _aiu_json
+
+try:
+    INPUT_EXAMPLE_PATH
+except NameError:
+    INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
+
+def _aiu_flat_zeros(size):
+    return [0.0 for _ in range(size)]
+
+def _aiu_model_input_example():
+    if MODEL_KIND in {"pytorch", "safetensors"}:
+        return {
+            "inputs": [
+                {
+                    "name": "synthetic_image",
+                    "shape": [1, 1, 28, 28],
+                    "datatype": "FP32",
+                    "data": _aiu_flat_zeros(1 * 1 * 28 * 28),
+                }
+            ],
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+        }
+    if MODEL_KIND in {"sklearn_pickle", "sklearn_joblib", "xgboost_bst", "xgboost_ubj"}:
+        return {
+            "inputs": [
+                {
+                    "name": "synthetic_tabular",
+                    "shape": [1, 4],
+                    "datatype": "FP32",
+                    "data": [[0.0, 0.0, 0.0, 0.0]],
+                }
+            ],
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+        }
+    if MODEL_KIND == "onnx":
+        return {
+            "inputs": [
+                {
+                    "name": "input",
+                    "shape": [1, 4],
+                    "datatype": "FP32",
+                    "data": [[0.0, 0.0, 0.0, 0.0]],
+                }
+            ],
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+        }
+    if MODEL_KIND in {"tensorflow_keras", "tensorflow_h5"}:
+        return {
+            "inputs": [
+                {
+                    "name": "synthetic_tensor",
+                    "shape": [1, 4],
+                    "datatype": "FP32",
+                    "data": [[0.0, 0.0, 0.0, 0.0]],
+                }
+            ],
+            "model_kind": MODEL_KIND,
+            "model_path": str(MODEL_PATH),
+        }
+    return {
+        "inputs": [
+            {
+                "name": "synthetic_input",
+                "shape": [1],
+                "datatype": "FP32",
+                "data": [0.0],
+            }
+        ],
+        "model_kind": MODEL_KIND,
+        "model_path": str(MODEL_PATH),
+    }
+
+def _aiu_write_input_example():
+    INPUT_EXAMPLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    payload = _aiu_model_input_example()
+    INPUT_EXAMPLE_PATH.write_text(_aiu_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+input_example = _aiu_write_input_example()
+'''
+
+
+def insert_preserved_data_prep_block(text: str) -> str:
+    if "_aiu_model_input_example" in text:
+        return text
+    marker = "\ndef load_selected_model"
+    block = "\n\n" + aiu_data_prep_block().rstrip() + "\n"
+    if marker in text:
+        return text.replace(marker, block + marker, 1)
+    main_marker = "\ndef main"
+    if main_marker in text:
+        return text.replace(main_marker, block + main_marker, 1)
+    return text.rstrip() + block
 
 
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
@@ -1073,6 +1180,8 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         required_package,
         preserve_code=preserve_code,
     )
+    if preserve_code:
+        transformed = insert_preserved_data_prep_block(transformed)
     return transformed.rstrip() + "\n"
 
 

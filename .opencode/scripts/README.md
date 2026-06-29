@@ -127,7 +127,8 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 ### prepare_selected_model.py
 
-프로젝트 루트 전체와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `aiu_studio/` 폴더를 루트에 그대로 복사하고 `aiu_studio/runtest_2.py`와 `aiu_studio/aiu_custom/model.py`를 준비한다. 기존 모델 경로 문자열, 모델 로딩 호출, 관련 주석은 선택 모델 기준으로 변환한다.
+프로젝트 루트 전체와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 `aiu_studio/` 폴더를 루트에 그대로 복사하고 `aiu_studio/runtest_2.py`와 `aiu_studio/aiu_custom/model.py`를 준비한다. 기존 모델 경로 문자열, 모델 로딩 호출, 데이터 준비, 관련 주석은 선택 모델 기준으로 변환한다.
+`runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `aiu_studio/input_example.json`을 생성한다.
 `aiu_studio/aiu_custom/predict.py`는 코드 변환 대상이 아니며 선택 모델 required_package import 상태만 확인한다.
 기존 `runtest.py` 또는 `aiu_studio/runtest.py`는 수정하지 않는다.
 PyTorch 모델(`.pt`, `.pth`)을 선택하면 `.opencode/samples/pytorch_sample/runtest.py`를 우선 참조해 데이터셋 없이 선택 모델 로드, MLflow logging, metrics/code artifact 흐름을 유지한 상태로 변환한다.
