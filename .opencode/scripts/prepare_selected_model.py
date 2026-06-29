@@ -891,7 +891,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     if preserve_code:
         replacements.update(
             {
-                "mlflow_tracking_url": 'AI_STUDIO_TRACKING_DIR.as_uri()',
+                "mlflow_tracking_url": '""',
                 "mlflow_experiment_name": repr(default_experiment_name),
                 "mlflow_register_model_name": repr(default_register_model_name),
             }

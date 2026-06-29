@@ -46,17 +46,24 @@ mlflow_experiment_name = "pytorch_sample"
 mlflow_register_model_name = "pytorch_sample_model"
 
 
+def is_todo_value(value: str) -> bool:
+    return value.strip().lower() in {"{todo}", "todo", "<todo>", "[todo]"}
+
+
 def missing_mlflow_settings() -> list[str]:
     required = {
+        "mlflow_tracking_url": mlflow_tracking_url,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
         "mlflow_experiment_name": mlflow_experiment_name,
         "mlflow_register_model_name": mlflow_register_model_name,
     }
-    return [name for name, value in required.items() if not value]
+    return [name for name, value in required.items() if not value or is_todo_value(value)]
 
 
 def export_mlflow_environment() -> None:
+    if is_todo_value(mlflow_tracking_url):
+        raise ValueError("mlflow_tracking_url_todo_not_allowed")
     AI_STUDIO_TRACKING_DIR.mkdir(parents=True, exist_ok=True)
     exports = {
         "MLFLOW_TRACKING_URI": mlflow_tracking_url or AI_STUDIO_TRACKING_DIR.as_uri(),
@@ -140,6 +147,7 @@ def main() -> None:
         for name in missing:
             print(f"- {name}")
         print("비밀번호 값은 출력하지 않습니다.")
+        return
     export_mlflow_environment()
 
     summary_path = write_visible_outputs()

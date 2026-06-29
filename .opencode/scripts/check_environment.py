@@ -464,11 +464,20 @@ def ssl_not_allowed(value: str | None) -> bool:
     return bool(value and value.strip().lower().startswith("https://"))
 
 
+def todo_placeholder(value: str | None) -> bool:
+    if value is None:
+        return False
+    normalized = value.strip().lower()
+    return normalized in {"{todo}", "todo", "<todo>", "[todo]"}
+
+
 def setting_value_status(key: str, value: str | None, missing_status: str = "missing") -> str:
     if value is None:
         return "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else missing_status
     if value == "":
         return "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "empty"
+    if todo_placeholder(value):
+        return "auto_default" if key in AUTO_DEFAULT_SETTING_KEYS else "missing"
     if key in SSL_BLOCKED_SETTING_KEYS and ssl_not_allowed(value):
         return "ssl_not_allowed"
     return "set"
