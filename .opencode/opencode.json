@@ -5,10 +5,6 @@
     "aiustudio": {
       "description": "AIU Studio 모드: guide, workspace analysis, and build actions",
       "mode": "primary"
-    },
-    "aiustudio_build": {
-      "description": "AIU Studio 빌드 모드: sample copy, environment checks, model execution, and file changes",
-      "mode": "primary"
     }
   },
   "instructions": [

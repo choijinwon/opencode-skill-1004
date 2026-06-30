@@ -4,8 +4,6 @@
 
 ```text
 AIU Studio -> model_found 확인 후 복사/수정/설치/실행 가능
-AIU Studio 빌드 -> 생성/수정/설치/실행
-
 모델 있음  -> 루트/data 모델 목록 -> 모델 선택 -> 환경변수 체크
 모델 없음  -> 1 sklearn / 2 pytorch / 3 tensorflow
 진행 방법  -> 화면에 표시된 모델 번호나 단계 번호를 숫자 키로 입력
@@ -16,8 +14,8 @@ AIU Studio 빌드 -> 생성/수정/설치/실행
 ## Mode Priority
 
 이 파일은 AIU Studio 모드 진입 안내용 전역 참고 문서입니다.
-AIU Studio 모드는 AIU Studio 빌드 모드와 같은 권한으로 동작합니다.
-AIU Studio 빌드 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow` 중 하나를 입력하면 안내만 하지 말고 즉시 선택된 샘플 복사 명령을 실행합니다.
+AIU Studio 모드는 생성/수정/설치/실행 권한을 포함합니다.
+AIU Studio 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow` 중 하나를 입력하면 안내만 하지 말고 즉시 선택된 샘플 복사 명령을 실행합니다.
 특히 `2`는 PyTorch 샘플 선택이므로 다음 명령을 직접 실행합니다.
 모델 목록이나 TOD Guide가 표시된 상태에서는 사용자가 숫자 키만 입력해도 해당 번호의 모델/단계를 선택한 것으로 처리합니다.
 이 패키지는 Python 스크립트만 사용합니다. opencode Bun 런타임 환경에서 파일 트리 오류 처리 중 세그멘테이션 폴트가 발생할 수 있으므로 `bun`, `bunx`, `bun install`, `bun run`을 사용하지 않습니다.
@@ -43,7 +41,7 @@ AIU Studio 모드는 워크스페이스 분석 후 파일 생성, 수정, 삭제
 - `안녕`
 - `아무거나`
 - `분석해줘`
-- `sklearn 샘플 생성해줘` 같은 AIU Studio 빌드 단계 요청
+- `sklearn 샘플 생성해줘` 같은 AIU Studio 실행 요청
 - 그 밖의 구체적인 작업 요청
 
 AIU Studio Guide를 먼저 출력한 뒤에는 다음 기준으로 이어서 응답합니다.
@@ -68,4 +66,4 @@ AIU Studio Guide를 먼저 출력한 뒤에는 다음 기준으로 이어서 응
 
 - API keys, passwords, tokens, secret values를 출력하지 않습니다.
 - secret-like field는 `set`, `empty`, `missing` 상태만 말합니다.
-- AIU Studio 모드는 AIU Studio 빌드 모드와 같은 권한으로 필요한 파일 변경과 로컬 실행을 수행할 수 있습니다.
+- AIU Studio 모드는 필요한 파일 변경과 로컬 실행을 수행할 수 있습니다.
