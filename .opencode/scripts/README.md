@@ -42,7 +42,7 @@ Step 8  오류 수정 및 재검증
         verify_mlflow.py
 ```
 
-기존 모델 흐름에서 `runtest_2.py`가 있으면 AI Studio 빌드 모드 숫자 입력은 TOD 단계로 처리한다.
+기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TOD 단계로 처리한다.
 
 ```text
 3 -> python .opencode/scripts/prepare_selected_model.py --project . --model selected --execute
@@ -103,7 +103,7 @@ python .opencode/scripts/apply_index_ignore.py --project .
 
 ### doctor.py
 
-AI Studio 런치/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
+AIU Studio/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
 
 ```text
 python .opencode/scripts/doctor.py --workspace . --project .
@@ -120,7 +120,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 3. requirements.txt 패키지 설치/버전 상태
 4. model_artifact_paths와 MODEL_KIND
 5. 실행 파일 확정
-6. AI Studio 코드 적합성
+6. AIU Studio 코드 적합성
 7. 샘플 규격 폴더/파일
 8. MLflow 입력값 3개와 자동값 2개 확인/export
 9. 루트/data 모델 원본 경로와 모델/메트릭/코드 산출물
@@ -173,7 +173,7 @@ generated_entrypoint: runtest_2.py
 
 ### adapt_ai_studio.py
 
-사용자가 가져온 임의 Python 실행 파일을 AI Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
+사용자가 가져온 임의 Python 실행 파일을 AIU Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
 실행 파일을 찾지 못하면 자동 생성하지 않는다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 `--entrypoint <file>`로 지정해야 한다.
 파일 후보가 여러 개일 때도 추측하지 않고 사용자가 직접 지정한다.
 
@@ -313,7 +313,7 @@ mlflow_tracking_username=
 mlflow_tracking_password=
 ```
 
-`mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AI Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
+`mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AIU Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
 `mlflow_tracking_url`은 `http://`, `https://`, `file://`를 사용할 수 있다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
 
