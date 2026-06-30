@@ -1312,8 +1312,10 @@ def generated_selected_model_runtest_text(project: Path, selected_model: Path, k
     load_hint = details.get("load_hint", "custom loader required")
     loader = details.get(
         "loader",
-        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
+        """def load_selected_model():\n    raise ValueError(f\"unsupported model kind: {_selected_model_kind()}\")\n""",
     )
+    loader = loader.replace("MODEL_PATH", "_selected_model_path()")
+    data_prep = aiu_data_prep_block(kind).replace("MODEL_KIND", "_selected_model_kind()").replace("MODEL_PATH", "_selected_model_path()")
     return f'''from __future__ import annotations
 
 import io
@@ -1329,16 +1331,13 @@ from aiu_custom.predict import ModelWrapper
 logging.getLogger("mlflow").setLevel(logging.ERROR)
 
 AI_STUDIO_DIR = Path(__file__).resolve().parent
-SOURCE_MODEL_PATH = AI_STUDIO_DIR / {selected_relative!r}
-DATA_MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_KIND = {kind!r}
 MODEL_LOAD_HINT = {load_hint!r}
 AIU_REQUIRED_PACKAGE = {required_package!r}
 REFERENCE_ENTRYPOINT = {reference_display_path(reference)!r}
 INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
 CONFIG_DIR = AI_STUDIO_DIR / "config"
 CONFIG_PATH = CONFIG_DIR / "config.json"
+MAPPING_PATH = AI_STUDIO_DIR / "aiu_custom" / "mapping.json"
 
 # AI 환경 설정
 # 할당 받은 MLflow tracking server 값을 사용자가 직접 입력합니다.
@@ -1388,16 +1387,44 @@ def export_mlflow_environment() -> None:
             os.environ[name] = value
 
 
+def _load_selected_mapping() -> dict:
+    if not MAPPING_PATH.is_file():
+        raise FileNotFoundError("aiu_custom/mapping.json is required")
+    return json.loads(MAPPING_PATH.read_text(encoding="utf-8"))
+
+
+def _selected_model_info() -> dict:
+    mapping = _load_selected_mapping()
+    model = mapping.get("model", {{}})
+    if not isinstance(model, dict):
+        raise ValueError("invalid model mapping: aiu_custom/mapping.json")
+    return model
+
+
+def _selected_model_kind() -> str:
+    return str(_selected_model_info().get("kind") or {kind!r})
+
+
+def _selected_model_path() -> Path:
+    raw_path = _selected_model_info().get("relative_path") or _selected_model_info().get("source_path")
+    if not raw_path:
+        raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
+    path = Path(str(raw_path))
+    if path.is_absolute():
+        return path
+    return AI_STUDIO_DIR / path
+
+
 {loader}
 
-{aiu_data_prep_block(kind)}
+{data_prep}
 
 
 def write_config() -> Path:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     config = {{
-        "model_kind": MODEL_KIND,
-        "model_path": str(MODEL_PATH),
+        "model_kind": _selected_model_kind(),
+        "model_path": str(_selected_model_path()),
         "model_relative_path": {selected_relative!r},
         "load_hint": MODEL_LOAD_HINT,
     }}
@@ -1431,15 +1458,15 @@ def main() -> None:
     config_path = write_config()
 
     with mlflow.start_run(run_name=mlflow_register_model_name):
-        mlflow.set_tag("model.kind", MODEL_KIND)
+        mlflow.set_tag("model.kind", _selected_model_kind())
         mlflow.set_tag("model.source", {selected_relative!r})
-        mlflow.log_param("model_kind", MODEL_KIND)
+        mlflow.log_param("model_kind", _selected_model_kind())
         mlflow.log_metric("model_loaded", 1.0 if model is not None else 0.0)
         mlflow.pyfunc.log_model(
             artifact_path="ai_studio",
             python_model=ModelWrapper(),
             artifacts={{
-                "model": str(MODEL_PATH),
+                "model": str(_selected_model_path()),
                 "config": str(config_path),
             }},
             input_example=input_example,
@@ -2054,7 +2081,12 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
 
         if selected_relative not in text and selected_absolute not in text:
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_absolute}")
-        if f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
+        if display_path == "runtest_2.py":
+            if "MAPPING_PATH" not in text or "_selected_model_kind" not in text or "_selected_model_path" not in text:
+                failures.append("runtest_2_mapping_loader_missing:runtest_2.py")
+            if "MODEL_KIND" in text or "DATA_MODEL_PATH" in text:
+                failures.append("runtest_2_should_not_embed_model_kind_or_data_path")
+        elif f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
             failures.append(f"selected_model_kind_not_reflected:{display_path}:{kind}")
 
         for other_model in models:
