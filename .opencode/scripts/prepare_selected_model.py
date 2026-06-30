@@ -1780,31 +1780,27 @@ def predict(payload):
 
 
 def generated_predict_text(project: Path, selected_model: Path, kind: str) -> str:
-    details = MODEL_KIND_DETAILS.get(kind, {})
-    required_package = details.get("required_package", "unknown")
-    load_hint = details.get("load_hint", "custom loader required")
     return f'''from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
 
 
-AIU_CUSTOM_DIR = Path(__file__).resolve().parent
-MODEL_MODULE_PATH = AIU_CUSTOM_DIR / "model.py"
-MODEL_KIND = "{kind}"
-AIU_REQUIRED_PACKAGE = "{required_package}"
-AIU_LOAD_HINT = "{load_hint}"
-
 # AI Studio 배포 엔트리포인트입니다.
 # 선택 모델 경로와 로딩 방식은 aiu_custom/model.py와 mapping.json이 담당합니다.
 # 이 파일에는 선택 모델 경로를 직접 쓰지 않습니다.
 
 
+def _model_module_path() -> Path:
+    return Path(__file__).resolve().parent / "model.py"
+
+
 def _load_model_module():
-    if not MODEL_MODULE_PATH.is_file():
+    model_module_path = _model_module_path()
+    if not model_module_path.is_file():
         raise FileNotFoundError("aiu_custom/model.py is required for AI Studio deployment")
 
-    spec = importlib.util.spec_from_file_location("aiu_custom_selected_model", MODEL_MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("aiu_custom_selected_model", model_module_path)
     if spec is None or spec.loader is None:
         raise ImportError("cannot load aiu_custom/model.py")
 
@@ -2013,8 +2009,10 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append("predict_py_deployment_delegate_missing:aiu_custom/predict.py")
             if selected_relative in text or selected_absolute in text:
                 failures.append("selected_model_path_should_not_be_embedded:aiu_custom/predict.py")
-            if f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
-                failures.append(f"selected_model_kind_not_reflected:{display_path}:{kind}")
+            forbidden_names = ["AIU_CUSTOM_DIR", "MODEL_MODULE_PATH", "MODEL_KIND", "AIU_REQUIRED_PACKAGE", "AIU_LOAD_HINT"]
+            embedded = [name for name in forbidden_names if name in text]
+            if embedded:
+                failures.append(f"predict_py_should_not_embed_selected_model_metadata:{','.join(embedded)}")
             continue
 
         if selected_relative not in text and selected_absolute not in text:
