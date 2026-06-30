@@ -33,10 +33,22 @@ Windows에서 AIU Studio 모드로 고정 실행하려면 프로젝트 루트에
 .\start-aiustudio.ps1
 ```
 
+`opencode`만 입력해도 AIU Studio 모드로 열고 싶으면 프로젝트 루트의 wrapper를 실행합니다.
+
+```powershell
+.\opencode.ps1
+```
+
 `.opencode` 폴더만 복사한 프로젝트에서는 다음 파일을 실행합니다.
 
 ```powershell
 .\.opencode\start-aiustudio.ps1
+```
+
+또는:
+
+```powershell
+.\.opencode\opencode.ps1
 ```
 
 ```text
