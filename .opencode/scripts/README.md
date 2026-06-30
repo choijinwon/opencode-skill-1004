@@ -14,37 +14,57 @@ Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 
 
 유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.
 
-## Script Mapping
+## Skill Script Map
+
+먼저 이 표만 봅니다. 스킬에서 직접 쓰는 대표 스크립트는 아래 흐름으로 고정합니다.
+도구가 읽을 수 있는 같은 매핑은 `.opencode/scripts/skill_script_map.json`에 있습니다.
 
 ```text
-Step 1  모델 목록 확인
-        prepare_selected_model.py
-        validate_mlflow_project.py
+01 Project Analyze
+   launch_workspace_summary.py     첫 진입 가벼운 요약
+   validate_mlflow_project.py      상세 분석
+   prepare_selected_model.py       모델 목록/선택
 
-Step 2  모델 경로로 선택
-        prepare_selected_model.py
+02 Sample Bootstrap
+   bootstrap_sample_project.py     sklearn/pytorch/tensorflow 샘플 복사
 
-Step 3  선택 모델 환경 변환
-        prepare_selected_model.py
+03 Environment Check
+   check_environment.py            Python, requirements.txt, MLflow 설정 확인
+   response_speed_check.py         폐쇄망 속도 진단
+   apply_index_ignore.py           인덱싱 제외 적용
 
-Step 4  requirements.txt 재정의/확인
-        선택 모델 기준 필수 패키지와 모델별 추가 패키지를 확인하고 설치 기준으로 선택한다.
+04 Train Model / Selected Model Build
+   prepare_selected_model.py       aiu_custom 템플릿 복사 + runtest_2.py 변환 생성
+   run_training.py                 확정 entrypoint 실행
+   adapt_ai_studio.py              사용자 임의 run.py 보강용 보조 스크립트
 
-Step 5  모델 환경변수 체크
-        check_environment.py
-        오류 사항이 있으면 경로/환경변수/패키지/버전 기준 서버 배포 오류사항 목록을 함께 보여준다.
+05 Inference Test
+   local_serving/localservingtest.py  prepare_selected_model.py가 생성/변환
+   test_inference.py                  수동 추론 계약 점검
 
-Step 6  원격 MLflow 등록 실행
-        runtest_2.py
-        input_example.json은 워크스페이스 루트의 input_example.json에 있어야 하며, 상대경로 산출물도 워크스페이스 루트 아래에 생성되도록 실행 시 작업 디렉터리를 프로젝트 루트로 고정한다.
+06 MLflow Verify
+   verify_mlflow.py                run, artifact, registry 검증
 
-Step 7  추론 스모크 테스트
-        local_serving/localservingtest.py
+QA / Maintenance
+   doctor.py                       전체 상태 1페이지 점검
+   test_local_sample.py            번들 샘플 QA
+   MAINTENANCE.md                  유지보수 상세 문서
+```
 
-Step 8  MLflow 검증
-Step 9  오류 수정 및 재검증
-        원격 MLflow 등록, 추론 스모크 테스트, MLflow 검증 중 오류가 있으면 서버 배포 오류사항과 Failures를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.
-        verify_mlflow.py
+## TOD Script Map
+
+사용자에게 보이는 TOD 단계는 아래 스크립트로 연결합니다.
+
+```text
+1. 모델 목록 확인                  -> prepare_selected_model.py
+2. 모델 경로로 선택                -> prepare_selected_model.py --model <번호|경로>
+3. 선택 모델 환경 변환             -> prepare_selected_model.py --model <경로> --execute
+4. requirements.txt 재정의/확인    -> prepare_selected_model.py 결과 확인
+5. 모델 환경변수 체크              -> check_environment.py --entrypoint runtest_2.py
+6. 원격 MLflow 등록 실행           -> python runtest_2.py
+7. 추론 스모크 테스트              -> python local_serving/localservingtest.py
+8. MLflow 검증                     -> verify_mlflow.py
+9. 오류 수정 및 재검증             -> 실패한 단계의 스크립트 재실행
 ```
 
 화면에 표시된 모델 번호나 TOD 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.

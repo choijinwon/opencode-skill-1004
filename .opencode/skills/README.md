@@ -100,6 +100,43 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 
 폴더명은 순서 표시용입니다. 각 `SKILL.md`의 `name:` 값은 기존 호출 호환성을 위해 변경하지 않습니다.
 
+## Script Map
+
+스킬별 대표 스크립트는 아래만 먼저 봅니다. 나머지는 QA/유지보수 보조입니다.
+같은 매핑은 `.opencode/scripts/skill_script_map.json`에도 있습니다.
+
+```text
+01 Project Analyze
+   launch_workspace_summary.py
+   validate_mlflow_project.py
+   prepare_selected_model.py
+
+02 Sample Bootstrap
+   bootstrap_sample_project.py
+
+03 Environment Check
+   check_environment.py
+   response_speed_check.py
+   apply_index_ignore.py
+
+04 Train Model / Selected Model Build
+   prepare_selected_model.py
+   run_training.py
+   adapt_ai_studio.py
+
+05 Inference Test
+   local_serving/localservingtest.py
+   test_inference.py
+
+06 MLflow Verify
+   verify_mlflow.py
+
+QA / Maintenance
+   doctor.py
+   test_local_sample.py
+   MAINTENANCE.md
+```
+
 ## Doctor
 
 전체 흐름을 한 번에 점검할 때는 doctor를 먼저 실행합니다.

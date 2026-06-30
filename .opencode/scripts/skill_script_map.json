@@ -1,0 +1,66 @@
+{
+  "01-project-analyze": {
+    "skill_folder": "01-agent-mlflow-skill-project-analyze",
+    "primary_scripts": [
+      "launch_workspace_summary.py",
+      "validate_mlflow_project.py",
+      "prepare_selected_model.py"
+    ],
+    "purpose": "workspace analysis, model_found decision, model list and model selection"
+  },
+  "02-sample-bootstrap": {
+    "skill_folder": "02-agent-mlflow-skill-sample-bootstrap",
+    "primary_scripts": [
+      "bootstrap_sample_project.py"
+    ],
+    "purpose": "copy sklearn, pytorch, or tensorflow sample when no model exists"
+  },
+  "03-environment-check": {
+    "skill_folder": "03-agent-mlflow-skill-environment-check",
+    "primary_scripts": [
+      "check_environment.py"
+    ],
+    "support_scripts": [
+      "response_speed_check.py",
+      "apply_index_ignore.py"
+    ],
+    "purpose": "check Python, requirements.txt, MLflow settings, and closed-network speed"
+  },
+  "04-train-model": {
+    "skill_folder": "04-agent-mlflow-skill-train-model",
+    "primary_scripts": [
+      "prepare_selected_model.py",
+      "run_training.py"
+    ],
+    "support_scripts": [
+      "adapt_ai_studio.py"
+    ],
+    "purpose": "copy aiu_custom template, generate runtest_2.py, and run confirmed entrypoint"
+  },
+  "05-inference-test": {
+    "skill_folder": "05-agent-mlflow-skill-inference-test",
+    "primary_scripts": [
+      "local_serving/localservingtest.py",
+      "test_inference.py"
+    ],
+    "purpose": "run selected-model local serving smoke test and inference contract checks"
+  },
+  "06-mlflow-verify": {
+    "skill_folder": "06-agent-mlflow-skill-mlflow-verify",
+    "primary_scripts": [
+      "verify_mlflow.py"
+    ],
+    "purpose": "verify MLflow run, artifacts, and registered model"
+  },
+  "qa-maintenance": {
+    "primary_scripts": [
+      "doctor.py",
+      "test_local_sample.py"
+    ],
+    "documents": [
+      "README.md",
+      "MAINTENANCE.md"
+    ],
+    "purpose": "one-page QA, bundled sample QA, and script maintenance"
+  }
+}

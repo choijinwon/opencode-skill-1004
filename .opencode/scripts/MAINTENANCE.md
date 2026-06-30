@@ -18,62 +18,40 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 - Bun은 사용하지 않습니다.
 - Python 기준 버전은 `3.11.9`입니다.
 
-## Script Overview
+## Skill Script Overview
+
+스킬-스크립트 매핑의 단일 기준은 `.opencode/scripts/skill_script_map.json`입니다.
+문서를 수정할 때는 아래 표와 JSON을 함께 맞춥니다.
 
 ```text
-doctor.py
-  전체 워크플로우 상태를 한 화면에서 점검합니다.
-  run.py처럼 이름이 자유로운 단일 Python 실행 파일도 자동 후보로 잡습니다.
-  유지보수자가 가장 먼저 봐야 하는 종합 진단 진입점입니다.
+01 Project Analyze
+  launch_workspace_summary.py     첫 진입 가벼운 요약
+  validate_mlflow_project.py      상세 프로젝트 분석
+  prepare_selected_model.py       모델 목록 확인/모델 선택
 
-adapt_ai_studio.py
-  사용자가 가져온 임의 Python 실행 파일에 AIU Studio/MLflow 연결부를 보강합니다.
-  기본은 dry-run이고 --execute에서만 실제 파일을 수정합니다.
+02 Sample Bootstrap
+  bootstrap_sample_project.py     sklearn/pytorch/tensorflow 샘플 복사
 
-validate_mlflow_project.py
-  모델 프로젝트를 깊게 분석합니다.
-  모델 있음/없음, 프레임워크 후보, entrypoint 후보, 샘플 규격 누락을 판단합니다.
+03 Environment Check
+  check_environment.py            Python, requirements.txt, MLflow 설정 확인
+  response_speed_check.py         폐쇄망 속도 진단
+  apply_index_ignore.py           인덱싱 제외 적용
 
-prepare_selected_model.py
-  data/** 모델 파일 목록을 만들고 사용자가 선택한 모델 기준으로 MODEL_KIND를 판별합니다.
-  aiu_studio/ 아래의 기존 runtest.py/run_test.py를 우선 참조하고, 없으면 루트 runtest.py/run_test.py로 aiu_studio/runtest_2.py를 생성합니다. 기존 파일은 수정하지 않습니다.
-  .opencode/samples/aiu_studio/ 폴더를 프로젝트 루트의 aiu_studio/로 그대로 복사하고 모델 파일은 복사하지 않습니다.
-  aiu_studio/ 내부 파일 구성은 고정하지 않고 비교/수정하지 않습니다.
+04 Train Model / Selected Model Build
+  prepare_selected_model.py       aiu_custom 템플릿 복사 + runtest_2.py 변환 생성
+  run_training.py                 확정 entrypoint 실행
+  adapt_ai_studio.py              사용자 임의 run.py 보강용 보조 스크립트
 
-bootstrap_sample_project.py
-  sklearn/pytorch/tensorflow 샘플을 워크스페이스에 복사합니다.
-  기존 모델이 있으면 --scaffold-existing으로 부족한 골격만 보충합니다.
+05 Inference Test
+  local_serving/localservingtest.py  prepare_selected_model.py가 생성/변환
+  test_inference.py                  수동 추론 계약 점검
 
-check_environment.py
-  Python, dependency, MLflow 설정, 소스 내 필수 설정값을 확인합니다.
-  requirements.txt의 pip 패키지 설치/버전 상태를 상세 비교합니다.
-  환경 변수 값과 소스 설정값을 set/missing/empty 상태로 표시합니다.
+06 MLflow Verify
+  verify_mlflow.py                MLflow experiment/run/artifact/registry 검증
 
-run_training.py
-  확정된 entrypoint를 실제 실행하거나 실행 전 상태를 점검합니다.
-  모델 산출물과 ai_studio 출력 폴더를 확인합니다.
-
-test_inference.py
-  input_example.json 기반으로 추론 계약을 검증합니다.
-  mlflow.pyfunc 또는 aiu_custom wrapper 경로를 사용합니다.
-
-verify_mlflow.py
-  MLflow tracking server의 experiment, run, artifact, registry 상태를 확인합니다.
-
-response_speed_check.py
-  폐쇄망 OpenCode 응답 지연 원인을 진단합니다.
-  대형 폴더, 대형 파일, ignore 패턴 누락을 확인합니다.
-
-apply_index_ignore.py
-  .ignore, .rgignore, .gitignore에 폐쇄망 인덱싱 제외 규칙을 적용합니다.
-
-launch_workspace_summary.py
-  AIU Studio 모드 첫 진입에서 가볍게 workspace 상태를 요약합니다.
-  무거운 분석 대신 validate_mlflow_project.py 실행 결과를 짧게 보여줍니다.
-
-test_local_sample.py
-  번들 샘플을 로컬 venv에서 테스트합니다.
-  오프라인 QA에서는 --skip-install을 사용할 수 있습니다.
+QA / Maintenance
+  doctor.py                       전체 워크플로우 상태 1페이지 점검
+  test_local_sample.py            번들 샘플 QA
 ```
 
 ## doctor.py
