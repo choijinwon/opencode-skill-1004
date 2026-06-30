@@ -1306,6 +1306,7 @@ def insert_preserved_data_prep_block(text: str, kind: str) -> str:
 
 def generated_selected_model_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
     selected_relative = rel(selected_model, project)
+    text = reference.read_text(encoding="utf-8", errors="ignore")
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -1315,21 +1316,7 @@ def generated_selected_model_runtest_text(project: Path, selected_model: Path, k
         """def load_selected_model():\n    raise ValueError(f\"unsupported model kind: {_selected_model_kind()}\")\n""",
     )
     loader = loader.replace("MODEL_PATH", "_selected_model_path()")
-    data_prep = aiu_data_prep_block(kind).replace("MODEL_KIND", "_selected_model_kind()").replace("MODEL_PATH", "_selected_model_path()")
-    return f'''from __future__ import annotations
-
-import io
-import json
-import logging
-import os
-import sys
-from pathlib import Path
-
-from aiu_custom.predict import ModelWrapper
-
-
-logging.getLogger("mlflow").setLevel(logging.ERROR)
-
+    mapping_block = f'''
 AI_STUDIO_DIR = Path(__file__).resolve().parent
 MODEL_LOAD_HINT = {load_hint!r}
 AIU_REQUIRED_PACKAGE = {required_package!r}
@@ -1337,54 +1324,8 @@ REFERENCE_ENTRYPOINT = {reference_display_path(reference)!r}
 INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
 CONFIG_DIR = AI_STUDIO_DIR / "config"
 CONFIG_PATH = CONFIG_DIR / "config.json"
+MODEL_DIR = AI_STUDIO_DIR / "saved_model"
 MAPPING_PATH = AI_STUDIO_DIR / "aiu_custom" / "mapping.json"
-
-# AI 환경 설정
-# 할당 받은 MLflow tracking server 값을 사용자가 직접 입력합니다.
-# 비밀번호 값은 출력하지 않습니다.
-mlflow_tracking_url = ""
-mlflow_tracking_username = ""
-mlflow_tracking_password = ""
-mlflow_experiment_name = {default_experiment_name!r}
-mlflow_register_model_name = {default_register_model_name!r}
-
-
-def configure_utf8_stdio() -> None:
-    """Windows console encoding guard."""
-    if os.name != "nt":
-        return
-    for stream_name in ("stdout", "stderr"):
-        stream = getattr(sys, stream_name)
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8")
-        elif hasattr(stream, "buffer"):
-            setattr(sys, stream_name, io.TextIOWrapper(stream.buffer, encoding="utf-8"))
-
-
-def missing_mlflow_settings() -> list[str]:
-    required = {{
-        "mlflow_tracking_url": mlflow_tracking_url,
-        "mlflow_tracking_username": mlflow_tracking_username,
-        "mlflow_tracking_password": mlflow_tracking_password,
-        "mlflow_experiment_name": mlflow_experiment_name,
-        "mlflow_register_model_name": mlflow_register_model_name,
-    }}
-    return [name for name, value in required.items() if not value]
-
-
-def export_mlflow_environment() -> None:
-    if mlflow_tracking_url.lower().startswith("https://"):
-        raise ValueError("ssl_not_allowed: use http:// or file:// for mlflow_tracking_url")
-    exports = {{
-        "MLFLOW_TRACKING_URI": mlflow_tracking_url,
-        "MLFLOW_TRACKING_USERNAME": mlflow_tracking_username,
-        "MLFLOW_TRACKING_PASSWORD": mlflow_tracking_password,
-        "MLFLOW_EXPERIMENT_NAME": mlflow_experiment_name,
-        "MLFLOW_REGISTER_MODEL_NAME": mlflow_register_model_name,
-    }}
-    for name, value in exports.items():
-        if value:
-            os.environ[name] = value
 
 
 def _load_selected_mapping() -> dict:
@@ -1416,72 +1357,51 @@ def _selected_model_path() -> Path:
 
 
 {loader}
-
-{data_prep}
-
-
-def write_config() -> Path:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    config = {{
-        "model_kind": _selected_model_kind(),
-        "model_path": str(_selected_model_path()),
-        "model_relative_path": {selected_relative!r},
-        "load_hint": MODEL_LOAD_HINT,
-    }}
-    CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
-    return CONFIG_PATH
-
-
-def main() -> None:
-    configure_utf8_stdio()
-    missing = missing_mlflow_settings()
-    if missing:
-        print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
-        print("missing settings:")
-        for name in missing:
-            print(f"- {{name}}")
-        print("비밀번호 값은 출력하지 않습니다.")
-        return
-
-    try:
-        import mlflow
-    except Exception as exc:
-        print(f"MLflow import failed. Install packages from requirements.txt first. reason={{exc}}")
-        return
-
-    export_mlflow_environment()
-    mlflow.set_tracking_uri(mlflow_tracking_url)
-    mlflow.set_experiment(mlflow_experiment_name)
-
-    model = load_selected_model()
-    input_example = _aiu_write_input_example()
-    config_path = write_config()
-
-    with mlflow.start_run(run_name=mlflow_register_model_name):
-        mlflow.set_tag("model.kind", _selected_model_kind())
-        mlflow.set_tag("model.source", {selected_relative!r})
-        mlflow.log_param("model_kind", _selected_model_kind())
-        mlflow.log_metric("model_loaded", 1.0 if model is not None else 0.0)
-        mlflow.pyfunc.log_model(
-            artifact_path="ai_studio",
-            python_model=ModelWrapper(),
-            artifacts={{
-                "model": str(_selected_model_path()),
-                "config": str(config_path),
-            }},
-            input_example=input_example,
-            registered_model_name=mlflow_register_model_name,
-            pip_requirements="requirements.txt",
-        )
-
-    print(f"input_example written: {{INPUT_EXAMPLE_PATH}}")
-    print(f"config written: {{CONFIG_PATH}}")
-    print("MLflow model logged with artifact_path='ai_studio'")
-
-
-if __name__ == "__main__":
-    main()
 '''
+    original_path_block = '''PROJECT_DIR = Path(__file__).resolve().parent
+SOURCE_MODEL_PATH = PROJECT_DIR / "data" / "torch" / "model.pt"
+DATA_MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_KIND = "pytorch"
+MODEL_LOAD_HINT = "torch.load(MODEL_PATH, map_location='cpu')"
+INPUT_EXAMPLE_PATH = PROJECT_DIR / "input_example.json"
+CONFIG_DIR = PROJECT_DIR / "config"
+CONFIG_PATH = CONFIG_DIR / "config.json"
+MODEL_DIR = PROJECT_DIR / "saved_model"
+MODEL_PATH = MODEL_DIR / "model.pt"'''
+    text = text.replace("import mlflow\n", "")
+    text = text.replace(original_path_block, mapping_block.strip())
+    text = text.replace('mlflow_experiment_name = "pytorch_sample"', f"mlflow_experiment_name = {default_experiment_name!r}")
+    text = text.replace('mlflow_register_model_name = "pytorch_sample_model"', f"mlflow_register_model_name = {default_register_model_name!r}")
+    text = text.replace("runtest.py에 직접 입력하세요.", "runtest_2.py에 직접 입력하세요.")
+    text = text.replace(
+        "    export_mlflow_environment()\n    mlflow.set_tracking_uri(mlflow_tracking_url)",
+        "    try:\n"
+        "        import mlflow\n"
+        "    except Exception as exc:\n"
+        "        print(f\"MLflow import failed. Install packages from requirements.txt first. reason={exc}\")\n"
+        "        return\n\n"
+        "    export_mlflow_environment()\n"
+        "    mlflow.set_tracking_uri(mlflow_tracking_url)",
+    )
+    text = text.replace(
+        "    model = TinyTorchModel(input_dim=train_x.shape[1], output_dim=2)\n"
+        "    train_model(model, train_x, train_y)\n"
+        "    metrics = compute_metrics(model, test_x, test_y)\n",
+        "    model = load_selected_model()\n"
+        "    # 모델 준비: 선택된 모델을 그대로 사용하고 재학습하지 않습니다.\n"
+        "    metrics = {\"model_loaded\": 1.0 if model is not None else 0.0}\n",
+    )
+    text = text.replace(
+        '    config = {"framework": "pytorch", "input_dim": train_x.shape[1], "output_dim": 2}\n',
+        '    config = {"framework": _selected_model_kind(), "model_path": str(_selected_model_path()), "model_relative_path": '
+        + repr(selected_relative)
+        + "}\n",
+    )
+    text = text.replace("    torch.save(model.state_dict(), MODEL_PATH)\n", "    selected_model_path = _selected_model_path()\n")
+    text = text.replace('        mlflow.set_tag("data.name", "synthetic_tensor(pytorch)")', '        mlflow.set_tag("data.name", "selected_model")')
+    text = text.replace("            artifacts={\n                \"model\": MODEL_PATH.as_posix(),", "            artifacts={\n                \"model\": selected_model_path.as_posix(),")
+    text = text.replace('    print(f"model written: {MODEL_PATH}")', '    print(f"selected model: {selected_model_path}")')
+    return text.rstrip() + "\n"
 
 
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
