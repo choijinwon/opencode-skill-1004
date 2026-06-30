@@ -38,6 +38,7 @@ REFERENCE_ENTRYPOINTS = [
     "runtest.py",
     "run_test.py",
 ]
+PROTECTED_REFERENCE_ENTRYPOINTS = set(REFERENCE_ENTRYPOINTS)
 PYTHON_ENTRYPOINTS = [
     "runtest.py",
     "run_test.py",
@@ -526,13 +527,13 @@ def ensure_under_project(project: Path, model_path: Path) -> bool:
 
 
 def find_reference_entrypoint(project: Path, kind: str | None = None) -> Path | None:
-    sample_reference = REFERENCE_ENTRYPOINT_BY_KIND.get(kind or "")
-    if sample_reference is not None and sample_reference.is_file():
-        return sample_reference
     for name in REFERENCE_ENTRYPOINTS:
         candidate = project / name
         if candidate.is_file():
             return candidate
+    sample_reference = REFERENCE_ENTRYPOINT_BY_KIND.get(kind or "")
+    if sample_reference is not None and sample_reference.is_file():
+        return sample_reference
     return None
 
 
@@ -650,12 +651,19 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
         failures.append(f"workspace_target_not_directory:{target}")
         return copied, skipped, failures
     if execute:
-        shutil.copytree(
-            AIU_STUDIO_SAMPLE_DIR,
-            target,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(*AIU_STUDIO_COPY_IGNORE_DIRS),
-        )
+        for source in AIU_STUDIO_SAMPLE_DIR.rglob("*"):
+            relative = source.relative_to(AIU_STUDIO_SAMPLE_DIR)
+            if any(part in AIU_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
+                continue
+            destination = target / relative
+            if source.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            if relative.as_posix() in PROTECTED_REFERENCE_ENTRYPOINTS and destination.exists():
+                skipped.append(f"{relative.as_posix()} protected_existing_reference")
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
     copied.append(".opencode/samples/aiu_studio/* -> workspace root")
     return copied, skipped, failures
 
@@ -2232,6 +2240,13 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.append(f"다음 실행부터는 목록 순서가 바뀌어도 안전하게 실제 경로를 사용하세요: --model {stable_path}")
         report.next_steps.append("이미 준비된 선택 모델을 다시 쓰려면: --model selected")
 
+    reference = find_reference_entrypoint(project, selected_kind)
+    report.reference_entrypoint = rel(reference, project) if reference else None
+    if reference is None:
+        report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
+        report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
+        return report
+
     copied, skipped, copy_failures = copy_aiu_studio_folder(project, args.execute)
     report.prepared_paths.extend(copied)
     report.skipped.extend(skipped)
@@ -2244,13 +2259,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.skipped.extend(runtime_dirs_skipped)
     report.failures.extend(runtime_dirs_failures)
     if report.failures:
-        return report
-
-    reference = find_reference_entrypoint(project, selected_kind)
-    report.reference_entrypoint = rel(reference, project) if reference else None
-    if reference is None:
-        report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
-        report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
         return report
 
     changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)

@@ -7,7 +7,8 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한다. `aiu_custom/` 내부 템플릿 파일과 `requirements.txt`도 워크스페이스 루트로 함께 복사된다. 내부 파일 구성은 고정하지 않고 비교/수정하지 않는다.
-기존 `runtest.py`는 루트에서 참조하고, 수정하지 않고 복사된 템플릿 파일들을 선택 모델 원본 경로 기준으로 변환/갱신한다.
+기존 `runtest.py`는 워크스페이스 루트에서 읽기 전용으로 참조하고, 수정하지 않는다. 템플릿 복사 중에도 기존 `runtest.py` 또는 `run_test.py`는 덮어쓰지 않는다.
+선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
 
 유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.
@@ -141,7 +142,7 @@ python .opencode/scripts/doctor.py --workspace . --project <model-project-folder
 
 MLflow 모델 로깅 시 `code_paths`는 리눅스 배포 기준으로 `Path(...).as_posix()` 형태를 사용해 `aiu_custom/` 코드를 함께 업로드한다.
 `runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
-기존 `runtest.py`는 수정하지 않는다.
+기존 `runtest.py`는 수정하지 않고 참조만 한다.
 PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환해줘.
 선택 모델 경로와 `MODEL_KIND`를 반영한다.
 `runtest_2.py` 생성 시퀀스는 `모델 선택 -> 모델 형식 확인 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> samples/pytorch_sample/ 내부 참조(복사 금지) -> 선택 모델 경로와 MODEL_KIND를 반영한 연결부 변환 -> 변환 결과 검증` 순서로 수행한다.
