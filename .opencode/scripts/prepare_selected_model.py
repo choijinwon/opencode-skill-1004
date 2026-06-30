@@ -185,7 +185,7 @@ MODEL_PREP_CALL_PATTERN = re.compile(
     r"\b("
     r"ElasticNet|LinearRegression|LogisticRegression|RandomForestClassifier|RandomForestRegressor|"
     r"DecisionTreeClassifier|DecisionTreeRegressor|XGBClassifier|XGBRegressor|"
-    r"ImageClassifier|Imageclassifier|ModelWrapper|torchvision\.models\.[A-Za-z_][A-Za-z0-9_]*|"
+    r"ImageClassifier|Imageclassifier|torchvision\.models\.[A-Za-z_][A-Za-z0-9_]*|"
     r"nn\.Sequential|torch\.nn\.Sequential|keras\.Sequential|tf\.keras\.Sequential"
     r")\s*\("
 )
@@ -538,7 +538,14 @@ def find_reference_entrypoint(project: Path, kind: str | None = None) -> Path | 
 
 
 def preserve_reference_code(reference: Path) -> bool:
-    return reference.resolve() == PYTORCH_REFERENCE_ENTRYPOINT.resolve()
+    if reference.resolve() == PYTORCH_REFERENCE_ENTRYPOINT.resolve():
+        return True
+    if not PYTORCH_REFERENCE_ENTRYPOINT.is_file():
+        return False
+    try:
+        return file_sha256(reference) == file_sha256(PYTORCH_REFERENCE_ENTRYPOINT)
+    except OSError:
+        return False
 
 
 def file_sha256(path: Path) -> str:
@@ -957,6 +964,9 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
     converted_comment = f"# AIU Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용"
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
+        first_name = lhs.split(",", 1)[0].strip()
+        if first_name not in MODEL_PREP_VARIABLE_NAMES:
+            return line
         return f"{indent}{lhs} = load_selected_model()  {converted_comment}{suffix}"
     return (
         f"{indent}# AIU Studio 변환: 선택 모델 {kind}은 load_selected_model()으로 준비됩니다.{suffix}"
