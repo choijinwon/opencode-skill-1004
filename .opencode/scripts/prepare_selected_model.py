@@ -618,7 +618,7 @@ def ensure_runtime_directories(project: Path, execute: bool) -> tuple[list[str],
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    runtime_dirs = ["config", "saved_model"]
+    runtime_dirs = ["config", "saved_model", "local_serving"]
     if not execute:
         skipped.extend(f"{name}/:dry_run" for name in runtime_dirs)
         return changed, skipped, failures
@@ -2257,6 +2257,8 @@ def print_report(report: PreparedModelReport) -> None:
                 print("- config/")
             if "saved_model/" in report.prepared_paths:
                 print("- saved_model/")
+            if "local_serving/" in report.prepared_paths:
+                print("- local_serving/")
             print("- 선택 모델 실행/등록 연결부 별도 변환")
             print("- 선택 모델 실행/등록 연결부 별도 변환 검증")
         else:
