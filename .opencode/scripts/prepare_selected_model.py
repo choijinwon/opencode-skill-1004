@@ -1317,18 +1317,35 @@ def generated_selected_model_runtest_text(project: Path, selected_model: Path, k
     )
     loader = loader.replace("MODEL_PATH", "_selected_model_path()")
     mapping_block = f'''
-AI_STUDIO_DIR = Path(__file__).resolve().parent
-INPUT_EXAMPLE_PATH = AI_STUDIO_DIR / "input_example.json"
-CONFIG_DIR = AI_STUDIO_DIR / "config"
-CONFIG_PATH = CONFIG_DIR / "config.json"
-MODEL_DIR = AI_STUDIO_DIR / "saved_model"
-MAPPING_PATH = AI_STUDIO_DIR / "aiu_custom" / "mapping.json"
+def _workspace_dir() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _input_example_path() -> Path:
+    return _workspace_dir() / "input_example.json"
+
+
+def _config_dir() -> Path:
+    return _workspace_dir() / "config"
+
+
+def _config_path() -> Path:
+    return _config_dir() / "config.json"
+
+
+def _model_dir() -> Path:
+    return _workspace_dir() / "saved_model"
+
+
+def _mapping_path() -> Path:
+    return _workspace_dir() / "aiu_custom" / "mapping.json"
 
 
 def _load_selected_mapping() -> dict:
-    if not MAPPING_PATH.is_file():
+    mapping_path = _mapping_path()
+    if not mapping_path.is_file():
         raise FileNotFoundError("aiu_custom/mapping.json is required")
-    return json.loads(MAPPING_PATH.read_text(encoding="utf-8"))
+    return json.loads(mapping_path.read_text(encoding="utf-8"))
 
 
 def _selected_model_info() -> dict:
@@ -1350,7 +1367,7 @@ def _selected_model_path() -> Path:
     path = Path(str(raw_path))
     if path.is_absolute():
         return path
-    return AI_STUDIO_DIR / path
+    return _workspace_dir() / path
 
 
 {loader}
@@ -1367,6 +1384,10 @@ MODEL_DIR = PROJECT_DIR / "saved_model"
 MODEL_PATH = MODEL_DIR / "model.pt"'''
     text = text.replace("import mlflow\n", "")
     text = text.replace(original_path_block, mapping_block.strip())
+    text = text.replace("INPUT_EXAMPLE_PATH", "_input_example_path()")
+    text = text.replace("CONFIG_DIR", "_config_dir()")
+    text = text.replace("CONFIG_PATH", "_config_path()")
+    text = text.replace("MODEL_DIR", "_model_dir()")
     text = text.replace('mlflow_experiment_name = "pytorch_sample"', f"mlflow_experiment_name = {default_experiment_name!r}")
     text = text.replace('mlflow_register_model_name = "pytorch_sample_model"', f"mlflow_register_model_name = {default_register_model_name!r}")
     text = text.replace("runtest.py에 직접 입력하세요.", "runtest_2.py에 직접 입력하세요.")
@@ -1999,9 +2020,21 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         if selected_relative not in text and selected_absolute not in text:
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_absolute}")
         if display_path == "runtest_2.py":
-            if "MAPPING_PATH" not in text or "_selected_model_kind" not in text or "_selected_model_path" not in text:
+            if "_mapping_path" not in text or "_selected_model_kind" not in text or "_selected_model_path" not in text:
                 failures.append("runtest_2_mapping_loader_missing:runtest_2.py")
-            forbidden_names = ["MODEL_KIND", "DATA_MODEL_PATH", "MODEL_LOAD_HINT", "AIU_REQUIRED_PACKAGE", "REFERENCE_ENTRYPOINT"]
+            forbidden_names = [
+                "MODEL_KIND",
+                "DATA_MODEL_PATH",
+                "MODEL_LOAD_HINT",
+                "AIU_REQUIRED_PACKAGE",
+                "REFERENCE_ENTRYPOINT",
+                "AI_STUDIO_DIR",
+                "INPUT_EXAMPLE_PATH",
+                "CONFIG_DIR",
+                "CONFIG_PATH",
+                "MODEL_DIR",
+                "MAPPING_PATH",
+            ]
             embedded = [name for name in forbidden_names if name in text]
             if embedded:
                 failures.append(f"runtest_2_should_not_embed_selected_model_metadata:{','.join(embedded)}")
