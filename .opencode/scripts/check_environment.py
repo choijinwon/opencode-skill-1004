@@ -1107,6 +1107,8 @@ def print_text(report: EnvironmentReport):
     print(f"Expected Python: {report.expected_python_version} ({report.python_version_status})")
     print(f"Virtual env: {report.virtual_env}")
     print(f"Dependency files: {', '.join(report.dependency_files) if report.dependency_files else 'missing'}")
+    install_file = "requirements.txt" if "requirements.txt" in report.dependency_files else "missing"
+    print(f"설치 기준 파일: {install_file}")
     if report.selected_model_path or report.selected_model_kind or report.selected_required_package:
         print("\nSelected model:")
         print(f"- path: {report.selected_model_path or 'missing'}")

@@ -446,7 +446,7 @@ def check_pip_requirements(project: Path) -> DoctorCheck:
             "패키지 설치 상태",
             "warn",
             "requirements.txt가 없습니다.",
-            [],
+            ["설치 기준 파일: requirements.txt (missing)"],
             ["사용자 모델의 pip 필요 패키지 목록을 확인하거나 requirements.txt를 추가하세요."],
         )
     rows = requirement_rows(project)
@@ -461,7 +461,7 @@ def check_pip_requirements(project: Path) -> DoctorCheck:
     missing = [name for name, _, installed, _ in rows if installed is None]
     mismatched = [name for name, _, _, status in rows if status == "version_mismatch"]
     unchecked = [name for name, _, _, status in rows if status == "version_unchecked"]
-    evidence = []
+    evidence = ["설치 기준 파일: requirements.txt"]
     for name, required, installed, status in rows[:20]:
         installed_text = installed or "missing"
         evidence.append(f"{name}: {status} (required: {required}, installed: {installed_text})")

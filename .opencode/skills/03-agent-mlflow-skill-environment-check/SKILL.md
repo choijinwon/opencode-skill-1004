@@ -51,6 +51,7 @@ metadata:
 - 판단 결과
 - Python 현재 version / 기대 version 3.11.9
 - dependency 파일 상태
+- 설치 기준 파일: requirements.txt
 - requirements.txt 필요 패키지 / 설치 여부 / 설치 버전 / 요구 버전 / 버전 불일치
 - MLflow 3.13.0 설치/version 상태
 - 원격 MLflow 서버 version / 로컬 MLflow version / 불일치 여부
