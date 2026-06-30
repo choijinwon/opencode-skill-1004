@@ -42,6 +42,8 @@ Step 8  오류 수정 및 재검증
         verify_mlflow.py
 ```
 
+화면에 표시된 모델 번호나 TOD 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.
+
 기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TOD 단계로 처리한다.
 
 ```text

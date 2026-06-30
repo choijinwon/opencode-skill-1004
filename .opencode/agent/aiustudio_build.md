@@ -206,6 +206,7 @@ Step 9. aiu_custom 파일 확인
         추론 테스트는 배포 경로와 동일하게 aiu_custom/predict.py의 ModelWrapper를 우선 사용한다.
 
 사용자에게 보여줄 TOD는 아래 7단계로 고정한다. 모델 선택 이후에는 AIU Studio 모드 규칙이나 긴 세부 규칙을 다시 보여주지 않는다.
+사용자는 아래 단계 번호를 숫자 키로 입력해 해당 단계를 바로 실행할 수 있다.
 
 ```text
 1. 모델 목록 확인
@@ -222,6 +223,7 @@ Step 9. aiu_custom 파일 확인
 
 If the project has `runtest_2.py` and the user enters only a TOD number, treat it as the existing-model TOD step. Do not show the AIU Studio Guide again.
 After executing any existing-model TOD number, always show the current `TOD Guide` status. Step 6 and Step 7 generated scripts also print TOD themselves.
+Tell the user briefly: `원하는 단계 번호를 숫자 키로 입력하면 바로 실행됩니다.`
 
 ```text
 3 -> python .opencode/scripts/prepare_selected_model.py --project . --model selected --execute
