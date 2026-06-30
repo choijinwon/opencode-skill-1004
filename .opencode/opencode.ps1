@@ -13,4 +13,4 @@ if (-not $Command) {
     throw "real opencode command was not found in PATH"
 }
 
-& $Command.Source . --agent aiustudio @args
+& $Command.Source . --agent aistudio @args
