@@ -182,7 +182,7 @@ blocked:
 1. selected_sample 확인
 2. target_project_path 확인
 3. aiu_custom/, local_serving/, saved_model/ 확인
-4. requirements.txt, input_example.json 확인
+4. 복사된 템플릿 내부에서 실제 존재하는 파일과 필요한 산출물 확인
 5. run_model.py 또는 runtest.py 실행
 6. ai_studio 산출물 확인
 ```

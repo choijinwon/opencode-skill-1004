@@ -13,41 +13,46 @@
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
 
-유지보수자는 먼저 `.opencode/scripts/MAINTENANCE.md`를 확인한다. 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 파일별로 정리해두었다.
+스킬 목록 기준 스크립트 정리는 `.opencode/scripts/SCRIPT_INDEX.md`를 먼저 본다.
+유지보수자는 `.opencode/scripts/MAINTENANCE.md`에서 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 확인한다.
 
 ## Skill Script Map
 
 먼저 이 표만 봅니다. 스킬에서 직접 쓰는 대표 스크립트는 아래 흐름으로 고정합니다.
+실제 구현 파일은 스킬 목록 기준 폴더에 있고, 실행 경로 호환성을 위해 `.opencode/scripts/` 루트에 wrapper를 유지합니다.
 도구가 읽을 수 있는 같은 매핑은 `.opencode/scripts/skill_script_map.json`에 있습니다.
+사람이 읽는 상세 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`에 있습니다.
 
 ```text
 01 Project Analyze
-   launch_workspace_summary.py     첫 진입 가벼운 요약
-   validate_mlflow_project.py      상세 분석
-   prepare_selected_model.py       모델 목록/선택
+   01-project-analyze/launch_workspace_summary.py     첫 진입 가벼운 요약
+   01-project-analyze/validate_mlflow_project.py      상세 분석
+   04-train-model/prepare_selected_model.py           모델 목록/선택
 
 02 Sample Bootstrap
-   bootstrap_sample_project.py     sklearn/pytorch/tensorflow 샘플 복사
+   02-sample-bootstrap/bootstrap_sample_project.py    sklearn/pytorch/tensorflow 샘플 복사
 
 03 Environment Check
-   check_environment.py            Python, requirements.txt, MLflow 설정 확인
-   response_speed_check.py         폐쇄망 속도 진단
-   apply_index_ignore.py           인덱싱 제외 적용
+   03-environment-check/check_environment.py          Python, requirements.txt, MLflow 설정 확인
+   03-environment-check/response_speed_check.py       폐쇄망 속도 진단
+   03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-   prepare_selected_model.py       runtest.py 참조 + runtest_2.py 변환 생성
-   run_training.py                 확정 entrypoint 실행
-   adapt_ai_studio.py              사용자 임의 run.py 보강용 보조 스크립트
+   04-train-model/prepare_selected_model.py           runtest.py 참조 + runtest_2.py 변환 생성
+   04-train-model/run_training.py                     확정 entrypoint 실행
+   04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
-   test_inference.py                  수동 추론 계약 점검
+   05-inference-test/test_inference.py                수동 추론 계약 점검
+   generated: local_serving/localservingtest.py
 
 06 MLflow Verify
-   verify_mlflow.py                run, artifact, registry 검증
+   06-mlflow-verify/verify_mlflow.py                  run, artifact, registry 검증
 
 QA / Maintenance
-   doctor.py                       전체 상태 1페이지 점검
-   test_local_sample.py            번들 샘플 QA
+   qa-maintenance/doctor.py                           전체 상태 1페이지 점검
+   qa-maintenance/test_local_sample.py                번들 샘플 QA
+   SCRIPT_INDEX.md                 스킬 목록 기준 스크립트 정리표
    MAINTENANCE.md                  유지보수 상세 문서
 ```
 
@@ -93,7 +98,8 @@ cd '<selected-project-path>'
 python '<opencode-package-path>\.opencode\scripts\verify_mlflow.py' --project '<selected-project-path>' --tracking-uri <tracking-uri> --experiment-name <experiment-name>
 ```
 
-`3`은 선택 모델 환경 변환과 `requirements.txt` 재정의/확인을 한 번에 처리한다. 필수 패키지 5개와 모델별 추가 패키지를 함께 반영한다.
+`3`은 `.opencode/samples/aiu_studio/`에서 복사된 템플릿 폴더 내부를 기준으로, 선택 모델 실행/등록에 필요한 연결부를 모델 형식에 맞게 변환하고 `requirements.txt` 재정의/확인을 함께 처리한다. 필수 패키지 5개와 모델별 추가 패키지를 함께 반영한다.
+필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
 `4`는 모델 환경변수와 패키지 상태 체크다. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트하고, MLflow 입력값 3개와 자동값 2개를 `set`, `empty`, `missing`, `auto_default` 상태로만 표시한다. secret 값은 출력하지 않는다.
 
@@ -293,7 +299,7 @@ Python 3.11.9, dependency, MLflow 3.13.0, 원격 MLflow 서버 version, `ai_stud
 Python 기준 버전은 3.11.9이다. 다른 버전이면 `version_mismatch:python`으로 분류한다.
 `requirements.txt`가 있으면 필요한 pip 패키지 목록, 현재 설치 여부, 설치된 버전, 요구 버전, 버전 불일치 여부를 함께 출력한다.
 환경검증 화면에는 설치 기준 파일을 `requirements.txt`로 별도 표시한다.
-환경검증은 `runtest_2.py`, `aiu_custom/model.py`, `aiu_custom/predict.py`, `local_serving/localservingtest.py`의 import를 확인해 누락된 Python 패키지를 `requirements.txt`에 추가한다. pip 설치는 자동 실행하지 않고 `python -m pip install -r requirements.txt` 명령만 안내한다.
+환경검증은 복사 후 변환된 템플릿 파일들 가운데 실제 존재하는 Python 파일들의 import를 확인해 누락된 Python 패키지를 `requirements.txt`에 추가한다. 대표 예시는 `runtest_2.py`, `aiu_custom/model.py`, `aiu_custom/predict.py`, `local_serving/localservingtest.py`다. pip 설치는 자동 실행하지 않고 `python -m pip install -r requirements.txt` 명령만 안내한다.
 `mlflow_tracking_url`이 있으면 원격 MLflow 서버의 `/version`을 확인하고, 서버 version과 로컬 `mlflow` 설치 version 및 `requirements.txt` 요구 version이 다르면 불일치로 표시한다.
 Python 버전이 다르면 `차단 항목 요약`에 다음 형식으로 표시한다.
 

@@ -19,10 +19,10 @@ build/
 *.whl
 *.tar.gz
 *.zip
-mlruns/
 mlartifacts/
 mlflow.db
 ai_studio/tracking/
+aiu_studio/local_serving/aiu_studio/
 ai_studio/metrics/
 ai_studio/code/
 ai_studio/artifacts/
@@ -38,8 +38,6 @@ data/processed/
 model/
 models/
 saved_model/
-!.opencode/samples/aiu_studio/saved_model/
-!.opencode/samples/aiu_studio/saved_model/.gitkeep
 *.log
 *.csv
 *.tsv
@@ -54,4 +52,8 @@ saved_model/
 *.pkl
 *.joblib
 *.safetensors
+*.bst
+*.ubj
+!.opencode/samples/aiu_studio/saved_model/
+!.opencode/samples/aiu_studio/saved_model/.gitkeep
 # <<< opencode closed-network index ignore <<<

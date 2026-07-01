@@ -63,7 +63,8 @@ Step 2. 모델 경로로 선택
 Step 3. 선택 모델 변환 시퀀스
         MODEL_KIND를 먼저 판별한 뒤 기존 runtest.py를 읽기 전용으로 참조한다.
         선택 모델 경로와 MODEL_KIND를 반영해 runtest_2.py만 생성/갱신한다.
-        추가 시퀀스로 `--sync-runtime`을 실행해 runtest_2.py의 선택 모델 경로와 MODEL_KIND를 읽고 aiu_custom/, local_serving/, saved_model/, config/, requirements.txt, input_example.json을 모델에 맞게 변환/갱신한다.
+        추가 시퀀스로 `--sync-runtime`을 실행해 runtest_2.py의 선택 모델 경로와 MODEL_KIND를 읽고, 복사된 템플릿 폴더 내부에서 선택 모델 실행/등록에 필요한 연결부를 모델에 맞게 변환/갱신한다.
+        requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용한다.
         내부 일치 검증은 선택된 runtest_2.py와 런타임 파일 기준으로 수행한다.
 Step 4. 모델 환경변수/패키지 상태 체크
         입력값 3개와 자동값 2개 상태를 확인한다.
@@ -99,38 +100,40 @@ python .opencode/scripts/prepare_selected_model.py --project <model-project-fold
 
 ## Script Map
 
-스킬별 대표 스크립트는 아래만 먼저 봅니다. 나머지는 QA/유지보수 보조입니다.
+스킬별 대표 스크립트는 아래만 먼저 봅니다. 실제 구현 파일은 스킬 목록 기준 폴더에 있고, `.opencode/scripts/` 루트에는 호환 wrapper가 있습니다.
 같은 매핑은 `.opencode/scripts/skill_script_map.json`에도 있습니다.
+상세 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`에 있습니다.
 
 ```text
 01 Project Analyze
-   launch_workspace_summary.py
-   validate_mlflow_project.py
-   prepare_selected_model.py
+   01-project-analyze/launch_workspace_summary.py
+   01-project-analyze/validate_mlflow_project.py
+   04-train-model/prepare_selected_model.py
 
 02 Sample Bootstrap
-   bootstrap_sample_project.py
+   02-sample-bootstrap/bootstrap_sample_project.py
 
 03 Environment Check
-   check_environment.py
-   response_speed_check.py
-   apply_index_ignore.py
+   03-environment-check/check_environment.py
+   03-environment-check/response_speed_check.py
+   03-environment-check/apply_index_ignore.py
 
 04 Train Model / Selected Model Build
-   prepare_selected_model.py
-   run_training.py
-   adapt_ai_studio.py
+   04-train-model/prepare_selected_model.py
+   04-train-model/run_training.py
+   04-train-model/adapt_ai_studio.py
 
 05 Inference Test
-   local_serving/localservingtest.py
-   test_inference.py
+   05-inference-test/test_inference.py
+   generated: local_serving/localservingtest.py
 
 06 MLflow Verify
-   verify_mlflow.py
+   06-mlflow-verify/verify_mlflow.py
 
 QA / Maintenance
-   doctor.py
-   test_local_sample.py
+   qa-maintenance/doctor.py
+   qa-maintenance/test_local_sample.py
+   SCRIPT_INDEX.md
    MAINTENANCE.md
 ```
 

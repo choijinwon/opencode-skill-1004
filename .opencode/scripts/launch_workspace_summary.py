@@ -1,131 +1,28 @@
-import json
-import subprocess
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import importlib.util
+import runpy
 import sys
 from pathlib import Path
 
 
-MODEL_HINTS = [
-    "aiu_studio/runtest.py",
-    "aui_studio/runtest.py",
-    "runtest.py",
-    "run_model.py",
-    "train.py",
-    "predict.py",
-    "aiu_custom/",
-    "data/",
-    "saved_model/",
-    "MLmodel",
-    "python_model.pkl",
-    ".pkl",
-    ".joblib",
-    ".pt",
-    ".pth",
-    ".onnx",
-    ".h5",
-    ".keras",
-    ".safetensors",
-    ".bst",
-    ".ubj",
-]
+_IMPL = Path(__file__).resolve().parent / "01-project-analyze" / "launch_workspace_summary.py"
 
 
-def main() -> int:
-    project_dir = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd().resolve()
-    analyzer = project_dir / ".opencode" / "scripts" / "validate_mlflow_project.py"
-
-    print("[Workspace Analysis]")
-
-    if not analyzer.exists():
-        print("- 상태: 분석 스크립트를 찾지 못했습니다.")
-        print("- 다음 단계: OpenCode에서 '이 워크스페이스를 분석해줘'라고 요청하세요.")
-        return 0
-
-    try:
-        result = subprocess.run(
-            [sys.executable, str(analyzer), "--project", str(project_dir), "--json"],
-            cwd=project_dir,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=8,
-        )
-    except Exception as exc:
-        print(f"- 상태: 분석 실패 ({exc})")
-        print("- 다음 단계: OpenCode에서 '이 워크스페이스를 분석해줘'라고 요청하세요.")
-        return 0
-
-    try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        payload = None
-
-    if result.returncode != 0 and payload is None:
-        print("- 상태: 분석 실패")
-        detail = (result.stderr or result.stdout).strip().splitlines()
-        if detail:
-            print(f"- 사유: {detail[-1][:160]}")
-        print("- 다음 단계: OpenCode에서 '이 워크스페이스를 분석해줘'라고 요청하세요.")
-        return 0
-
-    if payload is None:
-        print("- 상태: 분석 결과 파싱 실패")
-        print("- 다음 단계: OpenCode에서 '이 워크스페이스를 분석해줘'라고 요청하세요.")
-        return 0
-
-    checks = payload.get("checks", [])
-    evidence = []
-    review_items = []
-
-    for check in checks:
-        status = check.get("status")
-        name = check.get("name", "")
-        message = check.get("message", "")
-        if status == "pass":
-            evidence.extend(check.get("evidence", [])[:3])
-        elif status in {"warn", "block", "fail"}:
-            review_items.append(f"{name}: {message}")
-
-    model_artifact_paths = payload.get("model_artifact_paths") or []
-    evidence_text = " ".join(str(item) for item in evidence)
-    model_found = bool(model_artifact_paths) or any(hint in evidence_text for hint in MODEL_HINTS)
-    if not model_found:
-        review_items = [item for item in review_items if not item.startswith("sample spec scaffold:")]
-
-    print(f"- 분석 대상: {payload.get('selected_project', str(project_dir))}")
-    print(f"- 모델 상태: {'있음' if model_found else '없음 또는 추가 확인 필요'}")
-
-    if evidence or model_artifact_paths:
-        print("- 발견 항목:")
-        discovered = [str(x) for x in evidence if x]
-        discovered.extend(str(path) for path in model_artifact_paths[:6])
-        for item in sorted(set(discovered))[:6]:
-            print(f"  - {item}")
-
-    if model_artifact_paths:
-        print("- 선택 가능한 모델:")
-        for index, path in enumerate(model_artifact_paths[:10], start=1):
-            print(f"  {index}. {path}")
-
-    if review_items:
-        print("- 확인 필요:")
-        for item in review_items[:4]:
-            print(f"  - {item}")
-
-    print("- 다음 단계:")
-    if model_found:
-        print("  - 사용할 모델을 번호 또는 경로로 선택하세요. 예: 1 또는 data/<folder>/model.joblib")
-        print("  - 모델 목록이 보이는 상태에서 숫자 입력은 TODO 단계가 아니라 모델 번호 선택입니다.")
-        print("  - AIU Studio 빌드 모드 다음 작업 수행(한 번에): python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute")
-        print("  - 포함 작업: 모델 프로젝트 구조 분석 + runtest.py 참조 + 선택 모델 기준 runtest_2.py 변환")
-        print("  - 생성/갱신: runtest_2.py")
-        print("  - 3번 추가 시퀀스: python .opencode/scripts/prepare_selected_model.py --project . --sync-runtime --execute")
-    else:
-        print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
-        print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode AIU Studio 빌드 모드에서 선택해주세요.")
-        print("  - 추천 요청: 모델이 없으니 sklearn 샘플로 생성해줘.")
-
-    return 0
+def _load_impl():
+    module_name = "_opencode_impl_launch_workspace_summary"
+    spec = importlib.util.spec_from_file_location(module_name, _IMPL)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load script: {_IMPL}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    runpy.run_path(str(_IMPL), run_name="__main__")
+else:
+    _module = _load_impl()
+    globals().update({name: getattr(_module, name) for name in dir(_module) if not name.startswith("__")})

@@ -20,38 +20,40 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 
 ## Skill Script Overview
 
-스킬-스크립트 매핑의 단일 기준은 `.opencode/scripts/skill_script_map.json`입니다.
-문서를 수정할 때는 아래 표와 JSON을 함께 맞춥니다.
+스킬 목록 기준 사람이 읽는 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`입니다.
+도구가 읽는 스킬-스크립트 매핑의 단일 기준은 `.opencode/scripts/skill_script_map.json`입니다.
+실제 구현 파일은 스킬 목록 기준 폴더에 두고, 실행 경로 호환성을 위해 `.opencode/scripts/` 루트에는 wrapper를 둡니다.
+문서를 수정할 때는 아래 표, `SCRIPT_INDEX.md`, JSON을 함께 맞춥니다.
 
 ```text
 01 Project Analyze
-  launch_workspace_summary.py     첫 진입 가벼운 요약
-  validate_mlflow_project.py      상세 프로젝트 분석
-  prepare_selected_model.py       모델 목록 확인/모델 선택
+  01-project-analyze/launch_workspace_summary.py     첫 진입 가벼운 요약
+  01-project-analyze/validate_mlflow_project.py      상세 프로젝트 분석
+  04-train-model/prepare_selected_model.py           모델 목록 확인/모델 선택
 
 02 Sample Bootstrap
-  bootstrap_sample_project.py     sklearn/pytorch/tensorflow 샘플 복사
+  02-sample-bootstrap/bootstrap_sample_project.py    sklearn/pytorch/tensorflow 샘플 복사
 
 03 Environment Check
-  check_environment.py            Python, requirements.txt, MLflow 설정 확인
-  response_speed_check.py         폐쇄망 속도 진단
-  apply_index_ignore.py           인덱싱 제외 적용
+  03-environment-check/check_environment.py          Python, requirements.txt, MLflow 설정 확인
+  03-environment-check/response_speed_check.py       폐쇄망 속도 진단
+  03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-  prepare_selected_model.py       aiu_custom 템플릿 복사 + runtest_2.py 변환 생성
-  run_training.py                 확정 entrypoint 실행
-  adapt_ai_studio.py              사용자 임의 run.py 보강용 보조 스크립트
+  04-train-model/prepare_selected_model.py           runtest.py 참조 + runtest_2.py 변환 생성 + --sync-runtime
+  04-train-model/run_training.py                     확정 entrypoint 실행
+  04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
-  local_serving/localservingtest.py  prepare_selected_model.py가 생성/변환
-  test_inference.py                  수동 추론 계약 점검
+  05-inference-test/test_inference.py                수동 추론 계약 점검
 
 06 MLflow Verify
-  verify_mlflow.py                MLflow experiment/run/artifact/registry 검증
+  06-mlflow-verify/verify_mlflow.py                  MLflow experiment/run/artifact/registry 검증
 
 QA / Maintenance
-  doctor.py                       전체 워크플로우 상태 1페이지 점검
-  test_local_sample.py            번들 샘플 QA
+  qa-maintenance/doctor.py                           전체 워크플로우 상태 1페이지 점검
+  qa-maintenance/test_local_sample.py                번들 샘플 QA
+  SCRIPT_INDEX.md                 스킬 목록 기준 스크립트 정리표
 ```
 
 ## doctor.py
@@ -62,6 +64,7 @@ QA / Maintenance
 - 01~06 스킬 폴더가 순서대로 있는지 확인합니다.
 - Python 3.11.9 여부를 확인합니다.
 - `requirements.txt` 기준 pip 패키지 설치/버전 상태를 요약합니다.
+- 선택 모델 변환은 고정 파일 목록만을 전제로 설명하지 말고, 복사된 템플릿 폴더 내부에서 실제 존재하는 파일과 선택 모델 실행/등록에 필요한 연결부를 기준으로 설명합니다.
 - 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
 - 실행 파일이 AIU Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
 - 샘플 규격 폴더/파일 누락을 찾습니다.
@@ -102,6 +105,7 @@ SETTING_ALIASES            사용자가 다르게 쓴 설정명 허용 목록
 ```text
 FRAMEWORK_RULES             프레임워크 추정 규칙
 REQUIREMENT_BY_FRAMEWORK    프레임워크별 최소 requirements
+requirements.required.txt   생성 requirements.txt의 필수 패키지 기준
 ENTRYPOINT_HINTS            실행 파일 후보
 adapter_block()             entrypoint에 삽입할 AIU Studio/MLflow helper
 model_wrapper_template()    aiu_custom/predict.py 템플릿
