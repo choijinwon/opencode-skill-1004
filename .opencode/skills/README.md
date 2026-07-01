@@ -33,8 +33,8 @@
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 선택 모델 파일은 템플릿 폴더로 복사하지 않고, 변환된 코드는 선택 모델 원본 경로에 연결한다.
-- 모델 선택 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`만 생성/갱신한다.
-- `aiu_custom/`, `local_serving/`, `saved_model/`, `config/`, `requirements.txt`, `input_example.json`은 모델 선택 단계에서 자동 생성하지 않는다.
+- 모델 선택 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`를 생성/갱신한다.
+- 모델 선택 단계에서 템플릿을 복사한 뒤 `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
 - 모델 선택 명령은 1~3번 모델 목록 확인, 모델 선택, 템플릿 변환 흐름을 한 번에 수행한다.
 - 패키지/환경 상태는 다음 환경체크 단계에서 확인하고, 필요 패키지는 안내한다.
 - 사용자에게 프로세스를 보여줄 때는 현재 복사/변환 흐름만 보여주고 하위 호환 또는 미사용 경로 설명은 넣지 않는다.

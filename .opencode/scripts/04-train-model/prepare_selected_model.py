@@ -319,8 +319,8 @@ MODEL_KIND_DETAILS = {
     },
     "pytorch": {
         "required_package": "torch",
-        "load_hint": "torch.load(MODEL_PATH, map_location='cpu')",
-        "loader": """def load_selected_model():\n    import torch\n\n    return torch.load(MODEL_PATH, map_location=\"cpu\")\n""",
+        "load_hint": "torch.load(MODEL_PATH, map_location='cpu', weights_only=False)",
+        "loader": """def load_selected_model():\n    import torch\n\n    try:\n        return torch.load(MODEL_PATH, map_location=\"cpu\", weights_only=False)\n    except TypeError:\n        return torch.load(MODEL_PATH, map_location=\"cpu\")\n""",
     },
     "onnx": {
         "required_package": "onnxruntime",
@@ -1736,6 +1736,25 @@ def generated_selected_model_runtest_text(project: Path, selected_model: Path, k
     selected_connection_block = f'''
 {loader}
 {selected_model_input_example_block(kind)}
+
+def server_upload_path(path: Path) -> str:
+    # 서버 업로드 전에 로컬 파일 경로를 Linux 호환 슬래시 절대경로로 고정합니다.
+    return Path(str(path).replace("\\\\", "/")).resolve().as_posix()
+
+
+def server_relative_path(path: Path) -> str:
+    try:
+        return Path(path).resolve().relative_to(PROJECT_DIR.resolve()).as_posix()
+    except ValueError:
+        return Path(str(path).replace("\\\\", "/")).as_posix()
+
+
+def validate_server_upload_paths(paths: dict[str, Path]) -> list[str]:
+    missing = []
+    for name, path in paths.items():
+        if not Path(path).exists():
+            missing.append(f"{{name}}:{{server_upload_path(path)}}")
+    return missing
 '''
     original_path_block = '''PROJECT_DIR = Path(__file__).resolve().parent
 SOURCE_MODEL_PATH = PROJECT_DIR / "data" / "torch" / "model.pt"
@@ -1808,7 +1827,7 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
     )
     text = re.sub(
         r"(?m)^    config\s*=\s*\{.*\"framework\".*\}\n",
-        '    config = {"framework": MODEL_KIND, "model_path": str(SOURCE_MODEL_PATH), "model_relative_path": '
+        '    config = {"framework": MODEL_KIND, "model_path": server_relative_path(SOURCE_MODEL_PATH), "model_relative_path": '
         + repr(selected_relative)
         + "}\n",
         text,
@@ -1821,8 +1840,26 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
         count=1,
     )
     text = text.replace('        mlflow.set_tag("data.name", "synthetic_tensor(pytorch)")', '        mlflow.set_tag("data.name", "selected_model")')
-    text = text.replace("            artifacts={\n                \"model\": MODEL_PATH.as_posix(),", "            artifacts={\n                \"model\": selected_model_path.as_posix(),")
-    text = text.replace("            artifacts={\n                \"model\": MODEL_DIR.as_posix(),", "            artifacts={\n                \"model\": selected_model_path.as_posix(),")
+    text = text.replace(
+        "    with mlflow.start_run(run_name=mlflow_register_model_name):",
+        "    upload_paths = {\"model\": selected_model_path, \"config\": CONFIG_PATH, \"code\": PROJECT_DIR / \"aiu_custom\"}\n"
+        "    missing_upload_paths = validate_server_upload_paths(upload_paths)\n"
+        "    if missing_upload_paths:\n"
+        "        print(\"서버 업로드 경로를 찾을 수 없습니다. 아래 경로를 확인한 뒤 다시 실행하세요.\")\n"
+        "        for item in missing_upload_paths:\n"
+        "            print(f\"- {item}\")\n"
+        "        return\n\n"
+        "    with mlflow.start_run(run_name=mlflow_register_model_name):",
+        1,
+    )
+    text = text.replace("            artifacts={\n                \"model\": MODEL_PATH.as_posix(),", "            artifacts={\n                \"model\": server_upload_path(selected_model_path),")
+    text = text.replace("            artifacts={\n                \"model\": MODEL_DIR.as_posix(),", "            artifacts={\n                \"model\": server_upload_path(selected_model_path),")
+    text = text.replace("                \"model\": selected_model_path.as_posix(),", "                \"model\": server_upload_path(selected_model_path),")
+    text = text.replace("                \"config\": CONFIG_PATH.as_posix(),", "                \"config\": server_upload_path(CONFIG_PATH),")
+    text = text.replace(
+        "            code_paths=[(Path(__file__).resolve().parent / \"aiu_custom\").as_posix()],",
+        "            code_paths=[server_upload_path(PROJECT_DIR / \"aiu_custom\")],",
+    )
     text = text.replace('    print(f"model written: {MODEL_PATH}")', '    print(f"selected model: {selected_model_path}")')
     text = ensure_linux_code_paths(text)
     return text.rstrip() + "\n"
@@ -1949,7 +1986,45 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     return transformed.rstrip() + "\n"
 
 
-def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
+def rewrite_top_level_assignment(text: str, name: str, expression: str) -> str:
+    pattern = re.compile(rf"(?m)^{re.escape(name)}\s*=.*$")
+    replacement = f"{name} = {expression}"
+    if pattern.search(text):
+        return pattern.sub(replacement, text, count=1)
+    return text
+
+
+def replace_function_block(text: str, function_name: str, replacement: str) -> str:
+    pattern = re.compile(
+        rf"(?ms)^def\s+{re.escape(function_name)}\s*\([^)]*\):.*?(?=^def\s+|\Z)"
+    )
+    if pattern.search(text):
+        return pattern.sub(replacement.rstrip() + "\n\n", text, count=1)
+    return text.rstrip() + "\n\n" + replacement.rstrip() + "\n"
+
+
+def generated_minimal_localservingtest_text(template_text: str, project: Path, selected_model: Path, kind: str) -> str:
+    selected_relative = rel(selected_model, project)
+    details = MODEL_KIND_DETAILS.get(kind, {})
+    loader = details.get(
+        "loader",
+        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
+    )
+
+    text = template_text
+    text = rewrite_top_level_assignment(text, "PROJECT_DIR", "AI_STUDIO_DIR")
+    text = rewrite_top_level_assignment(text, "SOURCE_MODEL_PATH", f"AI_STUDIO_DIR / {selected_relative!r}")
+    text = rewrite_top_level_assignment(text, "DATA_MODEL_PATH", "SOURCE_MODEL_PATH")
+    text = rewrite_top_level_assignment(text, "MODEL_PATH", "SOURCE_MODEL_PATH")
+    text = rewrite_top_level_assignment(text, "MODEL_KIND", repr(kind))
+    text = replace_function_block(text, "load_selected_model", loader)
+    return text.rstrip() + "\n"
+
+
+def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path, template_text: str | None = None) -> str:
+    if template_text:
+        return generated_minimal_localservingtest_text(template_text, project, selected_model, kind)
+
     selected_relative = rel(selected_model, project)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
@@ -2095,6 +2170,21 @@ _CONTEXT_ARTIFACT_MODEL_PATH = None
 _CONTEXT_ARTIFACT_CONFIG_PATH = None
 
 
+def _normalize_server_path(raw_path):
+    return str(raw_path).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+
+
+def _workspace_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _first_existing_path(candidates):
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return os.path.normpath(candidate)
+    return os.path.normpath(candidates[0]) if candidates else None
+
+
 def _resolve_model_path():
     if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
         return _CONTEXT_ARTIFACT_MODEL_PATH
@@ -2102,11 +2192,15 @@ def _resolve_model_path():
     raw_path = model.get("relative_path") or model.get("source_path")
     if not raw_path:
         raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
-    path = str(raw_path).replace("\\\\", "/")
+    path = _normalize_server_path(raw_path)
+    workspace_root = _workspace_root()
     if os.path.isabs(path):
-        return os.path.normpath(path)
-    workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.normpath(os.path.join(workspace_root, path))
+        return _first_existing_path([path])
+    return _first_existing_path([
+        os.path.join(workspace_root, path),
+        os.path.join(workspace_root, "saved_model", os.path.basename(path)),
+        os.path.join(workspace_root, os.path.basename(path)),
+    ])
 
 
 def _context_artifact_path(context, name):
@@ -2115,7 +2209,14 @@ def _context_artifact_path(context, name):
     artifact_path = context.artifacts.get(name)
     if not artifact_path:
         return None
-    return os.path.normpath(str(artifact_path).replace("\\\\", "/"))
+    path = _normalize_server_path(artifact_path)
+    workspace_root = _workspace_root()
+    if os.path.isabs(path):
+        return _first_existing_path([path])
+    return _first_existing_path([
+        os.path.join(workspace_root, path),
+        os.path.join(workspace_root, os.path.basename(path)),
+    ])
 
 
 def _model_kind():
@@ -2280,33 +2381,58 @@ class ModelWrapper(mlflow.pyfunc.PythonModel):
     return text.rstrip() + "\n"
 
 
-def generated_mapping_json(project: Path, selected_model: Path, kind: str) -> str:
+def generated_mapping_json(project: Path, selected_model: Path, kind: str, template_text: str | None = None) -> str:
     selected_relative = rel(selected_model, project)
     details = MODEL_KIND_DETAILS.get(kind, {})
-    mapping = {
-        "model": {
+    try:
+        mapping = json.loads(template_text) if template_text else {}
+    except json.JSONDecodeError:
+        mapping = {}
+    if not isinstance(mapping, dict):
+        mapping = {}
+
+    model = mapping.get("model", {})
+    if not isinstance(model, dict):
+        model = {}
+    model.update(
+        {
             "name": selected_model.name,
             "kind": kind,
             "relative_path": selected_relative,
             "source_path": selected_relative,
             "load_hint": details.get("load_hint", "custom loader required"),
             "required_package": details.get("required_package", "unknown"),
-        },
-        "runtime": {
+        }
+    )
+    mapping["model"] = model
+
+    runtime = mapping.get("runtime", {})
+    if not isinstance(runtime, dict):
+        runtime = {}
+    runtime.update(
+        {
             "workspace_root": ".",
             "model_entrypoint": "aiu_custom/model.py",
             "predict_entrypoint": "aiu_custom/predict.py",
             "deployment_entrypoint": "aiu_custom/predict.py",
             "wrapper_class": "ModelWrapper",
             "local_serving_test": "local_serving/localservingtest.py",
-        },
-        "policy": {
+        }
+    )
+    mapping["runtime"] = runtime
+
+    policy = mapping.get("policy", {})
+    if not isinstance(policy, dict):
+        policy = {}
+    policy.update(
+        {
             "copy_model_to_aiu_studio": False,
             "model_source": "selected_project_model_path",
             "transform_aiu_studio_templates": True,
             "secret_output": "masked",
-        },
-    }
+        }
+    )
+    mapping["policy"] = policy
     return json.dumps(mapping, ensure_ascii=False, indent=2) + "\n"
 
 
@@ -2424,12 +2550,16 @@ def write_localservingtest(project: Path, selected_model: Path, kind: str, refer
     existed_before = target.exists()
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(generated_localservingtest_text(project, selected_model, kind, reference), encoding="utf-8")
+        copied_text = target.read_text(encoding="utf-8", errors="ignore") if target.is_file() else None
+        target.write_text(
+            generated_localservingtest_text(project, selected_model, kind, reference, copied_text),
+            encoding="utf-8",
+        )
         reference_digest_after = file_sha256(reference)
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("local_serving/localservingtest.py (refreshed)" if existed_before else "local_serving/localservingtest.py")
+    changed.append("local_serving/localservingtest.py minimal selected-model connection (refreshed)" if existed_before else "local_serving/localservingtest.py minimal selected-model connection")
     return changed, skipped, failures
 
 
@@ -2474,7 +2604,8 @@ def write_aiu_mapping(project: Path, selected_model: Path, kind: str, execute: b
     existed_before = target.exists()
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(generated_mapping_json(project, selected_model, kind), encoding="utf-8")
+        copied_text = target.read_text(encoding="utf-8", errors="ignore") if target.is_file() else None
+        target.write_text(generated_mapping_json(project, selected_model, kind, copied_text), encoding="utf-8")
     changed.append("aiu_custom/mapping.json (refreshed)" if existed_before else "aiu_custom/mapping.json")
     return changed, skipped, failures
 
@@ -2851,7 +2982,7 @@ def print_report(report: PreparedModelReport) -> None:
             print(f"  {index}. {path}{marker}")
         if report.selected_model_path is None:
             print("- 실행 예: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
-            print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> 선택 모델 기준 연결부 변환")
+            print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> input_example.json 생성 -> 선택 모델 기준 연결부 변환")
 
     print("model_artifact_paths:")
     if report.model_artifact_paths:

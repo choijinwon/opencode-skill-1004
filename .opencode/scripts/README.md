@@ -7,11 +7,12 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
-`aiu_custom/`, `local_serving/`, `saved_model/`, `config/`, `requirements.txt`, `input_example.json`은 모델 선택 단계에서 자동 생성하지 않는다.
+모델 선택 단계에서 `.opencode/samples/aiu_studio/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
 모델 선택 명령은 1~3번 흐름을 한 번에 수행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
+원격 MLflow/KServe 업로드 전에 `runtest_2.py`는 모델, config, `aiu_custom/` 경로가 실제 존재하는지 먼저 확인하고, 업로드 경로를 `/` 기준 절대경로로 변환한다.
 
 스킬 목록 기준 스크립트 정리는 `.opencode/scripts/SCRIPT_INDEX.md`를 먼저 본다.
 유지보수자는 `.opencode/scripts/MAINTENANCE.md`에서 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 확인한다.
@@ -91,7 +92,7 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 ```
 
-`1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `requirements.txt` 재정의/확인도 함께 처리한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
+`1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `input_example.json`, `config/config.json`, `requirements.txt`도 선택 모델 기준으로 준비한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
 `9`는 모델 환경변수와 패키지 상태 체크다. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트하고, 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 입력값 3개와 자동값 2개는 `set`, `empty`, `missing`, `auto_default` 상태로만 표시한다. secret 값은 출력하지 않는다.
@@ -357,6 +358,7 @@ mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
 원격 배포 기본값은 `mlflow_tracking_url = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URL을 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
+서버 업로드 경로는 `server_upload_path()`로 변환된 값을 사용한다. 경로가 없으면 MLflow 등록을 시작하지 않고 누락된 모델/config/code 경로를 먼저 출력한다.
 
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.
