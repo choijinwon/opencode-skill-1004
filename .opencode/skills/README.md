@@ -36,15 +36,15 @@
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 선택 모델 파일은 템플릿 폴더로 복사하지 않고, 변환된 코드는 선택 모델 원본 경로에 연결한다.
-- `.opencode/samples/aiu_studio/` 내부 파일/폴더를 워크스페이스 루트로 복사한다.
-- `aiu_custom/` 내부 템플릿 파일도 워크스페이스 루트의 `aiu_custom/`으로 함께 복사한다.
-- 복사 직후 `aiu_custom/` 템플릿 파일 존재를 검증한 다음 선택 모델 기준으로 연결부를 변환/갱신한다.
-- `requirements.txt`도 워크스페이스 루트로 복사하고 선택 모델 필수 패키지 기준으로 갱신한다.
+- 모델 선택 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`만 생성/갱신한다.
+- `aiu_custom/`, `local_serving/`, `saved_model/`, `config/`, `requirements.txt`, `input_example.json`은 모델 선택 단계에서 자동 생성하지 않는다.
+- 후속 런타임 변환은 `runtest_2.py`를 기준으로 수행한다.
+- 패키지/환경 상태는 다음 환경체크 단계에서 확인하고, 필요 패키지는 안내한다.
 - 사용자에게 프로세스를 보여줄 때는 현재 복사/변환 흐름만 보여주고 하위 호환 또는 미사용 경로 설명은 넣지 않는다.
 - 복사된 템플릿 파일 구성은 고정하지 않고 비교/수정하지 않는다.
 - `data/` 원본에는 새 파일을 생성하지 않는다.
 - 기존 `runtest.py`는 워크스페이스 루트에 두고, 읽기 전용으로만 참조한다.
-- 기존 `runtest.py` 또는 `run_test.py`는 템플릿 복사 중에도 덮어쓰지 않는다.
+- 기존 `runtest.py` 또는 `run_test.py`는 덮어쓰지 않는다.
 - 기존 `runtest.py`는 절대 수정하지 않고 `runtest_2.py`만 선택 모델 기준으로 변환 생성한다.
 - `runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.
 - 모델 경로/MODEL_KIND/로더는 선택 모델 실행/등록 연결부 기준으로 변환한다.
@@ -60,22 +60,20 @@ Step 2. 모델 경로로 선택
         model_artifact_paths를 번호로 보여주되, 자동 준비에는 실제 경로 선택을 우선한다.
         번호는 현재 출력된 목록 순서에 의존한다. 이미 준비된 선택 모델은 --model selected로 재사용한다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
-Step 3. 선택 모델 환경 변환 + requirements.txt 재정의/확인
-        MODEL_KIND를 먼저 판별한 뒤 .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고, 복사된 템플릿 파일들을 선택 모델 환경에 맞게 변환/갱신한다.
-        PyTorch/safetensors 모델은 samples/pytorch_sample/ 내부를 참조만 하고, 해당 폴더를 워크스페이스로 복사하지 않는다.
-        선택 모델 경로와 MODEL_KIND를 반영해 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환해줘.
-        runtest_2.py 생성 시퀀스는 모델 선택, 모델 형식 확인, .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사, samples/pytorch_sample/ 내부 참조(복사 금지), 선택 모델 경로와 MODEL_KIND 확인, 변환 결과 검증 순서다.
-        선택 모델 실행/등록 연결부 변환은 생성 시퀀스에 넣지 말고 변환 스크립트 단계에서 별도로 수행한다.
-        선택 모델 기준 필수 패키지와 모델별 추가 패키지를 requirements.txt에 함께 반영한다.
-        내부 일치 검증은 자동으로 수행하며 사용자에게 세부 파일 목록을 요구하지 않는다.
-Step 4. 모델 환경변수/패키지 상태 체크
+Step 3. 선택 모델 기준 runtest_2.py 변환
+        MODEL_KIND를 먼저 판별한 뒤 기존 runtest.py를 읽기 전용으로 참조한다.
+        선택 모델 경로와 MODEL_KIND를 반영해 runtest_2.py만 생성/갱신한다.
+        다른 파일이나 폴더는 이 단계에서 자동 생성하지 않는다.
+        내부 일치 검증은 runtest_2.py 기준으로만 수행한다.
+Step 4. runtest_2.py 기준 런타임 변환 + 모델 환경변수/패키지 상태 체크
+        `--sync-runtime`으로 runtest_2.py의 선택 모델 경로와 MODEL_KIND를 읽어 aiu_custom/, local_serving/, saved_model/, config/, requirements.txt, input_example.json을 모델에 맞게 변환/갱신한다.
         입력값 3개와 자동값 2개 상태를 확인한다.
-        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트하고 pip 설치 명령만 안내한다.
+        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 5. 원격 MLflow 등록 실행
         runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
-        이 단계는 실행 확인 단계다. local_serving/ 폴더는 Step 3 자동 준비에서 생성되어 있어야 한다.
+        이 단계는 실행 확인 단계다. local_serving/ 폴더는 Step 4 런타임 변환에서 생성되어 있어야 한다.
 Step 7. MLflow 검증
 Step 8. 오류 수정 및 재검증
         원격 MLflow 등록, 추론 테스트, MLflow 검증 중 오류가 있으면 서버 배포 오류사항과 Failures를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.

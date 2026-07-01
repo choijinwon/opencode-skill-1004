@@ -35,7 +35,7 @@
     "support_scripts": [
       "adapt_ai_studio.py"
     ],
-    "purpose": "copy aiu_custom template, generate runtest_2.py, and run confirmed entrypoint"
+    "purpose": "reference runtest.py, generate selected-model runtest_2.py, and run confirmed entrypoint"
   },
   "05-inference-test": {
     "skill_folder": "05-agent-mlflow-skill-inference-test",

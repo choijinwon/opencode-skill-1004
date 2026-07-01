@@ -494,6 +494,54 @@ def stored_selected_model_path(project: Path) -> Path | None:
     return candidate.resolve() if candidate.is_file() else None
 
 
+def eval_project_path_expr(node: ast.AST, project: Path) -> Path | str | None:
+    if isinstance(node, ast.Name) and node.id == "PROJECT_DIR":
+        return project
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        left = eval_project_path_expr(node.left, project)
+        right = eval_project_path_expr(node.right, project)
+        if left is None or right is None:
+            return None
+        return Path(left) / str(right)
+    return None
+
+
+def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | None, str | None]:
+    runtest_2 = project / "runtest_2.py"
+    if not runtest_2.is_file():
+        return None, None, "runtest_2_missing"
+    try:
+        tree = ast.parse(runtest_2.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError as exc:
+        return None, None, f"runtest_2_parse_error:{exc.lineno}"
+
+    selected_model: Path | None = None
+    selected_kind: str | None = None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        targets = [target.id for target in node.targets if isinstance(target, ast.Name)]
+        if "SOURCE_MODEL_PATH" in targets:
+            value = eval_project_path_expr(node.value, project)
+            if value is not None:
+                selected_model = Path(value)
+                if not selected_model.is_absolute():
+                    selected_model = project / selected_model
+                selected_model = selected_model.resolve()
+        if "MODEL_KIND" in targets and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            selected_kind = node.value.value
+
+    if selected_model is None:
+        return None, selected_kind, "runtest_2_source_model_path_missing"
+    if selected_kind is None:
+        return selected_model, None, "runtest_2_model_kind_missing"
+    if not selected_model.is_file():
+        return selected_model, selected_kind, f"runtest_2_selected_model_not_found:{rel(selected_model, project)}"
+    return selected_model, selected_kind, None
+
+
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     if not raw:
         return None, "model_selection_required"
@@ -1509,6 +1557,36 @@ def write_selected_input_example():
 '''
 
 
+def selected_model_input_example_data(project: Path, selected_model: Path, kind: str) -> dict:
+    if kind in {"pytorch", "safetensors"}:
+        payload = {
+            "inputs": [
+                {
+                    "name": "selected_pytorch_tensor",
+                    "shape": [1, 1, 28, 28],
+                    "datatype": "FP32",
+                    "data": [0.0 for _ in range(1 * 1 * 28 * 28)],
+                }
+            ],
+        }
+    elif kind in {"sklearn_pickle", "sklearn_joblib", "xgboost_bst", "xgboost_ubj", "onnx", "tensorflow_keras", "tensorflow_h5"}:
+        payload = {
+            "inputs": [
+                {
+                    "name": "selected_tabular",
+                    "shape": [1, 4],
+                    "datatype": "FP32",
+                    "data": [[0.0, 0.0, 0.0, 0.0]],
+                }
+            ],
+        }
+    else:
+        payload = {"inputs": []}
+    payload["model_kind"] = kind
+    payload["model_path"] = rel(selected_model, project)
+    return payload
+
+
 def ensure_linux_code_paths(text: str) -> str:
     if "mlflow.pyfunc.log_model(" not in text or "code_paths=" in text:
         return text
@@ -2163,6 +2241,21 @@ def write_requirements(project: Path, kind: str, execute: bool) -> tuple[list[st
     return changed, skipped, failures
 
 
+def write_input_example(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / "input_example.json"
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    existed_before = target.exists()
+    if execute:
+        target.write_text(
+            json.dumps(selected_model_input_example_data(project, selected_model, kind), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    changed.append("input_example.json (refreshed)" if existed_before else "input_example.json")
+    return changed, skipped, failures
+
+
 def write_localservingtest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / "local_serving" / "localservingtest.py"
     changed: list[str] = []
@@ -2235,11 +2328,8 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     selected_absolute = absolute_path_text(selected_model)
     required_text_files = [
         project / "runtest_2.py",
-        project / "aiu_custom" / "model.py",
-        project / "aiu_custom" / "predict.py",
-        project / "local_serving" / "localservingtest.py",
     ]
-    changed = ["선택 모델 실행/등록 연결부 별도 변환 검증"]
+    changed = ["runtest_2.py 선택 모델 연결부 변환 검증"]
     failures: list[str] = []
 
     for path in required_text_files:
@@ -2249,24 +2339,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             continue
 
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if display_path == "aiu_custom/model.py":
-            if "mapping.json" not in text or "_resolve_model_path" not in text:
-                failures.append("model_py_mapping_loader_missing:aiu_custom/model.py")
-            if selected_relative in text or selected_absolute in text:
-                failures.append("selected_model_path_should_not_be_embedded:aiu_custom/model.py")
-            continue
-
-        if display_path == "aiu_custom/predict.py":
-            if "model.py" not in text or "ModelWrapper" not in text or "_load_model_module" not in text:
-                failures.append("predict_py_deployment_delegate_missing:aiu_custom/predict.py")
-            if selected_relative in text or selected_absolute in text:
-                failures.append("selected_model_path_should_not_be_embedded:aiu_custom/predict.py")
-            forbidden_names = ["AIU_CUSTOM_DIR", "MODEL_MODULE_PATH", "MODEL_KIND", "AIU_REQUIRED_PACKAGE", "AIU_LOAD_HINT"]
-            embedded = [name for name in forbidden_names if name in text]
-            if embedded:
-                failures.append(f"predict_py_should_not_embed_selected_model_metadata:{','.join(embedded)}")
-            continue
-
         if selected_relative not in text and selected_absolute not in text:
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_absolute}")
         if display_path == "runtest_2.py":
@@ -2286,29 +2358,12 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             embedded = [name for name in forbidden_helpers if name in text]
             if embedded:
                 failures.append(f"runtest_2_should_preserve_format_without_helpers:{','.join(embedded)}")
-        elif f'MODEL_KIND = "{kind}"' not in text and f"MODEL_KIND = {kind!r}" not in text:
-            failures.append(f"selected_model_kind_not_reflected:{display_path}:{kind}")
 
         for other_model in models:
             other_relative = rel(other_model, project)
             other_absolute = absolute_path_text(other_model)
             if other_relative != selected_relative and (other_relative in text or other_absolute in text):
                 failures.append(f"stale_model_path_in_generated:{display_path}:{other_relative}")
-
-    mapping_path = project / "aiu_custom" / "mapping.json"
-    if not mapping_path.is_file():
-        failures.append("selected_model_conversion_missing:aiu_custom/mapping.json")
-    else:
-        try:
-            mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            failures.append("selected_model_mapping_invalid_json:aiu_custom/mapping.json")
-        else:
-            model_mapping = mapping.get("model", {})
-            if model_mapping.get("source_path") not in {selected_relative, selected_absolute}:
-                failures.append(f"selected_model_mapping_path_mismatch:{model_mapping.get('source_path')}!={selected_absolute}")
-            if model_mapping.get("kind") != kind:
-                failures.append(f"selected_model_mapping_kind_mismatch:{model_mapping.get('kind')}!={kind}")
 
     return changed, [], failures
 
@@ -2331,6 +2386,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     entrypoint_paths = [rel(path, project) for path in entrypoints]
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
+    if args.sync_runtime:
+        selected_model, selected_kind, selection_error = selected_model_from_runtest_2(project)
 
     report = PreparedModelReport(
         project_path=str(project),
@@ -2385,32 +2442,72 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.append(f"다음 실행부터는 목록 순서가 바뀌어도 안전하게 실제 경로를 사용하세요: --model {stable_path}")
         report.next_steps.append("이미 준비된 선택 모델을 다시 쓰려면: --model selected")
 
+    if args.sync_runtime:
+        runtime_reference = project / "runtest_2.py"
+        report.reference_entrypoint = "runtest_2.py"
+        if not runtime_reference.is_file():
+            report.failures.append("runtest_2_missing")
+            report.next_steps.append("먼저 모델 선택으로 runtest_2.py를 생성하세요.")
+            return report
+
+        runtime_dirs_changed, runtime_dirs_skipped, runtime_dirs_failures = ensure_runtime_directories(project, args.execute)
+        report.prepared_paths.extend(runtime_dirs_changed)
+        report.skipped.extend(runtime_dirs_skipped)
+        report.failures.extend(runtime_dirs_failures)
+
+        requirements_changed, requirements_skipped, requirements_failures = write_requirements(project, selected_kind, args.execute)
+        report.prepared_paths.extend(requirements_changed)
+        report.skipped.extend(requirements_skipped)
+        report.failures.extend(requirements_failures)
+
+        input_changed, input_skipped, input_failures = write_input_example(project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(input_changed)
+        report.skipped.extend(input_skipped)
+        report.failures.extend(input_failures)
+
+        inference_changed, inference_skipped, inference_failures = write_localservingtest(project, selected_model, selected_kind, runtime_reference, args.execute)
+        report.prepared_paths.extend(inference_changed)
+        report.skipped.extend(inference_skipped)
+        report.failures.extend(inference_failures)
+
+        model_changed, model_skipped, model_failures = write_aiu_model(project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(model_changed)
+        report.skipped.extend(model_skipped)
+        report.failures.extend(model_failures)
+
+        predict_changed, predict_skipped, predict_failures = write_aiu_predict(project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(predict_changed)
+        report.skipped.extend(predict_skipped)
+        report.failures.extend(predict_failures)
+
+        mapping_changed, mapping_skipped, mapping_failures = write_aiu_mapping(project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(mapping_changed)
+        report.skipped.extend(mapping_skipped)
+        report.failures.extend(mapping_failures)
+
+        if args.execute and not report.failures:
+            report.next_steps.extend(
+                [
+                    "후속 변환 완료: runtest_2.py 기준으로 런타임 폴더/파일을 선택 모델에 맞게 변환했습니다.",
+                    "다음은 4번 모델 환경변수/패키지 상태 체크입니다.",
+                    powershell_python_script(
+                        ROOT / "scripts" / "check_environment.py",
+                        "--project",
+                        powershell_quote_path(project),
+                        "--entrypoint",
+                        "runtest_2.py",
+                    ),
+                ]
+            )
+        elif not report.failures:
+            report.next_steps.append("검토 후 --execute를 붙여 runtest_2.py 기준 런타임 폴더/파일을 변환하세요.")
+        return report
+
     reference = find_reference_entrypoint(project, selected_kind)
     report.reference_entrypoint = rel(reference, project) if reference else None
     if reference is None:
         report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
         report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
-        return report
-
-    copied, skipped, copy_failures = copy_aiu_studio_folder(project, args.execute)
-    report.prepared_paths.extend(copied)
-    report.skipped.extend(skipped)
-    report.failures.extend(copy_failures)
-    if report.failures:
-        return report
-
-    aiu_custom_changed, aiu_custom_skipped, aiu_custom_failures = ensure_aiu_custom_template_copied(project, args.execute)
-    report.prepared_paths.extend(aiu_custom_changed)
-    report.skipped.extend(aiu_custom_skipped)
-    report.failures.extend(aiu_custom_failures)
-    if report.failures:
-        return report
-
-    runtime_dirs_changed, runtime_dirs_skipped, runtime_dirs_failures = ensure_runtime_directories(project, args.execute)
-    report.prepared_paths.extend(runtime_dirs_changed)
-    report.skipped.extend(runtime_dirs_skipped)
-    report.failures.extend(runtime_dirs_failures)
-    if report.failures:
         return report
 
     changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
@@ -2420,31 +2517,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
 
-    requirements_changed, requirements_skipped, requirements_failures = write_requirements(project, selected_kind, args.execute)
-    report.prepared_paths.extend(requirements_changed)
-    report.skipped.extend(requirements_skipped)
-    report.failures.extend(requirements_failures)
-
-    inference_changed, inference_skipped, inference_failures = write_localservingtest(project, selected_model, selected_kind, reference, args.execute)
-    report.prepared_paths.extend(inference_changed)
-    report.skipped.extend(inference_skipped)
-    report.failures.extend(inference_failures)
-
-    model_changed, model_skipped, model_failures = write_aiu_model(project, selected_model, selected_kind, args.execute)
-    report.prepared_paths.extend(model_changed)
-    report.skipped.extend(model_skipped)
-    report.failures.extend(model_failures)
-
-    predict_changed, predict_skipped, predict_failures = write_aiu_predict(project, selected_model, selected_kind, args.execute)
-    report.prepared_paths.extend(predict_changed)
-    report.skipped.extend(predict_skipped)
-    report.failures.extend(predict_failures)
-
-    mapping_changed, mapping_skipped, mapping_failures = write_aiu_mapping(project, selected_model, selected_kind, args.execute)
-    report.prepared_paths.extend(mapping_changed)
-    report.skipped.extend(mapping_skipped)
-    report.failures.extend(mapping_failures)
-
     verify_changed, verify_skipped, verify_failures = verify_selected_model_conversion(project, selected_model, selected_kind, models, args.execute)
     report.prepared_paths.extend(verify_changed)
     report.skipped.extend(verify_skipped)
@@ -2453,9 +2525,16 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 프로젝트 구조 분석 + 선택 모델 환경 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 경로 기준 모델 선택 -> 모델 형식 확인 -> .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사 -> samples/pytorch_sample/ 내부 참조(복사 금지) -> 선택 모델 상대경로와 MODEL_KIND 확인 -> requirements.txt 재정의/확인 -> 변환 결과 검증",
-                "다음은 4번 모델 환경변수/패키지 상태 체크입니다.",
+                "자동 준비 완료: 모델 선택 기준 runtest_2.py 변환",
+                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 경로 기준 모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND 반영 -> 변환 결과 검증",
+                "다음은 4번 runtest_2.py 기준 런타임 변환 + 모델 환경변수/패키지 상태 체크입니다.",
+                powershell_python_script(
+                    ROOT / "scripts" / "prepare_selected_model.py",
+                    "--project",
+                    powershell_quote_path(project),
+                    "--sync-runtime",
+                    "--execute",
+                ),
                 powershell_python_script(
                     ROOT / "scripts" / "check_environment.py",
                     "--project",
@@ -2480,7 +2559,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             ]
         )
     elif not report.failures:
-        report.next_steps.append("검토 후 --execute를 붙여 .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사하고 runtest_2.py를 생성하세요.")
+        report.next_steps.append("검토 후 --execute를 붙여 기존 runtest.py를 참조한 runtest_2.py만 생성하세요.")
     return report
 
 
@@ -2518,25 +2597,11 @@ def print_report(report: PreparedModelReport) -> None:
     print(f"MODEL_KIND: {report.model_kind or 'missing'}")
     print(f"Reference entrypoint: {report.reference_entrypoint or 'missing'}")
     print(f"Transformed entrypoint: {report.generated_entrypoint}")
-    print(f"Local serving file: {report.generated_inference_test}")
     print(f"Execute: {report.execute}")
     if report.prepared_paths:
         print("Prepared:")
-        if report.selected_model_path:
-            print("- .opencode/samples/aiu_studio/* -> workspace root")
-            if "aiu_custom/ template copied" in report.prepared_paths:
-                print("- aiu_custom/ template copied")
-            if "config/" in report.prepared_paths:
-                print("- config/")
-            if "saved_model/" in report.prepared_paths:
-                print("- saved_model/")
-            if "local_serving/" in report.prepared_paths:
-                print("- local_serving/")
-            print("- 선택 모델 실행/등록 연결부 별도 변환")
-            print("- 선택 모델 실행/등록 연결부 별도 변환 검증")
-        else:
-            for item in report.prepared_paths:
-                print(f"- {item}")
+        for item in report.prepared_paths:
+            print(f"- {item}")
     if report.skipped:
         print("Skipped:")
         for item in report.skipped:
@@ -2555,12 +2620,9 @@ def print_report(report: PreparedModelReport) -> None:
         path in report.prepared_paths
         or f"{path} (refreshed)" in report.prepared_paths
         or any(item.startswith(f"{path} ") for item in report.prepared_paths)
+        or (Path(report.project_path) / path).is_file()
         for path in [
             "runtest_2.py",
-            "aiu_custom/model.py",
-            "aiu_custom/predict.py",
-            "aiu_custom/mapping.json",
-            "local_serving/localservingtest.py",
         ]
     )
     if report.model_artifact_paths:
@@ -2572,10 +2634,22 @@ def print_report(report: PreparedModelReport) -> None:
     else:
         print("1. 모델 목록 확인 - 모델 없음")
     print("2. 모델 경로로 선택 - 완료" if model_selected else "2. 모델 경로로 선택 - 대기")
-    requirements_ready = any(item.startswith("requirements.txt") for item in report.prepared_paths)
-    auto_and_requirements_ready = auto_ready and requirements_ready
-    print("3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 완료" if auto_and_requirements_ready else "3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 대기")
-    print("4. 모델 환경변수/패키지 상태 체크 - 다음")
+    print("3. 선택 모델 기준 runtest_2.py 변환 - 완료" if auto_ready else "3. 선택 모델 기준 runtest_2.py 변환 - 대기")
+    runtime_ready = all(
+        (Path(report.project_path) / path).exists()
+        for path in [
+            "aiu_custom/model.py",
+            "aiu_custom/predict.py",
+            "aiu_custom/mapping.json",
+            "local_serving/localservingtest.py",
+            "input_example.json",
+            "requirements.txt",
+        ]
+    )
+    if runtime_ready:
+        print("4. runtest_2.py 기준 런타임 변환 - 완료 / 모델 환경변수·패키지 상태 체크 - 다음")
+    else:
+        print("4. runtest_2.py 기준 런타임 변환 + 모델 환경변수·패키지 상태 체크 - 다음")
     print("5. 원격 MLflow 등록 실행 - 다음")
     print("6. 추론 테스트 - 대기(5번 완료 후)")
     print("7. MLflow 검증 - 대기(6번 완료 후)")
@@ -2590,8 +2664,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate workspace-root runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
-    parser.add_argument("--execute", action="store_true", help="copy samples/aiu_studio/ contents into the workspace root and create runtest_2.py")
+    parser.add_argument("--execute", action="store_true", help="write the selected-model runtest_2.py or sync runtime files when --sync-runtime is used")
     parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
+    parser.add_argument("--sync-runtime", action="store_true", help="read selected model from runtest_2.py and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 

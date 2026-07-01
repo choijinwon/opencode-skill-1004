@@ -1117,8 +1117,8 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             "1. 모델 목록 확인: 현재 프로젝트 루트 바로 아래와 data/**에서 사용할 모델 후보를 확인한다.",
             "2. 모델 경로로 선택: prepare_selected_model.py --model <경로> 또는 --model selected로 선택한다.",
-            "3. 선택 모델 환경 변환 + requirements.txt 재정의/확인: 템플릿 복사, 선택 모델 연결부 변환, 선택 모델 기준 requirements.txt 갱신을 한 번에 처리한다.",
-            f"4. 모델 환경변수/패키지 상태 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 확인하고, import 기준 추가 패키지가 있으면 requirements.txt를 업데이트한다.",
+            "3. 선택 모델 기준 runtest_2.py 변환: 기존 runtest.py를 참조해 선택 모델 경로와 MODEL_KIND를 반영한 runtest_2.py만 생성한다.",
+            f"4. runtest_2.py 기준 런타임 변환 + 모델 환경변수/패키지 상태 체크: --sync-runtime으로 후속 폴더/파일을 변환한 뒤 {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 확인한다.",
             f"5. 원격 MLflow 등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
             "6. 추론 테스트: 5번 원격 MLflow 등록 실행이 성공한 뒤 local serving 입력/출력 스키마를 확인한다.",
             "7. MLflow 검증: 추론 테스트 이후 Run, artifact, registered model 기록을 확인한다.",

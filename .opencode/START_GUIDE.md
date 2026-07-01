@@ -23,7 +23,8 @@ AIU Studio 모드에서 사용자가 숫자만 입력하면 최신 화면 상태
 python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute
 ```
 
-이 단계에서 `.opencode/samples/aiu_studio/` 내부 템플릿이 워크스페이스 루트로 복사되고, `runtest_2.py`, `local_serving/`, `saved_model/`, `aiu_custom/`, `input_example.json`, `requirements.txt`가 생성/갱신됩니다.
+이 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 선택 모델 기준 `runtest_2.py`만 생성/갱신합니다.
+`aiu_custom/`, `local_serving/`, `saved_model/`, `config/`, `requirements.txt`, `input_example.json` 변환은 이후 `runtest_2.py` 기준 후속 변환 단계에서 실행합니다.
 추론 테스트는 이 자동 준비 이후 단계에서만 실행합니다.
 
 모델 목록이 없고 TOD Guide가 표시된 상태라면 숫자는 TOD 단계 선택입니다.
