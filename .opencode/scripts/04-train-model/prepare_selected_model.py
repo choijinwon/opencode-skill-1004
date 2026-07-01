@@ -510,22 +510,34 @@ def match_model_by_text(project: Path, models: list[Path], raw: str) -> tuple[Pa
     return resolve_single_artifact(project, matches, raw)
 
 
-def stored_selected_model_path(project: Path) -> Path | None:
+def selected_model_from_mapping(project: Path) -> tuple[Path | None, str | None, str | None]:
     mapping_path = project / "aiu_custom" / "mapping.json"
     if not mapping_path.is_file():
-        return None
+        return None, None, "selected_model_mapping_missing"
     try:
         payload = json.loads(mapping_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    source_path = payload.get("model", {}).get("source_path")
+    except json.JSONDecodeError as exc:
+        return None, None, f"selected_model_mapping_parse_error:{exc.lineno}"
+    model = payload.get("model") if isinstance(payload, dict) else None
+    if not isinstance(model, dict):
+        return None, None, "selected_model_mapping_model_missing"
+    source_path = model.get("source_path") or model.get("relative_path")
+    kind = model.get("kind")
     if not isinstance(source_path, str) or not source_path.strip():
-        return None
+        return None, kind if isinstance(kind, str) else None, "selected_model_mapping_source_path_missing"
     normalized = normalize_path_text(source_path.strip())
     candidate = Path(normalized).expanduser()
     if not candidate.is_absolute():
         candidate = project / candidate
-    return candidate.resolve() if candidate.is_file() else None
+    candidate = candidate.resolve()
+    if not candidate.is_file():
+        return candidate, kind if isinstance(kind, str) else None, f"selected_model_mapping_not_found:{source_path}"
+    return candidate, kind if isinstance(kind, str) else None, None
+
+
+def stored_selected_model_path(project: Path) -> Path | None:
+    selected_model, _kind, _error = selected_model_from_mapping(project)
+    return selected_model
 
 
 def eval_project_path_expr(node: ast.AST, project: Path, symbols: dict[str, Path | str] | None = None) -> Path | str | None:
@@ -587,9 +599,8 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
 
 
 def current_selected_model_path(project: Path) -> Path | None:
-    selected_model, _selected_kind, _selection_error = selected_model_from_runtest_2(project)
-    if selected_model is not None:
-        return selected_model
+    # The first selected model is locked by aiu_custom/mapping.json.
+    # runtest_2.py is a generated artifact and must not become the selection source.
     return stored_selected_model_path(project)
 
 
@@ -2505,7 +2516,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
     if args.sync_runtime:
-        selected_model, selected_kind, selection_error = selected_model_from_runtest_2(project)
+        selected_model, selected_kind, selection_error = selected_model_from_mapping(project)
+        if selected_model is not None and selected_kind is None:
+            selected_kind = model_kind(selected_model)
 
     report = PreparedModelReport(
         project_path=str(project),
