@@ -570,6 +570,9 @@ def current_selected_model_path(project: Path) -> Path | None:
 
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     if not raw:
+        stored = current_selected_model_path(project)
+        if stored is not None and stored.is_file():
+            return stored, None
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
     if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
@@ -2479,6 +2482,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
     current_selected = current_selected_model_path(project)
+    if not args.model and current_selected is not None and selected_model is not None and current_selected.resolve() == selected_model.resolve():
+        report.warnings.append(f"selected_model_reused_automatically:{rel(selected_model, project)}")
+        report.next_steps.append(f"TODO 2는 이미 완료되어 현재 선택 모델을 자동 재사용합니다: {rel(selected_model, project)}")
     if (
         args.model
         and normalize_path_text(args.model.strip()).isdigit()
@@ -2688,6 +2694,9 @@ def print_report(report: PreparedModelReport) -> None:
         for failure in report.failures:
             print(f"- {failure}")
     print("TODO Guide:")
+    def step_line(number: int, title: str, status: str) -> None:
+        print(f"{number}. {title} [{status}]")
+
     model_selected = bool(report.selected_model_path)
     auto_ready = all(
         path in report.prepared_paths
@@ -2710,28 +2719,28 @@ def print_report(report: PreparedModelReport) -> None:
         ]
     )
     if report.model_artifact_paths:
-        print("1. 모델 목록 확인 - 완료")
+        step_line(1, "모델 목록 확인", "완료")
     elif report.entrypoint_paths:
-        print("1. 모델 목록 확인 - 실행파일 있음")
+        step_line(1, "모델 목록 확인", "실행파일 있음")
     elif report.data_file_paths:
-        print("1. 모델 목록 확인 - 데이터만 있음")
+        step_line(1, "모델 목록 확인", "데이터만 있음")
     else:
-        print("1. 모델 목록 확인 - 모델 없음")
-    print("2. 모델 경로로 선택 - 완료" if model_selected else "2. 모델 경로로 선택 - 대기")
+        step_line(1, "모델 목록 확인", "모델 없음")
+    step_line(2, "모델 경로로 선택", "완료" if model_selected else "대기")
     if auto_ready and runtime_ready:
-        print("3. 선택 모델 변환 시퀀스 - 완료(runtest_2.py + 런타임 변환)")
+        step_line(3, "선택 모델 변환 시퀀스", "완료")
     elif auto_ready:
-        print("3. 선택 모델 변환 시퀀스 - 진행중(runtest_2.py 완료, 런타임 변환 대기)")
+        step_line(3, "선택 모델 변환 시퀀스", "진행중")
     else:
-        print("3. 선택 모델 변환 시퀀스 - 대기")
+        step_line(3, "선택 모델 변환 시퀀스", "대기")
     if runtime_ready:
-        print("4. 모델 환경변수·패키지 상태 체크 - 다음")
+        step_line(4, "모델 환경변수·패키지 상태 체크", "다음")
     else:
-        print("4. 모델 환경변수·패키지 상태 체크 - 3번 선택 모델 변환 시퀀스 완료 후 진행")
-    print("5. 원격 MLflow 등록 실행 - 다음")
-    print("6. 추론 테스트 - 대기(5번 완료 후)")
-    print("7. MLflow 검증 - 대기(6번 완료 후)")
-    print("8. 오류 수정 및 재검증 - 오류 시")
+        step_line(4, "모델 환경변수·패키지 상태 체크", "3번 완료 후")
+    step_line(5, "원격 MLflow 등록 실행", "다음")
+    step_line(6, "추론 테스트", "5번 완료 후")
+    step_line(7, "MLflow 검증", "6번 완료 후")
+    step_line(8, "오류 수정 및 재검증", "오류 시")
     if report.next_steps:
         print("Next steps:")
         for step in report.next_steps:
