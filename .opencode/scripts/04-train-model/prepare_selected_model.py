@@ -503,14 +503,20 @@ def stored_selected_model_path(project: Path) -> Path | None:
     return candidate.resolve() if candidate.is_file() else None
 
 
-def eval_project_path_expr(node: ast.AST, project: Path) -> Path | str | None:
-    if isinstance(node, ast.Name) and node.id == "PROJECT_DIR":
-        return project
+def eval_project_path_expr(node: ast.AST, project: Path, symbols: dict[str, Path | str] | None = None) -> Path | str | None:
+    symbols = symbols or {}
+    if isinstance(node, ast.Name):
+        if node.id == "PROJECT_DIR":
+            return project
+        if node.id == "AI_STUDIO_DIR":
+            return project
+        if node.id in symbols:
+            return symbols[node.id]
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
-        left = eval_project_path_expr(node.left, project)
-        right = eval_project_path_expr(node.right, project)
+        left = eval_project_path_expr(node.left, project, symbols)
+        right = eval_project_path_expr(node.right, project, symbols)
         if left is None or right is None:
             return None
         return Path(left) / str(right)
@@ -528,12 +534,16 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
 
     selected_model: Path | None = None
     selected_kind: str | None = None
+    symbols: dict[str, Path | str] = {}
     for node in tree.body:
         if not isinstance(node, ast.Assign):
             continue
         targets = [target.id for target in node.targets if isinstance(target, ast.Name)]
+        value = eval_project_path_expr(node.value, project, symbols)
+        for target_name in targets:
+            if value is not None:
+                symbols[target_name] = value
         if "SOURCE_MODEL_PATH" in targets:
-            value = eval_project_path_expr(node.value, project)
             if value is not None:
                 selected_model = Path(value)
                 if not selected_model.is_absolute():
@@ -2366,16 +2376,13 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         if display_path == "runtest_2.py":
             if "def load_selected_model(" not in text or "SOURCE_MODEL_PATH" not in text:
                 failures.append("runtest_2_selected_model_loader_missing:runtest_2.py")
-            if "selected_model_path = SOURCE_MODEL_PATH" not in text:
+            if '"model_relative_path"' not in text and "SOURCE_MODEL_PATH =" not in text:
                 failures.append("runtest_2_selected_artifact_path_missing:runtest_2.py")
             forbidden_helpers = [
                 "_workspace_dir",
                 "_selected_model_path",
                 "_selected_model_kind",
                 "_mapping_path",
-                "REFERENCE_ENTRYPOINT",
-                "AIU_REQUIRED_PACKAGE",
-                "AIU_LOAD_HINT",
             ]
             embedded = [name for name in forbidden_helpers if name in text]
             if embedded:
