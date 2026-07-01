@@ -20,7 +20,7 @@ AIU Studio 모드에서 사용자가 숫자만 입력하면 최신 화면 상태
 모델 번호 선택 직후에는 다음 명령을 직접 실행해 자동 준비를 먼저 끝냅니다.
 
 ```text
-python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
 ```
 
 이 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 선택 모델 기준 `runtest_2.py`만 생성/갱신합니다.
