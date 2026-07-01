@@ -1894,7 +1894,13 @@ def _mapping_runtime():
     return runtime if isinstance(runtime, dict) else {{}}
 
 
+_CONTEXT_ARTIFACT_MODEL_PATH = None
+_CONTEXT_ARTIFACT_CONFIG_PATH = None
+
+
 def _resolve_model_path():
+    if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
+        return _CONTEXT_ARTIFACT_MODEL_PATH
     model = _mapping_model()
     raw_path = model.get("relative_path") or model.get("source_path")
     if not raw_path:
@@ -1903,6 +1909,15 @@ def _resolve_model_path():
     if path.is_absolute():
         return path
     return Path(__file__).resolve().parents[1] / path
+
+
+def _context_artifact_path(context, name):
+    if context is None or not hasattr(context, "artifacts"):
+        return None
+    artifact_path = context.artifacts.get(name)
+    if not artifact_path:
+        return None
+    return Path(str(artifact_path).replace("\\\\", "/"))
 
 
 def _model_kind():
@@ -1931,9 +1946,21 @@ def _payload_to_model_input(payload):
 class ModelWrapper:
     def __init__(self):
         self.model = None
+        self.artifact_model_path = None
+        self.config_path = None
 
     def load_context(self, context=None):
         if self.model is None:
+            artifact_model_path = _context_artifact_path(context, "model")
+            config_path = _context_artifact_path(context, "config")
+            self.artifact_model_path = artifact_model_path
+            self.config_path = config_path
+            if artifact_model_path is not None:
+                global _CONTEXT_ARTIFACT_MODEL_PATH
+                _CONTEXT_ARTIFACT_MODEL_PATH = artifact_model_path
+            if config_path is not None:
+                global _CONTEXT_ARTIFACT_CONFIG_PATH
+                _CONTEXT_ARTIFACT_CONFIG_PATH = config_path
             self.model = load_selected_model()
         return self.model
 

@@ -31,8 +31,8 @@ def _payload_to_tensor(payload) -> torch.Tensor:
 
 class ModelWrapper(mlflow.pyfunc.PythonModel):
     def load_context(self, context):
-        config_path = Path(context.artifacts["config"])
-        model_path = Path(context.artifacts["model"])
+        config_path = Path(str(context.artifacts["config"]).replace("\\", "/"))
+        model_path = Path(str(context.artifacts["model"]).replace("\\", "/"))
         config = json.loads(config_path.read_text(encoding="utf-8"))
 
         self.model = TinyTorchModel(
