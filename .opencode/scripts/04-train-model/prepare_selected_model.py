@@ -604,6 +604,8 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
         if current_selected is not None:
             return current_selected, None
         return None, "stored_model_selection_missing"
+    # Once a model has been selected, every later TODO step must keep that
+    # original model even if the model list order changes or another number is pressed.
     if current_selected is not None and current_selected.is_file():
         return current_selected, None
     if value.isdigit():
@@ -2675,6 +2677,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
+                f"선택 모델 고정: {rel(selected_model, project)}",
                 powershell_python_script(
                     CHECK_ENVIRONMENT_SCRIPT,
                     "--project",
@@ -2790,8 +2793,13 @@ def print_report(report: PreparedModelReport) -> None:
         model_list_status = "데이터만 있음"
     else:
         model_list_status = "모델 없음"
+    selected_model_locked = False
+    if report.selected_model_path:
+        current_selected = current_selected_model_path(Path(report.project_path))
+        if current_selected is not None and rel(current_selected, Path(report.project_path)) == report.selected_model_path:
+            selected_model_locked = True
     step_line(1, "모델 목록 확인", model_list_status)
-    step_line(2, "모델 선택", "완료" if model_selected else "대기")
+    step_line(2, "모델 선택", "고정" if selected_model_locked else ("완료" if model_selected else "대기"))
     step_line(3, "템플릿 변환", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
     step_line(4, "환경변수/requirements 갱신", "다음" if runtime_ready else "3번 완료 후")
     step_line(5, "학습 실행 및 원격 MLflow 등록", "4번 완료 후")
