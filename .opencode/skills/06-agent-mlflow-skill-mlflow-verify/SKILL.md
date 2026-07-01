@@ -85,7 +85,7 @@ cd '<selected-project-path>'
 python '<opencode-package-path>\.opencode\scripts\verify_mlflow.py' --project '<selected-project-path>' --experiment-name <name>
 ```
 
-`--tracking-uri`에는 `http://`, `https://`, `file://`를 사용할 수 있다.
+`--tracking-uri`에는 원격 MLflow/리포트 URL인 `http://` 또는 `https://`만 사용한다. `file://` 로컬 tracking은 사용하지 않는다.
 
 ## Artifact Map
 
@@ -148,7 +148,7 @@ blocked:
 검증 대상:
 
 ```text
-tracking target: local file store | local MLflow server | remote MLflow server
+tracking target: remote MLflow/report URL only
 experiment: name 또는 id
 run: latest run
 records: params, metrics, tags, artifacts

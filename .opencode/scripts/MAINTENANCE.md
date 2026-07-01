@@ -273,7 +273,7 @@ main()                     CLI 인자와 MLflow client 호출
 - MLflow 패키지가 없을 수 있으므로 import 실패를 친절히 안내해야 합니다.
 - credential 값은 출력하지 않습니다.
 - 폐쇄망에서는 tracking server URL이 내부망인지 사용자가 직접 확인합니다.
-- tracking URI는 `http://`, `https://`, `file://`를 사용할 수 있습니다.
+- tracking URI는 원격 MLflow/리포트 URL인 `http://` 또는 `https://`만 사용합니다. `file://` 로컬 tracking은 사용하지 않습니다.
 
 ## response_speed_check.py
 

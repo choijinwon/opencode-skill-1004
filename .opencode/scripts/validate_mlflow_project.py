@@ -779,7 +779,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if not prepare_found:
         next_steps.append("Confirm a prepare-only or preflight behavior before registration.")
     if not local_remote_evidence:
-        next_steps.append("Confirm local or remote MLflow tracking settings.")
+        next_steps.append("runtest_2.py 설정 블록에 원격 MLflow/리포트 URL, username, password를 직접 입력하세요.")
     if not next_steps:
         next_steps.append("Proceed to local/remote MLflow registration guidance.")
 

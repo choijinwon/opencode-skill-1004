@@ -863,10 +863,10 @@ def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = Non
         )
     if tracking_uri.lower().startswith("file://"):
         return RemoteMlflowStatus(
-            tracking_uri_status="local_file",
+            tracking_uri_status="unsupported",
             status="skipped",
             local_version=local_version,
-            detail="file tracking URI has no remote server version",
+            detail="file:// tracking URI is not allowed for AI Studio deployment; use remote MLflow/report URL",
         )
     if not tracking_uri.lower().startswith(("http://", "https://")):
         return RemoteMlflowStatus(
@@ -1189,7 +1189,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
                 break
     tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported"} for item in export_ready)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
-        next_steps.append("Confirm local or remote MLFLOW_TRACKING_URI before MLflow verification.")
+        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_url에 원격 MLflow/리포트 URL을 직접 입력하세요.")
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
         next_steps.append(f"사용자가 직접 소스에 입력해야 하는 값: {required_names}.")

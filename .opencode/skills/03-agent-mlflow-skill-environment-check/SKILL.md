@@ -152,7 +152,7 @@ mlflow_experiment_name
 mlflow_register_model_name
 ```
 
-`mlflow_tracking_url`은 `http://`, `https://`, `file://`를 사용할 수 있다.
+`mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
 
 </details>
 
@@ -191,10 +191,10 @@ password -> mlflow_tracking_password
 mflow_tracking_url -> 오타, mlflow_tracking_url로 수정 안내
 ```
 
-로컬 tracking:
+원격 tracking/report URL:
 
 ```text
-MLFLOW_TRACKING_URI=<사용자가 입력한 http://... 또는 file://...>
+MLFLOW_TRACKING_URI=<사용자가 입력한 원격 http://... 또는 https://...>
 MLflow artifact는 artifact_path="ai_studio" 아래 code/ 구조로 기록
 ```
 

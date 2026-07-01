@@ -347,7 +347,7 @@ mlflow_tracking_password=
 ```
 
 `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AIU Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
-`mlflow_tracking_url`은 `http://`, `https://`, `file://`를 사용할 수 있다.
+`mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
 
 ```text
@@ -358,7 +358,7 @@ mlflow_experiment_name -> MLFLOW_EXPERIMENT_NAME
 mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
-원격 배포 기본값은 `mlflow_tracking_url = ""`이다. 자동 tracking URI를 넣지 않으므로 사용자가 직접 원격 MLflow tracking 서버 URL을 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
+원격 배포 기본값은 `mlflow_tracking_url = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URL을 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
 
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.

@@ -605,7 +605,7 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
             [f"missing: {item}" for item in missing] + evidence,
             [
                 f"{rel(setting_file, project)} 설정 블록에 tracking URL, username, password를 직접 입력하세요.",
-                "mlflow_tracking_url은 http://, https://, file://를 사용할 수 있습니다.",
+                "mlflow_tracking_url은 원격 MLflow/리포트 URL(http:// 또는 https://)만 사용합니다.",
                 "password 값은 화면에 출력하지 말고 set/missing 상태만 확인하세요.",
             ],
         )
