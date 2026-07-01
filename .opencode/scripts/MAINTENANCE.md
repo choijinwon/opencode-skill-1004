@@ -47,9 +47,6 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 05 Inference Test
   05-inference-test/test_inference.py                수동 추론 계약 점검
 
-06 MLflow Verify
-  06-mlflow-verify/verify_mlflow.py                  MLflow experiment/run/artifact/registry 검증
-
 QA / Maintenance
   qa-maintenance/doctor.py                           전체 워크플로우 상태 1페이지 점검
   qa-maintenance/test_local_sample.py                번들 샘플 QA
@@ -61,7 +58,7 @@ QA / Maintenance
 책임:
 
 - OpenCode 패키지 상태를 확인합니다.
-- 01~06 스킬 폴더가 순서대로 있는지 확인합니다.
+- 01~05 스킬 폴더가 순서대로 있는지 확인합니다.
 - Python 3.11.9 여부를 확인합니다.
 - `requirements.txt` 기준 pip 패키지 설치/버전 상태를 요약합니다.
 - 선택 모델 변환은 고정 파일 목록만을 전제로 설명하지 말고, 복사된 템플릿 폴더 내부에서 실제 존재하는 파일과 선택 모델 실행/등록에 필요한 연결부를 기준으로 설명합니다.
@@ -257,27 +254,6 @@ run_aiu_custom()           aiu_custom wrapper 추론
 - 외부 서버 호출은 하지 않습니다.
 - 실패 원인은 `failures`에 누적합니다.
 
-## verify_mlflow.py
-
-책임:
-
-- MLflow tracking server에 연결합니다.
-- experiment/run/artifact를 확인합니다.
-- registered model과 model version을 확인합니다.
-
-주요 수정 위치:
-
-```text
-list_artifacts()           run artifact 재귀 조회
-main()                     CLI 인자와 MLflow client 호출
-```
-
-주의:
-
-- MLflow 패키지가 없을 수 있으므로 import 실패를 친절히 안내해야 합니다.
-- credential 값은 출력하지 않습니다.
-- 폐쇄망에서는 tracking server URL이 내부망인지 사용자가 직접 확인합니다.
-- tracking URI는 원격 MLflow/리포트 URL인 `http://` 또는 `https://`만 사용합니다. `file://` 로컬 tracking은 사용하지 않습니다.
 
 ## response_speed_check.py
 

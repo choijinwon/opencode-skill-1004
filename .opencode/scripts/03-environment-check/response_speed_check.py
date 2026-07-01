@@ -82,6 +82,22 @@ LARGE_SUFFIXES = {
 }
 
 
+def resolve_workspace_project(raw_project: str) -> Path:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
+
+
 @dataclass
 class Finding:
     status: str
@@ -312,7 +328,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
-    project = Path(args.project).expanduser().resolve()
+    project = resolve_workspace_project(args.project)
     if not project.exists():
         raise SystemExit(f"project not found: {project}")
 

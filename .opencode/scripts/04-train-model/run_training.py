@@ -38,6 +38,22 @@ AUTO_DEFAULT_SETTING_KEYS = {
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 }
+
+
+def resolve_workspace_project(raw_project: str) -> Path:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
 MODEL_SETTING_FILES = [
     "runtest_2.py",
     "runtest.py",
@@ -358,7 +374,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
-    project = Path(args.project).expanduser().resolve()
+    project = resolve_workspace_project(args.project)
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
     if is_filesystem_root(project):
@@ -425,8 +441,7 @@ def main():
             EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not missing_env else "needs_input"),
             EnvVarStatus("5. 원격 MLflow 등록 실행", "done" if args.execute and return_code == 0 else "pending"),
             EnvVarStatus("6. 추론 테스트", "pending"),
-            EnvVarStatus("7. MLflow 검증", "pending"),
-            EnvVarStatus("8. 오류 수정 및 재검증", "needed" if failures else "pending"),
+            EnvVarStatus("7. 오류 수정 및 재실행", "needed" if failures else "pending"),
         ]
     else:
         process_checklist = [

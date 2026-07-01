@@ -9,7 +9,6 @@
 | 3 | `03-agent-mlflow-skill-environment-check` | 모델 선택/템플릿 변환 후 환경 점검이 필요할 때 | `runtest_2.py`, `requirements.txt`, MLflow 입력값 | Python 버전, 패키지, MLflow 입력값, requirements 상태를 점검 | 환경 점검 결과, `requirements.txt` 갱신 |
 | 4 | `04-agent-mlflow-skill-train-model` | 모델을 선택하고 실행 준비를 해야 할 때 | 선택 모델 경로, `runtest.py`, 워크스페이스 루트 | `runtest_2.py`를 생성하고 템플릿을 선택 모델 기준으로 변환 | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
 | 5 | `05-agent-mlflow-skill-inference-test` | MLflow 등록 후 추론 테스트를 해야 할 때 | `local_serving/localservingtest.py`, 입력 예시 | 로컬 추론 입력/출력 스키마와 predict 동작을 확인 | 추론 테스트 결과 |
-| 6 | `06-agent-mlflow-skill-mlflow-verify` | MLflow 결과를 별도로 검증해야 할 때 | tracking URI, experiment name, registered model name | experiment, run, artifact, registered model 상태를 확인 | MLflow 검증 결과 |
 
 ## 2. 스킬별 핵심 스크립트
 
@@ -20,33 +19,40 @@
 | `03-agent-mlflow-skill-environment-check` | `03-environment-check/check_environment.py` | 환경변수, 패키지, requirements 점검 |
 | `04-agent-mlflow-skill-train-model` | `04-train-model/prepare_selected_model.py` | 모델 선택, `runtest_2.py` 생성, 템플릿 변환 |
 | `05-agent-mlflow-skill-inference-test` | `05-inference-test/test_inference.py` | 추론 테스트 실행 |
-| `06-agent-mlflow-skill-mlflow-verify` | `06-mlflow-verify/verify_mlflow.py` | MLflow 검증 |
 
 ## 3. 모델 있을 때 스킬 사용 순서
 
 | 순서 | 사용하는 스킬 | 목적 | 대표 실행 |
 |---|---|---|---|
-| 1 | `01-agent-mlflow-skill-project-analyze` | 모델 목록 확인 | 모델 검색/분석 |
-| 2 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `prepare_selected_model.py --model ... --execute` |
-| 3 | `04-agent-mlflow-skill-train-model` | 템플릿 복사 + `runtest_2.py` 생성 + 템플릿 변환 | `prepare_selected_model.py --sync-runtime --execute` |
-| 4 | `03-agent-mlflow-skill-environment-check` | 환경 점검 | `check_environment.py --entrypoint runtest_2.py` |
-| 5 | `04-agent-mlflow-skill-train-model` | MLflow 등록 실행 | `python runtest_2.py` |
-| 6 | `05-agent-mlflow-skill-inference-test` | 추론 테스트 | `python local_serving/localservingtest.py` |
-| 7 | `06-agent-mlflow-skill-mlflow-verify` | MLflow 결과 확인이 필요할 때만 검증 | `verify_mlflow.py ...` |
+| 1 | `01-agent-mlflow-skill-project-analyze` | 워크스페이스 분석 | 프로젝트 분석 |
+| 2 | `01-agent-mlflow-skill-project-analyze` | 모델 있음/없음 확인 | `model_found` 확인 |
+| 3 | `01-agent-mlflow-skill-project-analyze` | 모델 목록 확인 | 모델 검색/분석 |
+| 4 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `prepare_selected_model.py --model ... --execute` |
+| 5 | `04-agent-mlflow-skill-train-model` | 모델 확인 | 선택 모델 경로와 `MODEL_KIND` 확인 |
+| 6 | `04-agent-mlflow-skill-train-model` | 폴더 복사 | `prepare_selected_model.py --model ... --execute` |
+| 7 | `04-agent-mlflow-skill-train-model` | `runtest_2.py` 생성 | `prepare_selected_model.py --model ... --execute` |
+| 8 | `04-agent-mlflow-skill-train-model` | 선택 모델 기준 템플릿 변환 | `prepare_selected_model.py --model ... --execute` |
+| 9 | `03-agent-mlflow-skill-environment-check` | 환경 점검 | `check_environment.py --entrypoint runtest_2.py` |
+| 10 | `04-agent-mlflow-skill-train-model` | MLflow 등록 실행 | `python runtest_2.py` |
+| 11 | `05-agent-mlflow-skill-inference-test` | 추론 테스트 | `python local_serving/localservingtest.py` |
+| 12 | 실패한 단계의 스킬 | 오류 시 실패 단계부터 재실행 | `Failures` 기준으로 재실행 |
 
 ## 4. 사용자 입장에서 보는 간략 설명
 
 | 단계 | 사용자 관점 설명 |
 |---|---|
-| 1 | 모델이 있는지 먼저 확인 |
-| 2 | 사용할 모델을 선택 |
-| 3 | 템플릿을 현재 워크스페이스 루트로 복사 |
-| 4 | `runtest.py`를 참조해서 `runtest_2.py` 생성 |
-| 5 | 선택 모델 기준으로 템플릿 변환 |
-| 6 | 환경 점검 |
-| 7 | MLflow 등록 실행 |
-| 8 | 추론 테스트 |
-| 9 | 오류가 있으면 실패한 단계부터 다시 실행 |
+| 1 | 워크스페이스를 분석 |
+| 2 | 모델 있음/없음을 확인 |
+| 3 | 모델 목록을 확인 |
+| 4 | 사용할 모델을 선택 |
+| 5 | 선택한 모델 경로와 형식을 확인 |
+| 6 | 템플릿 폴더를 현재 워크스페이스 루트로 복사 |
+| 7 | `runtest.py`를 참조해서 `runtest_2.py` 생성 |
+| 8 | 선택 모델 기준으로 템플릿 변환 |
+| 9 | 환경 점검 |
+| 10 | MLflow 등록 실행 |
+| 11 | 추론 테스트 |
+| 12 | 오류가 있으면 실패한 단계부터 다시 실행 |
 
 ## 5. 핵심 차이
 
@@ -57,4 +63,3 @@
 | `environment-check` | 점검/갱신 전용 |
 | `train-model` | 모델 선택, 생성, 변환, 실행 준비 핵심 |
 | `inference-test` | 추론 확인 전용 |
-| `mlflow-verify` | MLflow 결과 검증 전용 |

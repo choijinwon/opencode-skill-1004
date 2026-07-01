@@ -188,11 +188,19 @@ def copy_file(source: Path, target: Path) -> None:
 
 
 def resolve_project_arg(raw_project: str) -> Path:
-    if raw_project.strip() == "<workspace-root>":
-        raw_project = "."
-    elif "<" in raw_project or ">" in raw_project:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
         raise ValueError("replace placeholder project path before running, for example: --project .")
-    return Path(raw_project).expanduser().resolve()
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
 
 
 def reference_runtest_path(project: Path) -> Path | None:

@@ -34,7 +34,6 @@ SKILL_FOLDERS = [
     "03-agent-mlflow-skill-environment-check",
     "04-agent-mlflow-skill-train-model",
     "05-agent-mlflow-skill-inference-test",
-    "06-agent-mlflow-skill-mlflow-verify",
 ]
 
 SAMPLE_SPEC_DIRS = [
@@ -47,6 +46,23 @@ SAMPLE_SPEC_FILES = [
     "requirements.txt",
     "input_example.json",
 ]
+
+
+def resolve_workspace_project(raw_project: str) -> Path:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
+
 
 ENTRYPOINT_CANDIDATES = [
     "aiu_studio/runtest_2.py",
@@ -817,8 +833,8 @@ def main() -> int:
     parser.add_argument("--strict-exit", action="store_true", help="return non-zero on warn/fail")
     args = parser.parse_args()
 
-    workspace = Path(args.workspace).expanduser().resolve()
-    project = Path(args.project).expanduser().resolve()
+    workspace = resolve_workspace_project(args.workspace)
+    project = resolve_workspace_project(args.project)
     if not workspace.exists():
         raise SystemExit(f"workspace not found: {workspace}")
     if not project.exists():

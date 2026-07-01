@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 5. 원격 MLflow 등록 실행
+현재 단계: 10. MLflow 등록 실행
 현재 대상: selected_project_path 또는 copied sample folder
 핵심 판단: entrypoint 확정, 실행 성공, ai_studio 산출물 생성
 다음 단계: 추론 테스트
@@ -24,14 +24,18 @@ metadata:
 ## Workflow
 
 ```text
-1. 모델 목록 확인
-2. 모델 경로로 선택
-3. 선택 모델 환경 변환 + requirements.txt 재정의/확인
-4. 모델 환경변수/패키지 상태 체크
-5. 원격 MLflow 등록 실행
-6. 추론 테스트
-7. MLflow 검증
-8. 오류 수정 및 재검증
+1. 워크스페이스 분석
+2. 모델 있음/없음 확인
+3. 모델 목록 확인
+4. 모델 선택
+5. 모델 확인
+6. 폴더 복사
+7. runtest.py 참조해서 runtest_2.py 생성
+8. 선택 모델 기준으로 템플릿 변환
+9. 환경 점검
+10. MLflow 등록 실행
+11. 추론 테스트
+12. 오류 시 실패 단계부터 재실행
 ```
 
 ## What To Do Now
@@ -166,14 +170,19 @@ blocked:
 기존 모델 흐름:
 
 ```text
-1. 모델 목록 확인
-2. 모델 경로로 선택
-3. 선택 모델 환경 변환 + requirements.txt 재정의/확인
-4. MLflow 입력값 3개와 자동값 2개 및 패키지 상태 확인
-5. runtest_2.py 원격 MLflow 등록 실행
-6. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
-7. MLflow run, artifact, registered model 검증
-8. 오류가 있으면 수정 후 실패한 단계부터 재검증
+1. 워크스페이스 분석
+2. 모델 있음/없음 확인
+3. 모델 목록 확인
+4. 모델 선택
+5. 모델 확인
+6. 폴더 복사
+7. runtest.py 참조해서 runtest_2.py 생성
+8. 선택 모델 기준으로 템플릿 변환
+   필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
+9. 환경 점검
+10. runtest_2.py MLflow 등록 실행
+11. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
+12. 오류가 있으면 수정 후 실패한 단계부터 재검증
 ```
 
 샘플 모델 흐름:

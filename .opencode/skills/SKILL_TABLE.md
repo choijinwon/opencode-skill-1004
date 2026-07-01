@@ -9,20 +9,23 @@
 | 3 | `03-agent-mlflow-skill-environment-check` | Python, 패키지, MLflow 설정 점검 | `03-environment-check/*` | 환경 점검 결과, `requirements.txt` 갱신 |
 | 4 | `04-agent-mlflow-skill-train-model` | 모델 선택, `runtest_2.py` 생성, 템플릿 변환, MLflow 등록 실행 | `04-train-model/*` | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
 | 5 | `05-agent-mlflow-skill-inference-test` | 로컬 추론 테스트 | `05-inference-test/*` | 추론 테스트 결과 |
-| 6 | `06-agent-mlflow-skill-mlflow-verify` | MLflow 검증 | `06-mlflow-verify/*` | experiment, run, artifact, registered model 확인 |
 
 ## 2. 모델 있을 때 프로세스
 
 | 단계 | 설명 | 실행 스크립트 | 주요 결과물 |
 |---|---|---|---|
-| 1 | 모델 목록 확인 | `01-project-analyze/*` 또는 모델 검색 로직 | 현재 프로젝트 루트와 `data/**` 모델 목록 |
-| 2 | 모델 선택 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 선택 모델 고정, `runtest_2.py` 생성 |
-| 3 | 선택 모델 환경 변환 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --sync-runtime --execute` | `.opencode/samples/aiu_studio/` 템플릿이 현재 워크스페이스 루트로 복사되고, 선택 모델 기준으로 변환 |
-| 4 | 모델 환경변수·패키지 상태 체크 | `python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py` | MLflow 입력값 3개 확인, 자동값 2개 확인, `requirements.txt` 필수 항목 및 추가 패키지 목록 갱신 |
-| 5 | 원격 MLflow 등록 실행 | `python runtest_2.py` | MLflow run, artifact, model registration 수행 |
-| 6 | 추론 테스트 | `python local_serving/localservingtest.py` | 입력/출력 추론 테스트 |
-| 7 | MLflow 검증 | `python .opencode/scripts/06-mlflow-verify/verify_mlflow.py --tracking-uri <tracking-uri> --experiment-name <experiment-name>` | experiment, run, artifact, registered model 결과 확인 |
-| 8 | 오류 수정 및 재검증 | 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 수정 후 실패한 단계부터 다시 실행 |
+| 1 | 워크스페이스 분석 | `01-project-analyze/*` | 현재 프로젝트 구조 확인 |
+| 2 | 모델 있음/없음 확인 | `01-project-analyze/*` 또는 모델 검색 로직 | `model_found`, 실행파일/데이터 상태 |
+| 3 | 모델 목록 확인 | `01-project-analyze/*` 또는 모델 검색 로직 | 현재 프로젝트 루트와 `data/**` 모델 목록 |
+| 4 | 모델 선택 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 선택 모델 고정 |
+| 5 | 모델 확인 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 선택 모델 경로 확인, `MODEL_KIND` 확인 |
+| 6 | 폴더 복사 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | `.opencode/samples/aiu_studio/` 템플릿이 현재 워크스페이스 루트로 복사 |
+| 7 | `runtest.py` 참조해서 `runtest_2.py` 생성 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 기존 `runtest.py`는 수정하지 않고 `runtest_2.py` 생성 |
+| 8 | 선택 모델 기준으로 템플릿 변환 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 복사된 템플릿이 선택 모델 기준으로 변환 |
+| 9 | 환경 점검 | `python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py` | MLflow 입력값 3개 확인, 자동값 2개 확인, `requirements.txt` 필수 항목 및 추가 패키지 목록 갱신 |
+| 10 | MLflow 등록 실행 | `python runtest_2.py` | 원격 MLflow 등록 실행 |
+| 11 | 추론 테스트 | `python local_serving/localservingtest.py` | 입력/출력 추론 테스트 |
+| 12 | 오류 시 실패 단계부터 재실행 | 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 수정 후 실패한 단계부터 다시 실행 |
 
 ## 3. 3번 단계 상세
 
@@ -50,17 +53,18 @@
 
 | 오류 위치 | 다시 시작할 단계 |
 |---|---|
-| 모델 선택/변환 오류 | 2 또는 3 |
-| 환경변수/패키지 오류 | 4 |
-| MLflow 등록 오류 | 5 |
-| 추론 테스트 오류 | 6 |
-| MLflow 검증 오류 | 7 |
+| 분석/모델 목록 오류 | 1 또는 3 |
+| 모델 선택/확인 오류 | 4 또는 5 |
+| 폴더 복사/템플릿 변환 오류 | 6 또는 8 |
+| 환경변수/패키지 오류 | 9 |
+| MLflow 등록 오류 | 10 |
+| 추론 테스트 오류 | 11 |
 
 ## 6. 핵심 요약
 
 | 항목 | 요약 |
 |---|---|
-| 모델 선택 후 핵심 흐름 | 모델 선택 -> 템플릿을 현재 워크스페이스 루트로 복사 -> `runtest.py` 참조로 `runtest_2.py` 생성 -> 선택 모델 기준 템플릿 변환 -> 환경 점검 -> MLflow 등록 -> 추론 테스트 |
+| 모델 선택 후 핵심 흐름 | 워크스페이스 분석 -> 모델 있음/없음 확인 -> 모델 목록 확인 -> 모델 선택 -> 모델 확인 -> 폴더 복사 -> `runtest.py` 참조로 `runtest_2.py` 생성 -> 선택 모델 기준 템플릿 변환 -> 환경 점검 -> MLflow 등록 -> 추론 테스트 |
 | 템플릿 복사 위치 | 현재 워크스페이스 루트 |
 | 선택 모델 유지 | 한 번 선택한 모델은 이후 단계에서도 그대로 유지 |
 | 재검증 방식 | 전체 처음부터 다시 하지 않고 실패한 단계부터 다시 실행 |
@@ -69,11 +73,15 @@
 
 | 순서 | 간략 설명 |
 |---|---|
-| 1 | 모델 선택 |
-| 2 | 템플릿을 현재 워크스페이스 루트로 복사 |
-| 3 | `runtest.py` 참조해서 `runtest_2.py` 생성 |
-| 4 | 선택 모델 기준으로 템플릿 변환 |
-| 5 | 환경 점검 |
-| 6 | MLflow 등록 실행 |
-| 7 | 추론 테스트 |
-| 8 | 오류 시 실패 단계부터 재실행 |
+| 1 | 워크스페이스 분석 |
+| 2 | 모델 있음/없음 확인 |
+| 3 | 모델 목록 확인 |
+| 4 | 모델 선택 |
+| 5 | 모델 확인 |
+| 6 | 폴더 복사 |
+| 7 | `runtest.py` 참조해서 `runtest_2.py` 생성 |
+| 8 | 선택 모델 기준으로 템플릿 변환 |
+| 9 | 환경 점검 |
+| 10 | MLflow 등록 실행 |
+| 11 | 추론 테스트 |
+| 12 | 오류 시 실패 단계부터 재실행 |

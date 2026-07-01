@@ -24,14 +24,18 @@ metadata:
 ## Workflow
 
 ```text
-1. 모델 목록 확인
-2. 모델 경로로 선택
-3. 선택 모델 환경 변환 + requirements.txt 재정의/확인
-4. 모델 환경변수/패키지 상태 체크
-5. 원격 MLflow 등록 실행
-6. 추론 테스트
-7. MLflow 검증
-8. 오류 수정 및 재검증
+1. 워크스페이스 분석
+2. 모델 있음/없음 확인
+3. 모델 목록 확인
+4. 모델 선택
+5. 모델 확인
+6. 폴더 복사
+7. runtest.py 참조해서 runtest_2.py 생성
+8. 선택 모델 기준으로 템플릿 변환
+9. 환경 점검
+10. MLflow 등록 실행
+11. 추론 테스트
+12. 오류 시 실패 단계부터 재실행
 ```
 
 ## What To Do Now
@@ -156,9 +160,9 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 보충 명령:
 
 ```text
-python .opencode/scripts/prepare_selected_model.py --project <model-project-folder>
-python .opencode/scripts/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
-python .opencode/scripts/bootstrap_sample_project.py --project <model-project-folder> --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model 1 --execute
+python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
 ```
 
 </details>

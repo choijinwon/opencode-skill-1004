@@ -139,9 +139,6 @@ Step 3  Train Model
 
 Step 4  Inference Test
         생성된 모델을 로드하고 input_example 기반 predict를 검증한다.
-
-Step 5  MLflow Verify
-        MLflow Run, artifact, pyfunc model, Model Registry 기록을 확인한다.
 ```
 
 ## Step 1. 프로젝트 구조 분석
@@ -507,57 +504,6 @@ schema_error
 serialization_error
 ```
 
-## Step 5. MLflow Run 및 Model 확인
-
-Skill:
-
-```text
-agent-mlflow-skill-mlflow-verify
-```
-
-### 목적
-
-학습 또는 export 결과가 MLflow에 기록되었는지 확인한다.
-
-### 확인 항목
-
-```text
-tracking target
-experiment
-run
-params
-metrics
-artifacts
-pyfunc model
-registered model
-model version
-```
-
-### Step 5 출력
-
-```text
-tracking target 요약
-experiment 정보
-최근 run 생성 여부
-params/metrics/artifacts 기록 상태
-model artifact 기록 상태
-registered model/version 생성 여부
-MLflow UI에서 확인할 위치
-남은 차단 항목 또는 후속 작업
-```
-
-### 실패 분류
-
-```text
-tracking_unreachable
-experiment_missing
-run_missing
-artifact_missing
-model_logging_error
-registry_missing
-permission_error
-```
-
 ## 스크립트 매핑
 
 ```text
@@ -573,9 +519,6 @@ Step 3  모델 실행 및 원격 MLflow 기록 확인
 
 Step 4  추론 테스트
         .opencode/scripts/test_inference.py
-
-Step 5  MLflow Run/Model 기록 확인
-        .opencode/scripts/verify_mlflow.py
 ```
 
 ## 운영 원칙

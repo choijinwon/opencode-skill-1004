@@ -1,6 +1,6 @@
 # AI Studio Script Index
 
-이 문서는 `.opencode/skills` 01~06 목록에 맞춘 스크립트 정리표입니다.
+이 문서는 `.opencode/skills` 01~05 목록에 맞춘 스크립트 정리표입니다.
 
 실제 구현 파일은 스킬 목록 기준 폴더에 둡니다.
 
@@ -68,15 +68,6 @@ Primary scripts:
 Generated runtime entrypoint:
 
 - `local_serving/localservingtest.py` - `prepare_selected_model.py --sync-runtime --execute`가 프로젝트 루트에 생성
-
-## 06 MLflow Verify
-
-Skill folder:
-`06-agent-mlflow-skill-mlflow-verify`
-
-Primary scripts:
-
-- `06-mlflow-verify/verify_mlflow.py` - MLflow run, artifact, registered model 검증
 
 ## QA / Maintenance
 

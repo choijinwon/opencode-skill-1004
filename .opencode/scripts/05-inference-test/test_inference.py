@@ -21,6 +21,22 @@ MODEL_SCAN_SKIP_DIRS = {
 }
 
 
+def resolve_workspace_project(raw_project: str) -> Path:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
+
+
 @dataclass
 class InferenceReport:
     project_path: str
@@ -149,7 +165,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
-    project = Path(args.project).expanduser().resolve()
+    project = resolve_workspace_project(args.project)
     model_path = Path(args.model_path).expanduser().resolve() if args.model_path else find_model_path(project)
     input_path = Path(args.input_example).expanduser().resolve() if args.input_example else find_input_example(project)
     failures: list[str] = []

@@ -50,13 +50,6 @@
     ],
     "purpose": "run selected-model local serving smoke test and inference contract checks"
   },
-  "06-mlflow-verify": {
-    "skill_folder": "06-agent-mlflow-skill-mlflow-verify",
-    "primary_scripts": [
-      "06-mlflow-verify/verify_mlflow.py"
-    ],
-    "purpose": "verify MLflow run, artifacts, and registered model"
-  },
   "qa-maintenance": {
     "primary_scripts": [
       "qa-maintenance/doctor.py",

@@ -210,12 +210,28 @@ def score_project(path: Path) -> int:
     return score
 
 
+def resolve_workspace_project(raw_project: str) -> Path:
+    raw = raw_project.strip()
+    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
+        raw = "."
+    elif "<" in raw or ">" in raw:
+        raise ValueError("replace placeholder project path before running, for example: --project .")
+
+    project = Path(raw).expanduser().resolve()
+    parts = project.parts
+    if ".opencode" in parts:
+        opencode_index = parts.index(".opencode")
+        if opencode_index > 0:
+            return Path(*parts[:opencode_index]).resolve()
+    return project
+
+
 def select_project(explicit: str | None) -> tuple[Path, str]:
     if explicit:
-        project = Path(explicit).expanduser().resolve()
+        project = resolve_workspace_project(explicit)
         return project, "explicit path"
 
-    return Path.cwd().resolve(), "current directory only"
+    return resolve_workspace_project("."), "current directory only"
 
 
 def is_filesystem_root(path: Path) -> bool:

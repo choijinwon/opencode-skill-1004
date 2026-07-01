@@ -18,7 +18,7 @@ metadata:
 현재 단계: 추론 테스트
 현재 대상: trained model project
 핵심 판단: input_example, load mode, predict contract, output schema
-다음 단계: MLflow 검증
+다음 단계: 오류 시 실패 단계부터 재실행
 ```
 
 ## Workflow
@@ -30,7 +30,7 @@ metadata:
 4. 모델 로드 방식 결정
 5. predict 실행
 6. 출력 schema 확인. 추론 테스트는 폴더 생성 단계가 아니며, local_serving/ 폴더는 모델 선택 자동 준비 단계에서 이미 생성되어 있어야 함
-7. 추론 테스트 완료 후 MLflow 검증으로 이동
+7. 추론 테스트 완료
 8. 오류가 있으면 수정 후 추론 테스트부터 재검증
 ```
 
@@ -77,7 +77,7 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 
 보조 스크립트:
-python .opencode/scripts/test_inference.py --project <project> --execute
+python .opencode/scripts/05-inference-test/test_inference.py --project <project> --execute
 ```
 
 <details>

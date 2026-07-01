@@ -155,8 +155,7 @@ secret 값은 로그, 응답, trace에 출력하지 않는다.
 ├── agent-mlflow-skill-project-analyze/
 ├── agent-mlflow-skill-environment-check/
 ├── agent-mlflow-skill-train-model/
-├── agent-mlflow-skill-inference-test/
-└── agent-mlflow-skill-mlflow-verify/
+└── agent-mlflow-skill-inference-test/
 ```
 
 각 Skill은 챗봇이 어떤 기준으로 판단하고 어떤 출력을 해야 하는지 정의한다.
@@ -170,7 +169,6 @@ secret 값은 로그, 응답, trace에 출력하지 않는다.
 ├── check_environment.py
 ├── run_training.py
 ├── test_inference.py
-├── verify_mlflow.py
 └── test_local_sample.py
 ```
 
@@ -212,12 +210,6 @@ Step 4 Inference Test
   |
   |-- aiu_custom 또는 local_serving 기반 추론
   |-- input_example.json 기반 predict 검증
-
-Step 5 MLflow Verify
-  |
-  |-- verify_mlflow.py
-  |
-  |-- experiment / run / artifact / registered model 확인
 ```
 
 ## 상세 데이터 흐름
@@ -389,24 +381,6 @@ MLflow pyfunc load_model 확인
 predict 실행
 응답 schema 확인
 JSON 직렬화 가능 여부 확인
-```
-
-### verify_mlflow.py
-
-담당 단계:
-
-```text
-Step 5 MLflow Verify
-```
-
-책임:
-
-```text
-tracking URI 확인
-experiment 확인
-최근 run 확인
-artifact 확인
-registered model/version 확인
 ```
 
 ## 실패 분류
