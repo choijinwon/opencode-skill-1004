@@ -73,12 +73,12 @@ Step 4. 모델 환경변수/패키지 상태 체크
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트하고 pip 설치 명령만 안내한다.
 Step 5. 원격 MLflow 등록 실행
         runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
-Step 6. 추론 스모크 테스트
+Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
-        기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않는다.
+        이 단계는 실행 확인 단계다. local_serving/ 폴더는 Step 3 자동 준비에서 생성되어 있어야 한다.
 Step 7. MLflow 검증
 Step 8. 오류 수정 및 재검증
-        원격 MLflow 등록, 추론 스모크 테스트, MLflow 검증 중 오류가 있으면 서버 배포 오류사항과 Failures를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.
+        원격 MLflow 등록, 추론 테스트, MLflow 검증 중 오류가 있으면 서버 배포 오류사항과 Failures를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.
         Run, artifact, registered model 기록을 확인한다.
 ```
 

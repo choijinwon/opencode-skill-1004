@@ -61,9 +61,9 @@ CONFIG_NAMES = [
 ]
 
 INPUT_EXAMPLE_NAMES = [
-    "aiu_studio/input_example.json",
-    "aiu_studio/sample_input.json",
-    "aiu_studio/example.json",
+    "input_example.json",
+    "sample_input.json",
+    "example.json",
 ]
 
 ARTIFACT_SUFFIXES = [
@@ -114,7 +114,7 @@ REQUIRED_DIRS = [
 
 SAMPLE_SPEC_FILES = [
     "requirements.txt",
-    "aiu_studio/input_example.json",
+    "input_example.json",
 ]
 
 AI_STUDIO_ENV_KEYS = [
@@ -173,7 +173,7 @@ def has_project_markers(path: Path) -> bool:
         "environment.yml",
         "environment.yaml",
         "aiu_studio/config/config.json",
-        "aiu_studio/input_example.json",
+        "input_example.json",
         "register_model.py",
         "runtest.py",
         "run_model.py",

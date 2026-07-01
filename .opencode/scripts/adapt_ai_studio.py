@@ -14,7 +14,7 @@ START = "# >>> AI Studio MLflow adapter >>>"
 END = "# <<< AI Studio MLflow adapter <<<"
 
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
-REQUIRED_FILES = ["aiu_studio/input_example.json", "requirements.txt"]
+REQUIRED_FILES = ["input_example.json", "requirements.txt"]
 ENTRYPOINT_HINTS = [
     "aiu_studio/runtest_2.py",
     "aiu_studio/runtest.py",
@@ -384,7 +384,7 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
             "create_if_missing: aiu_custom/predict.py",
             "create_if_missing: local_serving/serve.py",
             "create_if_missing: saved_model/",
-            "create_if_missing: aiu_studio/input_example.json",
+            "create_if_missing: input_example.json",
             "create_or_extend_if_missing: requirements.txt",
         ]
     )
@@ -405,7 +405,7 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
 
     write_if_missing(project / "aiu_custom" / "predict.py", model_wrapper_template(framework), execute, changed, skipped)
     write_if_missing(project / "local_serving" / "serve.py", local_serving_template(), execute, changed, skipped)
-    write_if_missing(project / "aiu_studio" / "input_example.json", '{\n  "inputs": []\n}\n', execute, changed, skipped)
+    write_if_missing(project / "input_example.json", '{\n  "inputs": []\n}\n', execute, changed, skipped)
 
     requirements = project / "requirements.txt"
     if requirements.exists():

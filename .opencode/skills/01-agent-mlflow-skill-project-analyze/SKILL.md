@@ -29,7 +29,7 @@ metadata:
 3. 선택 모델 환경 변환 + requirements.txt 재정의/확인
 4. 모델 환경변수/패키지 상태 체크
 5. 원격 MLflow 등록 실행
-6. 추론 스모크 테스트
+6. 추론 테스트
 7. MLflow 검증
 8. 오류 수정 및 재검증
 ```
@@ -116,7 +116,7 @@ blocked:
 예: model.joblib, models/model.joblib, data/<임의폴더>/model.joblib, data/sklearn/model.pkl, data/checkpoints/model.pt, data/xgboost/model.ubj
 MODEL_KIND: .pkl -> sklearn_pickle, .joblib -> sklearn_joblib, .pt/.pth -> pytorch, .onnx -> onnx, .keras -> tensorflow_keras, .h5 -> tensorflow_h5, .safetensors -> safetensors, .bst -> xgboost_bst, .ubj -> xgboost_ubj
 MLflow model: MLmodel, python_model.pkl
-입력 예제: aiu_studio/input_example.json
+입력 예제: input_example.json
 ```
 
 </details>

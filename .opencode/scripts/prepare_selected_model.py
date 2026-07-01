@@ -1278,7 +1278,7 @@ def _aiu_print_existing_model_tod():
     print("- 3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 완료")
     print("- 4. 모델 환경변수/패키지 상태 체크 - 다음")
     print("- 5. 원격 MLflow 등록 실행 - 완료")
-    print("- 6. 추론 스모크 테스트 - 다음")
+    print("- 6. 추론 테스트 - 다음")
     print("- 7. MLflow 검증 - 다음")
     print("- 8. 오류 수정 및 재검증 - 오류 시")
 
@@ -1757,7 +1757,7 @@ def _print_tod(local_status="완료"):
     print("- 3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 완료")
     print("- 4. 모델 환경변수/패키지 상태 체크 - 다음")
     print("- 5. 원격 MLflow 등록 실행 - 완료")
-    print(f"- 6. 추론 스모크 테스트 - {{local_status}}")
+    print(f"- 6. 추론 테스트 - {{local_status}}")
     print("- 7. MLflow 검증 - 다음")
     print("- 8. 오류 수정 및 재검증 - 오류 시")
 
@@ -2463,7 +2463,7 @@ def print_report(report: PreparedModelReport) -> None:
     print("3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 완료" if auto_and_requirements_ready else "3. 선택 모델 환경 변환 + requirements.txt 재정의/확인 - 대기")
     print("4. 모델 환경변수/패키지 상태 체크 - 다음")
     print("5. 원격 MLflow 등록 실행 - 다음")
-    print("6. 추론 스모크 테스트 - 다음")
+    print("6. 추론 테스트 - 다음")
     print("7. MLflow 검증 - 다음")
     print("8. 오류 수정 및 재검증 - 오류 시")
     if report.next_steps:

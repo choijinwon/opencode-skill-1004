@@ -40,9 +40,9 @@ def load_json(path: Path):
 
 def find_input_example(project: Path) -> Path | None:
     for name in [
-        "aiu_studio/input_example.json",
-        "aiu_studio/sample_input.json",
-        "aiu_studio/example.json",
+        "input_example.json",
+        "sample_input.json",
+        "example.json",
     ]:
         candidate = project / name
         if candidate.exists():
@@ -51,7 +51,7 @@ def find_input_example(project: Path) -> Path | None:
 
 
 def find_model_path_from_generated_entrypoint(project: Path) -> Path | None:
-    for entrypoint in [project / "aiu_studio" / "runtest_2.py"]:
+    for entrypoint in [project / "runtest_2.py"]:
         if not entrypoint.exists():
             continue
         text = entrypoint.read_text(encoding="utf-8", errors="ignore")
@@ -132,7 +132,7 @@ def run_aiu_custom(project: Path, payload):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test local model inference with aiu_studio/input_example.json.")
+    parser = argparse.ArgumentParser(description="Test local model inference with input_example.json.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model-path", help="explicit model path")
     parser.add_argument("--input-example", help="explicit input example JSON path")

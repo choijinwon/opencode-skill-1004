@@ -45,7 +45,7 @@ SAMPLE_SPEC_DIRS = [
 
 SAMPLE_SPEC_FILES = [
     "requirements.txt",
-    "aiu_studio/input_example.json",
+    "input_example.json",
 ]
 
 ENTRYPOINT_CANDIDATES = [

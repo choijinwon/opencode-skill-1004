@@ -114,8 +114,10 @@ def main() -> int:
     print("- 다음 단계:")
     if model_found:
         print("  - 사용할 모델을 번호 또는 경로로 선택하세요. 예: 1 또는 data/<folder>/model.joblib")
+        print("  - 모델 목록이 보이는 상태에서 숫자 입력은 TOD 단계가 아니라 모델 번호 선택입니다.")
         print("  - AIU Studio 빌드 모드 다음 작업 수행(한 번에): python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute")
-        print("  - 포함 작업: 모델 프로젝트 구조 분석 + aiu_studio/ 복사 + 환경변수 체크 + aiu_studio/runtest_2.py 생성")
+        print("  - 포함 작업: 모델 프로젝트 구조 분석 + 템플릿 복사 + 선택 모델 연결부 변환 + requirements.txt 갱신")
+        print("  - 생성/갱신: runtest_2.py, local_serving/, saved_model/, aiu_custom/, input_example.json, requirements.txt")
     else:
         print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
         print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode AIU Studio 빌드 모드에서 선택해주세요.")

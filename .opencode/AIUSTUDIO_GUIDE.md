@@ -10,9 +10,10 @@ AIU Studio MLflow Onboarding
 2. 모델 있음
    루트/data 모델 목록을 번호로 보여줍니다.
    사용자는 번호 또는 경로로 사용할 모델을 선택합니다.
-   원하는 모델 번호 숫자 키를 누르면 해당 모델로 진행합니다.
-   AIU Studio에서 자동 준비 실행 1번으로 처리합니다.
-   포함 작업: 선택 모델 환경 변환
+   모델 목록이 보이는 상태에서 숫자 키를 누르면 TOD 단계가 아니라 모델 번호 선택으로 처리합니다.
+   모델 선택 직후 자동 준비를 실행합니다.
+   실행 명령: python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute
+   포함 작업: 템플릿 복사 + 선택 모델 환경 변환 + requirements.txt 갱신
    data/ 원본에는 생성하지 않습니다.
 
 3. 모델 없음

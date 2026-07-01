@@ -1120,7 +1120,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             "3. 선택 모델 환경 변환 + requirements.txt 재정의/확인: 템플릿 복사, 선택 모델 연결부 변환, 선택 모델 기준 requirements.txt 갱신을 한 번에 처리한다.",
             f"4. 모델 환경변수/패키지 상태 체크: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 확인하고, import 기준 추가 패키지가 있으면 requirements.txt를 업데이트한다.",
             f"5. 원격 MLflow 등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
-            "6. 추론 스모크 테스트: 선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.",
+            "6. 추론 테스트: 선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.",
             "7. MLflow 검증: Run, artifact, registered model 기록을 확인한다.",
             "8. 오류 수정 및 재검증: 오류가 있으면 서버 배포 오류사항과 Failures를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.",
         ]

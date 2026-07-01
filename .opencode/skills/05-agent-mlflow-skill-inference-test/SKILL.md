@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-inference-test
-description: Use when the user asks "추론 테스트", "input_example.json", "predict.py", "aiu_custom 테스트", "local_serving", or inference test; loads the local model and verifies predict contract and response schema.
+description: Use only when the user explicitly asks "추론 테스트", "input_example.json", "predict.py", "aiu_custom 테스트", "local_serving", or inference test after selected-model preparation is complete; loads the prepared model wrapper and verifies predict contract and response schema. Do not use for model number selection.
 license: MIT
 compatibility: opencode
 metadata:
@@ -25,11 +25,11 @@ metadata:
 
 ```text
 1. 로컬 학습 산출물 확인
-2. aiu_studio/input_example.json 확인
-3. 추론 entrypoint 확인: aiu_studio/local_serving/localservingtest.py
+2. input_example.json 확인
+3. 추론 entrypoint 확인: local_serving/localservingtest.py
 4. 모델 로드 방식 결정
 5. predict 실행
-6. 출력 schema 확인. 기본은 화면 출력만 수행하고 프로젝트 루트 local_serving/ 폴더를 생성하지 않음
+6. 출력 schema 확인. 추론 테스트는 폴더 생성 단계가 아니며, local_serving/ 폴더는 모델 선택 자동 준비 단계에서 이미 생성되어 있어야 함
 7. 추론 테스트 완료 후 MLflow 검증으로 이동
 8. 오류가 있으면 수정 후 추론 테스트부터 재검증
 ```
@@ -37,8 +37,8 @@ metadata:
 ## What To Do Now
 
 ```text
-1. aiu_studio/input_example.json을 확인한다.
-2. aiu_studio/local_serving/localservingtest.py를 확인한다.
+1. input_example.json을 확인한다.
+2. local_serving/localservingtest.py를 확인한다.
 3. localservingtest.py의 선택 모델 경로, MODEL_KIND, load_selected_model()을 확인한다.
 4. Windows native load는 보조 확인으로만 둔다.
 5. 결과가 JSON serializable인지 확인한다.
@@ -50,7 +50,7 @@ metadata:
 반드시 보여줄 값:
 - 판단 결과
 - 사용한 input example
-- 추론 entrypoint: aiu_studio/local_serving/localservingtest.py
+- 추론 entrypoint: local_serving/localservingtest.py
 - 모델 로드 방식
 - predict 결과 요약
 - response schema
@@ -62,7 +62,7 @@ metadata:
 
 ```text
 판단 결과: pass
-input_example: aiu_studio/input_example.json
+input_example: input_example.json
 load mode: aiu_custom wrapper
 schema: JSON serializable
 result_path: not written
@@ -73,7 +73,7 @@ next: MLflow verify
 
 ```text
 실제 추론 실행:
-cd '<selected-project-path>\aiu_studio\local_serving'
+cd '<selected-project-path>\local_serving'
 python localservingtest.py
 
 보조 스크립트:
@@ -116,7 +116,7 @@ blocked:
 
 증상: input_example 없음
 원인: 테스트 입력 누락
-조치: aiu_studio/input_example.json 또는 README 예제를 먼저 확정
+조치: input_example.json 또는 README 예제를 먼저 확정
 
 증상: predict 결과를 JSON으로 못 바꿈
 원인: numpy/pandas/object 반환값 직렬화 처리 누락

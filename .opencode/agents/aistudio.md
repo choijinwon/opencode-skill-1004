@@ -66,9 +66,10 @@ AIU Studio MLflow Onboarding
 2. 모델 있음
    루트/data 모델 목록을 번호로 보여줍니다.
    사용자는 번호 또는 경로로 사용할 모델을 선택합니다.
-   원하는 모델 번호 숫자 키를 누르면 해당 모델로 진행합니다.
-   AIU Studio에서 자동 준비 실행 1번으로 처리합니다.
-   포함 작업: 선택 모델 환경 변환
+   모델 목록이 보이는 상태에서 숫자 키를 누르면 TOD 단계가 아니라 모델 번호 선택으로 처리합니다.
+   모델 선택 직후 자동 준비를 실행합니다.
+   실행 명령: python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute
+   포함 작업: 템플릿 복사 + 선택 모델 환경 변환 + requirements.txt 갱신
    data/ 원본에는 생성하지 않습니다.
 
 3. 모델 없음
@@ -131,3 +132,21 @@ On the first assistant response, always start with `agent-mlflow-skill-project-a
 If the user says a broad phrase such as `분석해줘`, `MLflow 모델 프로세스 진행해줘`, `모델 있음/없음 봐줘`, or `처음부터 봐줘`, start with `agent-mlflow-skill-project-analyze`.
 
 If the user says `sklearn`, `pytorch`, `tensorflow`, `샘플 생성`, `폴더째 복사`, or `모델이 없으면 샘플` in AIU Studio 모드, use `agent-mlflow-skill-sample-bootstrap` and execute the matching copy command directly.
+
+## Number Input Priority
+
+When the user types only a number, decide by the latest visible context:
+
+1. If `model_artifact_paths` or a model list was just shown, treat the number as the model list index.
+   Execute:
+
+   ```text
+   python .opencode/scripts/prepare_selected_model.py --project . --model <number> --execute
+   ```
+
+   This is Step 3, not inference. It must copy `.opencode/samples/aiu_studio/` contents into the workspace root and create/refresh `runtest_2.py`, `local_serving/`, `saved_model/`, `aiu_custom/`, `input_example.json`, and `requirements.txt`.
+
+2. If no model list is active and the TOD Guide is active, treat the number as a TOD step.
+3. If `model_found: false` and the sample choices are active, treat `1`, `2`, `3` as `sklearn`, `pytorch`, `tensorflow` sample choices.
+
+Do not route model-list number input to `agent-mlflow-skill-inference-test`. Inference runs only after selected-model preparation and remote MLflow registration steps are complete or when the user explicitly asks for `추론 테스트`.

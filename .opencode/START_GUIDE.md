@@ -4,7 +4,7 @@
 
 ```text
 AIU Studio -> model_found 확인 후 복사/수정/설치/실행 가능
-모델 있음  -> 루트/data 모델 목록 -> 모델 선택 -> 환경변수 체크
+모델 있음  -> 루트/data 모델 목록 -> 모델 선택 -> 자동 준비 실행 -> 환경변수 체크
 모델 없음  -> 1 sklearn / 2 pytorch / 3 tensorflow
 진행 방법  -> 화면에 표시된 모델 번호나 단계 번호를 숫자 키로 입력
 
@@ -15,9 +15,20 @@ AIU Studio -> model_found 확인 후 복사/수정/설치/실행 가능
 
 이 파일은 AIU Studio 모드 진입 안내용 전역 참고 문서입니다.
 AIU Studio 모드는 생성/수정/설치/실행 권한을 포함합니다.
-AIU Studio 모드에서 사용자가 `1`, `2`, `3`, `sklearn`, `pytorch`, `tensorflow` 중 하나를 입력하면 안내만 하지 말고 즉시 선택된 샘플 복사 명령을 실행합니다.
-특히 `2`는 PyTorch 샘플 선택이므로 다음 명령을 직접 실행합니다.
-모델 목록이나 TOD Guide가 표시된 상태에서는 사용자가 숫자 키만 입력해도 해당 번호의 모델/단계를 선택한 것으로 처리합니다.
+AIU Studio 모드에서 사용자가 숫자만 입력하면 최신 화면 상태를 먼저 판단합니다.
+모델 목록이 표시된 상태라면 숫자는 TOD 단계가 아니라 모델 번호 선택입니다.
+모델 번호 선택 직후에는 다음 명령을 직접 실행해 자동 준비를 먼저 끝냅니다.
+
+```text
+python .opencode/scripts/prepare_selected_model.py --project . --model <번호|경로> --execute
+```
+
+이 단계에서 `.opencode/samples/aiu_studio/` 내부 템플릿이 워크스페이스 루트로 복사되고, `runtest_2.py`, `local_serving/`, `saved_model/`, `aiu_custom/`, `input_example.json`, `requirements.txt`가 생성/갱신됩니다.
+추론 테스트는 이 자동 준비 이후 단계에서만 실행합니다.
+
+모델 목록이 없고 TOD Guide가 표시된 상태라면 숫자는 TOD 단계 선택입니다.
+모델이 없어서 샘플 선택지가 표시된 상태라면 `1`, `2`, `3`은 각각 `sklearn`, `pytorch`, `tensorflow` 샘플 선택입니다.
+특히 모델 없음 상태에서 `2`는 PyTorch 샘플 선택이므로 다음 명령을 직접 실행합니다.
 이 패키지는 Python 스크립트만 사용합니다. opencode Bun 런타임 환경에서 파일 트리 오류 처리 중 세그멘테이션 폴트가 발생할 수 있으므로 `bun`, `bunx`, `bun install`, `bun run`을 사용하지 않습니다.
 JavaScript 패키지 설치가 필요한 프로젝트이고 `package.json`이 있으면 `npm i`만 사용합니다.
 폐쇄망 WSL에서는 `.opencode/wsl/wheelhouse/`가 있으면 `bash .opencode/wsl/install_offline.sh`로 바로 설치하고, 없으면 내부 `http://` PyPI 미러나 별도 PC에서 wheel 파일을 준비합니다. torch도 SSL/HTTPS 인덱스로 설치하지 않습니다.
