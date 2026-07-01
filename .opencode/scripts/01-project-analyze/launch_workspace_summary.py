@@ -107,9 +107,11 @@ def main() -> int:
             print(f"  - {item}")
 
     if model_artifact_paths:
-        print("- 선택 가능한 모델:")
+        print("- 모델 선택 화면:")
+        print("  숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
         for index, path in enumerate(model_artifact_paths[:10], start=1):
             print(f"  {index}. {path}")
+        print("  실행 예: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
 
     if review_items:
         print("- 확인 필요:")
@@ -118,12 +120,13 @@ def main() -> int:
 
     print("- 다음 단계:")
     if model_found:
-        print("  - 사용할 모델을 번호 또는 경로로 선택하세요. 예: 1 또는 data/<folder>/model.joblib")
-        print("  - 모델 목록이 보이는 상태에서 숫자 입력은 TODO 단계가 아니라 모델 번호 선택입니다.")
-        print("  - AIU Studio 빌드 모드 다음 작업 수행(한 번에): python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute")
-        print("  - 포함 작업: 모델 프로젝트 구조 분석 + runtest.py 참조 + 선택 모델 기준 runtest_2.py 변환")
-        print("  - 생성/갱신: runtest_2.py")
-        print("  - 3번 추가 시퀀스: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --sync-runtime --execute")
+        print("  1. 모델 목록 확인")
+        print("  2. 모델 선택")
+        print("  3. 템플릿 복사 및 선택 모델 기준 변환")
+        print("  4. 환경변수/requirements 갱신")
+        print("  5. 학습 실행 및 원격 MLflow 등록")
+        print("  6. 추론 테스트")
+        print("  7. 오류 수정 및 실패 단계부터 재실행")
     else:
         print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
         print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode AIU Studio 빌드 모드에서 선택해주세요.")

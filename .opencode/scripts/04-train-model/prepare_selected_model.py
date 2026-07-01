@@ -2766,15 +2766,29 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 def print_report(report: PreparedModelReport) -> None:
     print(f"Project: {report.project_path}")
     print(f"Data root: {report.data_root}")
-    if report.model_artifact_paths and report.selected_model_path is None:
+
+    if report.model_artifact_paths:
         data_model_count = sum(1 for path in report.model_artifact_paths if path == "data" or path.startswith("data/"))
         total_model_count = len(report.model_artifact_paths)
-        if data_model_count == total_model_count:
-            print(f"data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
-        elif data_model_count:
-            print(f"프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+        print("\n모델 선택 화면")
+        if report.selected_model_path:
+            print(f"- 선택 모델: {report.selected_model_path}")
+            print("- 처음 선택한 모델을 계속 유지합니다.")
         else:
-            print(f"현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            if data_model_count == total_model_count:
+                print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            elif data_model_count:
+                print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+            else:
+                print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            print("- 숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
+        for index, path in enumerate(report.model_artifact_paths, start=1):
+            marker = " <선택됨>" if path == report.selected_model_path else ""
+            print(f"  {index}. {path}{marker}")
+        if report.selected_model_path is None:
+            print("- 실행 예: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
+            print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> 선택 모델 기준 연결부 변환")
+
     print("model_artifact_paths:")
     if report.model_artifact_paths:
         for index, path in enumerate(report.model_artifact_paths, start=1):
