@@ -1337,7 +1337,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
 # 선택된 모델을 먼저 판별하고, 원본 모델 경로를 직접 읽도록 변환합니다.
 # MODEL_KIND에 맞는 load_selected_model()을 생성해 워크스페이스 템플릿 코드를 선택 모델 기준으로 갱신합니다.
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
-import os as _aiu_os
+import os
 import atexit as _aiu_atexit
 import json as _aiu_json
 from pathlib import Path as _AIUPath
@@ -1371,7 +1371,7 @@ model_output_path = str(MODEL_OUTPUT_PATH)
 saved_model_dir = str(MODEL_OUTPUT_DIR)
 
 # Step 5 학습 실행 및 원격 MLflow 등록 중 상대경로 산출물은 선택한 현재 프로젝트 경로 아래에 생성되도록 고정합니다.
-_aiu_os.chdir(AI_STUDIO_DIR)
+os.chdir(AI_STUDIO_DIR)
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1415,7 +1415,7 @@ for _aiu_env_name, _aiu_env_value in {{
     "MLFLOW_REGISTER_MODEL_NAME": mlflow_register_model_name,
 }}.items():
     if _aiu_env_value:
-        _aiu_os.environ[_aiu_env_name] = _aiu_env_value
+        os.environ[_aiu_env_name] = _aiu_env_value
 
 def _aiu_print_existing_model_tod():
     print("\\nTODO Guide:")
