@@ -561,16 +561,26 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
     return selected_model, selected_kind, None
 
 
+def current_selected_model_path(project: Path) -> Path | None:
+    selected_model, _selected_kind, _selection_error = selected_model_from_runtest_2(project)
+    if selected_model is not None:
+        return selected_model
+    return stored_selected_model_path(project)
+
+
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     if not raw:
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
     if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
-        stored = stored_selected_model_path(project)
+        stored = current_selected_model_path(project)
         if stored is not None:
             return stored, None
         return None, "stored_model_selection_missing"
     if value.isdigit():
+        current_selected = current_selected_model_path(project)
+        if current_selected is not None and current_selected.is_file():
+            return current_selected, None
         index = int(value)
         if 1 <= index <= len(models):
             return models[index - 1], None
@@ -714,12 +724,11 @@ def conversion_reference_step(kind: str, reference: Path) -> str:
 
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
-        f"1. 선택 모델 확인: {rel(selected_model, project)}",
-        f"2. 현재 프로젝트 루트/data/** 검색 결과에서 모델 형식 확인: MODEL_KIND={kind}",
-        "3. .opencode/samples/aiu_studio/ 내부 파일/폴더를 워크스페이스 루트로 복사",
-        conversion_reference_step(kind, reference),
-        f"5. 선택 모델 경로와 MODEL_KIND 확인: {rel(selected_model, project)} / {kind}",
-        "6. 변환 결과 검증",
+        "1. aiu_studio/ 템플릿 복사",
+        f"2. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
+        "3. 복사된 템플릿을 선택 모델 형식에 맞게 변환",
+        f"4. 참조 entrypoint 확인: {reference_display_path(reference)}",
+        "5. 변환 결과 검증",
     ]
 
 
@@ -2469,7 +2478,25 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
     if report.failures:
         return report
-    if args.model and normalize_path_text(args.model.strip()).isdigit() and selected_model:
+    current_selected = current_selected_model_path(project)
+    if (
+        args.model
+        and normalize_path_text(args.model.strip()).isdigit()
+        and current_selected is not None
+        and selected_model is not None
+        and current_selected.resolve() == selected_model.resolve()
+    ):
+        report.warnings.append(f"numeric_model_selection_locked_to_current:{args.model}->{rel(selected_model, project)}")
+        report.next_steps.append(f"현재 선택 모델이 고정되어 목록 순서 대신 기존 선택 경로를 유지합니다: {rel(selected_model, project)}")
+    if (
+        args.model
+        and normalize_path_text(args.model.strip()).isdigit()
+        and selected_model
+        and not (
+            current_selected is not None
+            and current_selected.resolve() == selected_model.resolve()
+        )
+    ):
         stable_path = rel(selected_model, project)
         report.warnings.append(f"numeric_model_selection_is_order_dependent:{args.model}->{stable_path}")
         report.next_steps.append(f"다음 실행부터는 목록 순서가 바뀌어도 안전하게 실제 경로를 사용하세요: --model {stable_path}")
@@ -2522,7 +2549,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.extend(
                 [
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 실행/등록에 필요한 연결부를 선택 모델에 맞게 변환했습니다.",
-                    "3번 선택 모델 변환 시퀀스 완료: runtest_2.py 생성 + runtest_2.py 기준 런타임 변환",
+                    "선택 모델 변환 완료: aiu_studio/ 템플릿 복사 -> 선택 모델 경로 및 형식 확인 -> 복사된 템플릿을 선택 모델 형식에 맞게 변환",
                     "다음은 4번 모델 환경변수/패키지 상태 체크입니다.",
                     powershell_python_script(
                         CHECK_ENVIRONMENT_SCRIPT,
@@ -2560,8 +2587,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 선택 기준 runtest_2.py 변환",
-                "runtest_2.py 생성 시퀀스 완료: 현재 프로젝트 경로 기준 모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND 반영 -> 변환 결과 검증",
-                "3번 선택 모델 변환 시퀀스 추가 실행: runtest_2.py 기준 런타임 변환",
+                "선택 모델 변환 완료: aiu_studio/ 템플릿 복사 -> 선택 모델 경로 및 형식 확인 -> 복사된 템플릿을 선택 모델 형식에 맞게 변환",
+                "추가 실행: runtest_2.py 기준 런타임 변환",
                 powershell_python_script(
                     PREPARE_SELECTED_MODEL_SCRIPT,
                     "--project",
