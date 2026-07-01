@@ -1392,19 +1392,14 @@ for _aiu_env_name, _aiu_env_value in {{
         _aiu_os.environ[_aiu_env_name] = _aiu_env_value
 
 def _aiu_print_existing_model_tod():
-    print("\\nTOD Guide:")
-    print("- 1. 워크스페이스 분석 - 완료")
-    print("- 2. 모델 있음/없음 확인 - 완료")
-    print("- 3. 모델 목록 확인 - 완료")
-    print("- 4. 모델 선택 - 완료")
-    print("- 5. 모델 확인 - 완료")
-    print("- 6. 폴더 복사 - 완료")
-    print("- 7. runtest.py 참조해서 runtest_2.py 생성 - 완료")
-    print("- 8. 선택 모델 기준으로 템플릿 변환 - 완료")
-    print("- 9. 환경 점검 - 다음")
-    print("- 10. MLflow 등록 실행 - 완료")
-    print("- 11. 추론 테스트 - 다음")
-    print("- 12. 오류 시 실패 단계부터 재실행 - 오류 시")
+    print("\\nTODO Guide:")
+    print("- 1. 모델 목록 확인 - 완료")
+    print("- 2. 모델 선택 - 완료")
+    print("- 3. 템플릿 변환 - 완료")
+    print("- 4. 환경변수/requirements 갱신 - 확인 필요")
+    print("- 5. 원격 MLflow 등록 실행 - 완료")
+    print("- 6. 추론 테스트 - 다음")
+    print("- 7. 오류 수정 및 재실행 - 오류 시")
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
 # --- /AIU Studio selected model conversion ---
@@ -1978,19 +1973,14 @@ def run_inference():
 
 
 def _print_tod(local_status="완료"):
-    print("\\nTOD Guide:")
-    print("- 1. 워크스페이스 분석 - 완료")
-    print("- 2. 모델 있음/없음 확인 - 완료")
-    print("- 3. 모델 목록 확인 - 완료")
-    print("- 4. 모델 선택 - 완료")
-    print("- 5. 모델 확인 - 완료")
-    print("- 6. 폴더 복사 - 완료")
-    print("- 7. runtest.py 참조해서 runtest_2.py 생성 - 완료")
-    print("- 8. 선택 모델 기준으로 템플릿 변환 - 완료")
-    print("- 9. 환경 점검 - 다음")
-    print("- 10. MLflow 등록 실행 - 완료")
-    print(f"- 11. 추론 테스트 - {{local_status}}")
-    print("- 12. 오류 시 실패 단계부터 재실행 - 오류 시")
+    print("\\nTODO Guide:")
+    print("- 1. 모델 목록 확인 - 완료")
+    print("- 2. 모델 선택 - 완료")
+    print("- 3. 템플릿 변환 - 완료")
+    print("- 4. 환경변수/requirements 갱신 - 확인 필요")
+    print("- 5. 원격 MLflow 등록 실행 - 완료")
+    print(f"- 6. 추론 테스트 - {{local_status}}")
+    print("- 7. 오류 수정 및 재실행 - 오류 시")
 
 
 def main():
@@ -2403,13 +2393,19 @@ def write_aiu_mapping(project: Path, selected_model: Path, kind: str, execute: b
     return changed, skipped, failures
 
 
-def sync_selected_model_runtime(project: Path, selected_model: Path, kind: str, runtime_reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def sync_selected_model_runtime(
+    project: Path,
+    selected_model: Path,
+    kind: str,
+    runtime_reference: Path,
+    execute: bool,
+    copy_template: bool = True,
+) -> tuple[list[str], list[str], list[str]]:
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
 
-    for next_changed, next_skipped, next_failures in [
-        copy_aiu_studio_folder(project, execute),
+    runtime_steps = [
         ensure_aiu_custom_template_copied(project, execute),
         ensure_runtime_directories(project, execute),
         write_requirements(project, kind, execute),
@@ -2418,7 +2414,11 @@ def sync_selected_model_runtime(project: Path, selected_model: Path, kind: str, 
         write_aiu_model(project, selected_model, kind, execute),
         write_aiu_predict(project, selected_model, kind, execute),
         write_aiu_mapping(project, selected_model, kind, execute),
-    ]:
+    ]
+    if copy_template:
+        runtime_steps.insert(0, copy_aiu_studio_folder(project, execute))
+
+    for next_changed, next_skipped, next_failures in runtime_steps:
         changed.extend(next_changed)
         skipped.extend(next_skipped)
         failures.extend(next_failures)
@@ -2604,8 +2604,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.extend(
                 [
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 실행/등록에 필요한 연결부를 선택 모델에 맞게 변환했습니다.",
-                    "선택 모델 변환 완료: 모델 선택 -> 모델 확인 -> 폴더 복사 -> runtest_2.py 생성 -> 선택 모델 기준 템플릿 변환",
-                    "다음은 9번 환경 점검입니다.",
+                    "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
+                    "다음은 4번 환경변수/requirements 갱신입니다.",
                     powershell_python_script(
                         CHECK_ENVIRONMENT_SCRIPT,
                         "--project",
@@ -2617,6 +2617,13 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             )
         elif not report.failures:
             report.next_steps.append("검토 후 --execute를 붙여 runtest_2.py 기준 런타임 폴더/파일을 변환하세요.")
+        return report
+
+    template_changed, template_skipped, template_failures = copy_aiu_studio_folder(project, args.execute)
+    report.prepared_paths.extend(template_changed)
+    report.skipped.extend(template_skipped)
+    report.failures.extend(template_failures)
+    if report.failures:
         return report
 
     reference = find_reference_entrypoint(project, selected_kind)
@@ -2645,6 +2652,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         selected_kind,
         runtime_reference,
         args.execute,
+        copy_template=False,
     )
     report.prepared_paths.extend(runtime_changed)
     report.skipped.extend(runtime_skipped)
@@ -2653,7 +2661,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 선택 -> 모델 확인 -> 폴더 복사 -> runtest_2.py 생성 -> 선택 모델 기준 템플릿 변환",
+                "자동 준비 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
                 powershell_python_script(
                     CHECK_ENVIRONMENT_SCRIPT,
                     "--project",
@@ -2661,11 +2669,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "--entrypoint",
                     "runtest_2.py",
                 ),
-                "환경 체크 완료 후 10번 MLflow 등록 실행을 진행하세요.",
+                "환경 체크 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
-                "11번 추론 테스트는 10번 MLflow 등록 실행이 성공한 뒤에만 진행합니다.",
+                "6번 추론 테스트는 5번 원격 MLflow 등록 실행이 성공한 뒤에만 진행합니다.",
             ]
         )
     elif not report.failures:
@@ -2761,28 +2769,21 @@ def print_report(report: PreparedModelReport) -> None:
             "requirements.txt",
         ]
     )
-    step_line(1, "워크스페이스 분석", "완료")
     if report.model_artifact_paths:
-        step_line(2, "모델 있음/없음 확인", "모델 있음")
-        step_line(3, "모델 목록 확인", "완료")
+        model_list_status = "완료"
     elif report.entrypoint_paths:
-        step_line(2, "모델 있음/없음 확인", "실행파일 있음")
-        step_line(3, "모델 목록 확인", "대기")
+        model_list_status = "실행파일 있음"
     elif report.data_file_paths:
-        step_line(2, "모델 있음/없음 확인", "데이터만 있음")
-        step_line(3, "모델 목록 확인", "대기")
+        model_list_status = "데이터만 있음"
     else:
-        step_line(2, "모델 있음/없음 확인", "모델 없음")
-        step_line(3, "모델 목록 확인", "대기")
-    step_line(4, "모델 선택", "완료" if model_selected else "대기")
-    step_line(5, "모델 확인", "완료" if model_selected and report.model_kind else "대기")
-    step_line(6, "폴더 복사", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
-    step_line(7, "runtest.py 참조해서 runtest_2.py 생성", "완료" if auto_ready else "대기")
-    step_line(8, "선택 모델 기준으로 템플릿 변환", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
-    step_line(9, "환경 점검", "다음" if runtime_ready else "8번 완료 후")
-    step_line(10, "MLflow 등록 실행", "9번 완료 후")
-    step_line(11, "추론 테스트", "10번 완료 후")
-    step_line(12, "오류 시 실패 단계부터 재실행", "오류 시")
+        model_list_status = "모델 없음"
+    step_line(1, "모델 목록 확인", model_list_status)
+    step_line(2, "모델 선택", "완료" if model_selected else "대기")
+    step_line(3, "템플릿 변환", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
+    step_line(4, "환경변수/requirements 갱신", "다음" if runtime_ready else "3번 완료 후")
+    step_line(5, "원격 MLflow 등록 실행", "4번 완료 후")
+    step_line(6, "추론 테스트", "5번 완료 후")
+    step_line(7, "오류 수정 및 재실행", "오류 시")
     if report.next_steps:
         print("Next steps:")
         for step in report.next_steps:

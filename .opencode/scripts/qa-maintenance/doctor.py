@@ -560,7 +560,7 @@ def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorChec
     if not (project / "local_serving" / "serve.py").exists():
         missing.append("local_serving/serve.py")
     if not find_entrypoints(project):
-        missing.append("로컬 학습/모델 생성 실행 파일")
+        missing.append("실제 사용하는 Python 실행 파일")
 
     if missing:
         copy_command = (

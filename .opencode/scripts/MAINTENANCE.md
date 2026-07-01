@@ -133,7 +133,7 @@ adapt_entrypoint()          백업 생성과 adapter block 삽입
 ```text
 select_project()           명시 경로 또는 현재 폴더만 선택
 ENTRYPOINT_NAMES           일반 실행 파일 후보
-TRAINING_ENTRYPOINT_NAMES  로컬 학습/모델 생성 실행 후보
+TRAINING_ENTRYPOINT_NAMES  실제 사용하는 Python 실행 파일 후보
 REQUIRED_DIRS              필수 샘플 폴더
 SAMPLE_SPEC_FILES          필수 샘플 파일
 AI_STUDIO_ENV_KEYS         필수 설정 키

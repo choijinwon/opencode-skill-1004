@@ -1,6 +1,6 @@
 # OpenCode MLflow Scripts
 
-이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 워크스페이스 분석부터 시작하는 12단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
+이 폴더는 `.opencode/skills`의 MLflow 흐름을 보조하는 로컬 스크립트를 포함한다. 모델이 있으면 모델 목록 확인부터 시작하는 7단계, 모델이 없으면 샘플 복사 후 6단계로 진행한다.
 
 대상은 사용자가 지정한 모델 프로젝트 폴더다.
 사용자 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있으며, 자동 준비 시 모델 파일을 템플릿 폴더로 복사하지 않고 선택한 원본 경로에 연결하도록 코드를 변환한다.
@@ -8,7 +8,7 @@
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
 `aiu_custom/`, `local_serving/`, `saved_model/`, `config/`, `requirements.txt`, `input_example.json`은 모델 선택 단계에서 자동 생성하지 않는다.
-모델 선택 명령은 4~8번 흐름을 한 번에 수행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
+모델 선택 명령은 1~3번 흐름을 한 번에 수행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
 Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
@@ -58,18 +58,13 @@ QA / Maintenance
 사용자에게 보이는 TODO 단계는 아래 스크립트로 연결합니다.
 
 ```text
-1. 워크스페이스 분석               -> project-analyze
-2. 모델 있음/없음 확인             -> project-analyze
-3. 모델 목록 확인                  -> prepare_selected_model.py
-4. 모델 선택                       -> prepare_selected_model.py --model <번호|경로>
-5. 모델 확인                       -> 선택 모델 경로와 MODEL_KIND 확인
-6. 폴더 복사                       -> aiu_studio/ 템플릿을 현재 워크스페이스 루트로 복사
-7. runtest.py 참조해서 runtest_2.py 생성 -> 기존 runtest.py는 수정하지 않고 runtest_2.py 생성
-8. 선택 모델 기준으로 템플릿 변환  -> 복사된 템플릿을 선택 모델 형식에 맞게 변환
-9. 환경 점검                      -> check_environment.py --entrypoint runtest_2.py (requirements.txt 필수 항목 및 추가 패키지 목록 갱신 포함)
-10. MLflow 등록 실행              -> python runtest_2.py
-11. 추론 테스트                   -> python local_serving/localservingtest.py
-12. 오류 시 실패 단계부터 재실행   -> Failures 기준으로 실패한 단계부터 재실행
+1. 모델 목록 확인                  -> prepare_selected_model.py
+2. 모델 선택                       -> prepare_selected_model.py --model <번호|경로>
+3. 템플릿 변환                     -> 템플릿 복사 + 선택 모델 기준 코드 변환
+4. 환경변수/requirements 갱신      -> check_environment.py --entrypoint runtest_2.py
+5. 원격 MLflow 등록 실행           -> python runtest_2.py
+6. 추론 테스트                     -> python local_serving/localservingtest.py
+7. 오류 수정 및 재실행             -> Failures 기준으로 실패한 단계부터 재실행
 ```
 
 화면에 표시된 모델 번호나 TODO 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.
@@ -77,11 +72,11 @@ QA / Maintenance
 기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
 
 ```text
-4~8 -> python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
-9 -> python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py
-10 -> python runtest_2.py
-11 -> python local_serving/localservingtest.py
-12 -> Failures와 오류 메시지 기준으로 수정 후 실패한 단계부터 재실행
+1~3 -> python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
+4 -> python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py
+5 -> python runtest_2.py
+6 -> python local_serving/localservingtest.py
+7 -> Failures와 오류 메시지 기준으로 수정 후 실패한 단계부터 재실행
 ```
 
 Windows PowerShell에서는 선택 프로젝트의 실행 폴더로 이동한 뒤 실행한다.
@@ -94,7 +89,7 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 ```
 
-`4~8`은 모델 선택 명령 한 번으로 모델 확인 -> `aiu_studio/` 템플릿 복사 -> 기존 `runtest.py` 참조로 `runtest_2.py` 생성 -> 복사된 템플릿을 선택 모델 형식에 맞게 변환 흐름으로 진행한다. 이 단계에서 `requirements.txt` 재정의/확인도 함께 처리한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
+`1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 선택 모델 기준 코드 변환 흐름으로 진행한다. 이 단계에서 `requirements.txt` 재정의/확인도 함께 처리한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
 `9`는 모델 환경변수와 패키지 상태 체크다. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트하고, 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 입력값 3개와 자동값 2개는 `set`, `empty`, `missing`, `auto_default` 상태로만 표시한다. secret 값은 출력하지 않는다.
@@ -153,9 +148,7 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model
 4. model_artifact_paths와 MODEL_KIND
 5. 실행 파일 확정
 6. AIU Studio 코드 적합성
-7. 샘플 규격 폴더/파일
-8. MLflow 입력값 3개와 자동값 2개 확인/export
-9. 루트/data 모델 원본 경로와 모델/메트릭/코드 산출물
+7. MLflow 입력값 3개와 requirements.txt 상태
 ```
 
 ### prepare_selected_model.py

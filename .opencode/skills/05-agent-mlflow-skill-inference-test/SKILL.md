@@ -18,20 +18,19 @@ metadata:
 현재 단계: 추론 테스트
 현재 대상: trained model project
 핵심 판단: input_example, load mode, predict contract, output schema
-다음 단계: 오류 시 실패 단계부터 재실행
+다음 단계: 7. 오류 수정 및 재실행
 ```
 
 ## Workflow
 
 ```text
-1. 로컬 학습 산출물 확인
-2. input_example.json 확인
-3. 추론 entrypoint 확인: local_serving/localservingtest.py
-4. 모델 로드 방식 결정
-5. predict 실행
-6. 출력 schema 확인. 추론 테스트는 폴더 생성 단계가 아니며, local_serving/ 폴더는 모델 선택 자동 준비 단계에서 이미 생성되어 있어야 함
-7. 추론 테스트 완료
-8. 오류가 있으면 수정 후 추론 테스트부터 재검증
+1. 모델 목록 확인
+2. 모델 선택
+3. 템플릿 변환
+4. 환경변수/requirements 갱신
+5. 원격 MLflow 등록 실행
+6. 추론 테스트
+7. 오류 수정 및 재실행
 ```
 
 ## What To Do Now

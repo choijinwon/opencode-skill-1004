@@ -536,7 +536,7 @@ def check_entrypoint_confirmation(project: Path, entrypoints: list[Path]) -> Che
         "entrypoint confirmation",
         "warn",
         "multiple entrypoint candidates found; user confirmation is required",
-        evidence + ["로컬 학습/모델 생성에 실제로 사용하는 파일명을 확정하세요."],
+        evidence + ["실제 사용하는 Python 실행 파일명을 확정하세요."],
     )
 
 
@@ -781,7 +781,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if not artifacts:
         next_steps.append("Run training or provide a model artifact path.")
     if not training_entrypoints:
-        next_steps.append("로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요.")
+        next_steps.append("실제 사용하는 Python 실행 파일명을 알려주세요.")
     elif len(training_entrypoints) > 1:
         next_steps.append("Entrypoint candidates: " + ", ".join(safe_relative(path, project) for path in training_entrypoints[:10]))
         next_steps.append("여러 후보 중 실제 사용하는 실행 파일을 확정하세요.")

@@ -347,7 +347,7 @@ config_error
 tracking_unreachable
 ```
 
-## Step 3. 로컬 학습 및 모델 생성
+## Step 3. 템플릿 변환 및 실행 준비
 
 Skill:
 
@@ -357,7 +357,7 @@ agent-mlflow-skill-train-model
 
 ### 목적
 
-로컬에서 학습 또는 export를 실행해 모델 산출물이 생성되는지 확인한다.
+선택 모델 기준으로 템플릿을 복사하고 실행/등록 연결부를 변환한다.
 
 ### 기존 모델 프로젝트 실행
 
@@ -373,10 +373,10 @@ model_found: true
 1. selected_project_path를 실행 기준 경로로 사용한다.
 2. train_entrypoint 또는 run_model.py를 확인한다.
 3. ai_studio.env 필수 키를 확인한다.
-4. prepare-only, dry run, smoke test가 있으면 먼저 실행한다.
-5. 실제 학습 또는 모델 export를 실행한다.
-6. saved_model/에 모델 산출물이 생성되는지 확인한다.
-7. Step 4에 model path와 input_example path를 넘긴다.
+4. 템플릿 복사와 코드 변환을 수행한다.
+5. requirements.txt 필수/추가 패키지를 확인한다.
+6. 원격 MLflow 등록 실행을 준비한다.
+7. 추론 테스트에 필요한 input_example과 local_serving 경로를 확인한다.
 ```
 
 기존 모델 프로젝트가 있으면 선택형 샘플은 사용하지 않는다.
@@ -398,9 +398,8 @@ selected_sample: sklearn | pytorch | tensorflow
 3. 샘플 원본은 직접 수정하지 않는다.
 4. ai_studio.env 필수 키를 확인한다.
 5. prepare-only 또는 smoke test가 있으면 먼저 실행한다.
-6. 로컬 학습 또는 모델 export를 실행한다.
+6. 모델 실행 또는 export를 실행한다.
 7. saved_model/에 모델 산출물이 생성되는지 확인한다.
-8. Step 4에 model path와 input_example path를 넘긴다.
 ```
 
 ### 필수 산출물

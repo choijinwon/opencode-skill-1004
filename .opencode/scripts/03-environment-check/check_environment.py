@@ -1197,18 +1197,13 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if existing_model_flow:
         entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
         tod_guide = [
-            "1. 워크스페이스 분석: 현재 프로젝트 기준으로 구조와 후보 파일을 확인한다.",
-            "2. 모델 있음/없음 확인: 모델 파일, 실행파일, 데이터만 있는 상태를 구분한다.",
-            "3. 모델 목록 확인: 현재 프로젝트 루트 바로 아래와 data/**에서 사용할 모델 후보를 확인한다.",
-            "4. 모델 선택: prepare_selected_model.py --model <경로> 또는 --model selected로 선택한다.",
-            "5. 모델 확인: 선택 모델 경로와 MODEL_KIND를 확인한다.",
-            "6. 폴더 복사: .opencode/samples/aiu_studio/ 템플릿을 현재 워크스페이스 루트로 복사한다.",
-            "7. runtest.py 참조해서 runtest_2.py 생성: 기존 runtest.py는 수정하지 않고 runtest_2.py만 생성한다.",
-            "8. 선택 모델 기준으로 템플릿 변환: --sync-runtime으로 복사된 템플릿 연결부를 선택 모델 기준으로 변환한다.",
-            f"9. 환경 점검: {entrypoint_display}의 MLflow 입력값 3개와 자동값 2개를 확인하고, requirements.txt 필수 항목 및 추가 패키지 목록을 갱신한다.",
-            f"10. MLflow 등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
-            "11. 추론 테스트: 10번 MLflow 등록 실행이 성공한 뒤 local serving 입력/출력 스키마를 확인한다.",
-            "12. 오류 시 실패 단계부터 재실행: 오류가 있으면 Failures와 오류 메시지를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.",
+            "1. 모델 목록 확인: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
+            "2. 모델 선택: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
+            "3. 템플릿 변환: .opencode/samples/aiu_studio/ 템플릿 복사와 선택 모델 기준 코드 변환을 수행한다.",
+            f"4. 환경변수/requirements 갱신: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"5. 원격 MLflow 등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
+            "6. 추론 테스트: local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
+            "7. 오류 수정 및 재실행: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
         ]
         if entrypoint is None:
             if entrypoint_candidates:
@@ -1394,7 +1389,7 @@ def print_text(report: EnvironmentReport):
         for item in report.export_ready:
             print(f"- {item.name}: {item.status}")
     if report.tod_guide:
-        print("\nTOD Guide:")
+        print("\nTODO Guide:")
         for step in report.tod_guide:
             print(f"- {step}")
     if report.blocked_summary:

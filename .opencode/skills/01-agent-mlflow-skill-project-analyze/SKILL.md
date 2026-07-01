@@ -24,18 +24,13 @@ metadata:
 ## Workflow
 
 ```text
-1. 워크스페이스 분석
-2. 모델 있음/없음 확인
-3. 모델 목록 확인
-4. 모델 선택
-5. 모델 확인
-6. 폴더 복사
-7. runtest.py 참조해서 runtest_2.py 생성
-8. 선택 모델 기준으로 템플릿 변환
-9. 환경 점검
-10. MLflow 등록 실행
-11. 추론 테스트
-12. 오류 시 실패 단계부터 재실행
+1. 모델 목록 확인
+2. 모델 선택
+3. 템플릿 변환
+4. 환경변수/requirements 갱신
+5. 원격 MLflow 등록 실행
+6. 추론 테스트
+7. 오류 수정 및 재실행
 ```
 
 ## What To Do Now
@@ -47,8 +42,7 @@ metadata:
 4. `.opencode/` 전체는 스킬 번들이므로 분석 대상에서 제외한다.
 5. model_found 값을 먼저 결정한다.
 6. 모델 artifact가 없고 Python 실행파일이 있으면 CSV 유무와 관계없이 샘플 선택 대신 entrypoint 실행 흐름으로 안내한다.
-7. 모델이 있으면 model_artifact_paths를 번호로 보여주고 사용할 모델 번호 또는 경로 선택을 요청한다.
-8. 모델도 Python 실행파일도 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
+7. 모델이 있으면 model_artifact_paths를 번호로 보여주고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
 ```
 
 ## Output Contract
@@ -135,7 +129,7 @@ MLflow model: MLmodel, python_model.pkl
 
 증상: run_model.py로 고정해서 안내됨
 원인: 기존 모델 프로젝트의 실제 entrypoint 확인이 빠짐
-조치: "로컬 학습/모델 생성에 실제로 사용하는 파일명을 알려주세요."라고 묻는다.
+조치: "실제 사용하는 Python 실행 파일명을 알려주세요."라고 묻는다.
 
 증상: 샘플 규격 폴더가 부족함
 원인: aiu_custom/, local_serving/, saved_model/ 등이 누락됨
