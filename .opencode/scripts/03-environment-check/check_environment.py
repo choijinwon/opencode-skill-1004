@@ -1201,8 +1201,8 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             "2. 모델 선택: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
             "3. 템플릿 변환: .opencode/samples/aiu_studio/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"4. 환경변수/requirements 갱신: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
-            f"5. 원격 MLflow 등록 실행: python {entrypoint_display} 로 선택 모델을 원격 MLflow 서버에 기록/등록한다.",
-            "6. 추론 테스트: local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
+            f"5. 학습 실행 및 원격 MLflow 등록: python {entrypoint_display} 로 선택 모델을 학습 실행하고 원격 MLflow 서버에 기록/등록한다.",
+            "6. 추론 테스트: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
             "7. 오류 수정 및 재실행: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
         ]
         if entrypoint is None:

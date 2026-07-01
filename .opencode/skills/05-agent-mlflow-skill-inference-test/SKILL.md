@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-inference-test
-description: Use only when the user explicitly asks "추론 테스트", "input_example.json", "predict.py", "aiu_custom 테스트", "local_serving", or inference test after selected-model preparation is complete; loads the prepared model wrapper and verifies predict contract and response schema. Do not use for model number selection.
+description: Use only when the user explicitly asks "추론 테스트", selects step 6, "input_example.json", "predict.py", "aiu_custom 테스트", "local_serving", or inference test after selected-model preparation is complete; loads the prepared model wrapper and verifies predict contract and response schema. Do not use for model number selection.
 license: MIT
 compatibility: opencode
 metadata:
@@ -16,6 +16,7 @@ metadata:
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
 현재 단계: 추론 테스트
+진행 조건: 사용자가 6번을 선택했을 때만 실행
 현재 대상: trained model project
 핵심 판단: input_example, load mode, predict contract, output schema
 다음 단계: 7. 오류 수정 및 재실행
@@ -28,7 +29,7 @@ metadata:
 2. 모델 선택
 3. 템플릿 변환
 4. 환경변수/requirements 갱신
-5. 원격 MLflow 등록 실행
+5. 학습 실행 및 원격 MLflow 등록
 6. 추론 테스트
 7. 오류 수정 및 재실행
 ```

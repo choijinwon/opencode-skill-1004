@@ -67,11 +67,12 @@ Step 3. 템플릿 변환
 Step 4. 환경변수/requirements 갱신
         입력값 3개와 자동값 2개 상태를 확인한다.
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
-Step 5. 원격 MLflow 등록 실행
+Step 5. 학습 실행 및 원격 MLflow 등록
         runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
-        이 단계는 실행 확인 단계다. local_serving/ 폴더는 Step 3 런타임 변환 시퀀스에서 생성되어 있어야 한다.
+        자동 실행하지 않고 사용자가 6번을 선택했을 때만 진행한다.
+        local_serving/ 폴더는 Step 3 런타임 변환 시퀀스에서 생성되어 있어야 한다.
 Step 7. 오류 수정 및 재실행
         MLflow 등록 또는 추론 테스트 중 오류가 있으면 Failures와 오류 메시지를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.
 ```

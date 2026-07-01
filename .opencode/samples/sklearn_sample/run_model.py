@@ -45,8 +45,6 @@ def missing_mlflow_settings() -> list[str]:
         "mlflow_tracking_url": mlflow_tracking_url,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
-        "mlflow_experiment_name": mlflow_experiment_name,
-        "mlflow_register_model_name": mlflow_register_model_name,
     }
     return [name for name, value in required.items() if not value]
 

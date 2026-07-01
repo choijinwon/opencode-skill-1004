@@ -18,7 +18,7 @@ metadata:
 현재 단계: 2. 환경 검증
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
-다음 단계: MLflow 등록 실행
+다음 단계: 학습 실행 및 MLflow 등록
 ```
 
 ## Workflow
@@ -29,7 +29,7 @@ metadata:
 3. 샘플 규격 확인/보충
 4. 환경 변수 입력/export
 5. 패키지 설치
-6. MLflow 등록 실행
+6. 학습 실행 및 MLflow 등록
 7. 산출물 확인
 ```
 
@@ -144,6 +144,8 @@ mlflow_tracking_url
 mlflow_tracking_username
 mlflow_tracking_password
 ```
+
+위 3개 값이 비어 있으면 학습 테스트 실행을 진행하지 않는다. 사용자가 `runtest_2.py` 설정 블록에 직접 입력한 뒤 같은 단계부터 다시 실행한다.
 
 자동 생성되는 설정:
 

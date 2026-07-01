@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 5. 원격 MLflow 등록 실행
+현재 단계: 5. 학습 실행 및 원격 MLflow 등록
 현재 대상: selected_project_path 또는 copied sample folder
 핵심 판단: entrypoint 확정, 실행 성공, ai_studio 산출물 생성
 다음 단계: 추론 테스트
@@ -28,7 +28,7 @@ metadata:
 2. 모델 선택
 3. 템플릿 변환
 4. 환경변수/requirements 갱신
-5. 원격 MLflow 등록 실행
+5. 학습 실행 및 원격 MLflow 등록
 6. 추론 테스트
 7. 오류 수정 및 재실행
 ```
@@ -77,7 +77,7 @@ MLflow artifact:
 실행 파일 자동 판단:
 python .opencode/scripts/04-train-model/run_training.py --project <project>
 
-원격 MLflow 등록 실행:
+학습 실행 및 원격 MLflow 등록:
 python .opencode/scripts/04-train-model/run_training.py --project <project> --execute
 
 명시적 entrypoint 실행:
@@ -131,9 +131,11 @@ entrypoint를 찾지 못한 경우:
 - 파일을 넣은 뒤 --entrypoint <file>로 다시 실행한다.
 - tracking URL, username, password는 사용자가 직접 입력해야 함
 - mlflow_experiment_name, mlflow_register_model_name은 자동 생성 가능
+- tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트를 실행하지 않고 사용자가 직접 입력 후 다시 실행하도록 안내한다.
 
 blocked:
 - 학습/모델 생성 entrypoint 없음
+- MLflow 필수 입력값 미입력
 - 실행 후 산출물이 없음
 - 필수 입력 데이터/config 없음
 ```
@@ -171,7 +173,7 @@ blocked:
    템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
 4. 환경변수/requirements 갱신
    필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
-5. runtest_2.py 원격 MLflow 등록 실행
+5. runtest_2.py 학습 실행 및 원격 MLflow 등록
 6. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
 7. 오류가 있으면 수정 후 실패한 단계부터 재실행
 ```

@@ -1357,7 +1357,7 @@ model_output_dir = str(MODEL_OUTPUT_DIR)
 model_output_path = str(MODEL_OUTPUT_PATH)
 saved_model_dir = str(MODEL_OUTPUT_DIR)
 
-# Step 6 원격 MLflow 등록 실행 중 상대경로 산출물은 선택한 현재 프로젝트 경로 아래에 생성되도록 고정합니다.
+# Step 5 학습 실행 및 원격 MLflow 등록 중 상대경로 산출물은 선택한 현재 프로젝트 경로 아래에 생성되도록 고정합니다.
 _aiu_os.chdir(AI_STUDIO_DIR)
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1378,8 +1378,21 @@ effective_mlflow_tracking_uri = mlflow_tracking_url
 
 {data_prep}
 
-if not mlflow_tracking_url:
-    raise ValueError("mlflow_tracking_url_required: set remote MLflow tracking URL before deployment")
+_aiu_missing_mlflow_settings = [
+    _aiu_name
+    for _aiu_name, _aiu_value in {{
+        "mlflow_tracking_url": mlflow_tracking_url,
+        "mlflow_tracking_username": mlflow_tracking_username,
+        "mlflow_tracking_password": mlflow_tracking_password,
+    }}.items()
+    if not str(_aiu_value).strip()
+]
+if _aiu_missing_mlflow_settings:
+    raise ValueError(
+        "mlflow_settings_required: fill "
+        + ", ".join(_aiu_missing_mlflow_settings)
+        + " directly in runtest_2.py, then rerun python runtest_2.py"
+    )
 
 for _aiu_env_name, _aiu_env_value in {{
     "MLFLOW_TRACKING_URI": effective_mlflow_tracking_uri,
@@ -1397,8 +1410,8 @@ def _aiu_print_existing_model_tod():
     print("- 2. 모델 선택 - 완료")
     print("- 3. 템플릿 변환 - 완료")
     print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 원격 MLflow 등록 실행 - 완료")
-    print("- 6. 추론 테스트 - 다음")
+    print("- 5. 학습 실행 및 원격 MLflow 등록 - 완료")
+    print("- 6. 추론 테스트 - 선택 시")
     print("- 7. 오류 수정 및 재실행 - 오류 시")
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
@@ -1884,8 +1897,8 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     if preserve_code:
         transformed = insert_preserved_data_prep_block(transformed, kind)
     transformed = transformed.replace(
-        "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
-        "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
+        "학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
+        "학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
     )
     transformed = ensure_linux_code_paths(transformed)
     return transformed.rstrip() + "\n"
@@ -1978,7 +1991,7 @@ def _print_tod(local_status="완료"):
     print("- 2. 모델 선택 - 완료")
     print("- 3. 템플릿 변환 - 완료")
     print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 원격 MLflow 등록 실행 - 완료")
+    print("- 5. 학습 실행 및 원격 MLflow 등록 - 완료")
     print(f"- 6. 추론 테스트 - {{local_status}}")
     print("- 7. 오류 수정 및 재실행 - 오류 시")
 
@@ -2669,11 +2682,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "--entrypoint",
                     "runtest_2.py",
                 ),
-                "환경 체크 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
+                "환경 체크 완료 후 5번 학습 실행 및 원격 MLflow 등록을 진행하세요.",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
-                "6번 추론 테스트는 5번 원격 MLflow 등록 실행이 성공한 뒤에만 진행합니다.",
+                "6번 추론 테스트는 자동 실행하지 않습니다. 사용자가 6번을 선택했을 때만 진행합니다.",
             ]
         )
     elif not report.failures:
@@ -2781,8 +2794,8 @@ def print_report(report: PreparedModelReport) -> None:
     step_line(2, "모델 선택", "완료" if model_selected else "대기")
     step_line(3, "템플릿 변환", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
     step_line(4, "환경변수/requirements 갱신", "다음" if runtime_ready else "3번 완료 후")
-    step_line(5, "원격 MLflow 등록 실행", "4번 완료 후")
-    step_line(6, "추론 테스트", "5번 완료 후")
+    step_line(5, "학습 실행 및 원격 MLflow 등록", "4번 완료 후")
+    step_line(6, "추론 테스트", "선택 시")
     step_line(7, "오류 수정 및 재실행", "오류 시")
     if report.next_steps:
         print("Next steps:")

@@ -62,8 +62,8 @@ QA / Maintenance
 2. 모델 선택                       -> prepare_selected_model.py --model <번호|경로>
 3. 템플릿 변환                     -> 템플릿 복사 + 복사된 템플릿 기준 연결부 수정
 4. 환경변수/requirements 갱신      -> check_environment.py --entrypoint runtest_2.py
-5. 원격 MLflow 등록 실행           -> python runtest_2.py
-6. 추론 테스트                     -> python local_serving/localservingtest.py
+5. 학습 실행 및 원격 MLflow 등록   -> python runtest_2.py
+6. 추론 테스트                     -> 사용자가 6번 선택 시 python local_serving/localservingtest.py
 7. 오류 수정 및 재실행             -> Failures 기준으로 실패한 단계부터 재실행
 ```
 
@@ -75,7 +75,7 @@ QA / Maintenance
 1~3 -> python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
 4 -> python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py
 5 -> python runtest_2.py
-6 -> python local_serving/localservingtest.py
+6 -> 사용자가 선택하면 python local_serving/localservingtest.py
 7 -> Failures와 오류 메시지 기준으로 수정 후 실패한 단계부터 재실행
 ```
 
@@ -343,6 +343,7 @@ mlflow_tracking_password=
 
 `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AIU Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
 `mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
+tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트 실행을 중단한다. 사용자가 값을 직접 입력한 뒤 다시 실행한다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
 
 ```text

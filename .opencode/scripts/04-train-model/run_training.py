@@ -414,8 +414,16 @@ def main():
         else:
             cmd = build_command(args.python, entrypoint, args.prepare_only)
 
+    missing_env = missing_ai_studio_env(work_path, entrypoint)
+
     return_code = None
-    if args.execute and cmd:
+    if args.execute and cmd and missing_env:
+        failures.append("execution_blocked_missing_env")
+        next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
+        next_steps.append(
+            "runtest_2.py 설정 블록에 mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password를 직접 입력한 뒤 다시 실행하세요."
+        )
+    elif args.execute and cmd:
         return_code = run_command(cmd, cwd=work_path)
         if return_code != 0:
             failures.append("runtime_error")
@@ -426,30 +434,31 @@ def main():
     missing_dirs = missing_required_dirs(work_path)
     if missing_dirs:
         failures.extend(f"missing_required_dir:{name}" for name in missing_dirs)
-    missing_env = missing_ai_studio_env(work_path, entrypoint)
     if missing_env:
         failures.extend(f"missing_env:{name}" for name in missing_env)
-    if args.execute and not artifacts:
+    if args.execute and return_code == 0 and not artifacts:
         failures.append("artifact_not_created")
 
     existing_model_flow = model_found and not is_sample_project(work_path)
     if existing_model_flow:
+        mlflow_run_status = "blocked" if missing_env else ("done" if args.execute and return_code == 0 else "pending")
         process_checklist = [
             EnvVarStatus("1. 모델 목록 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("2. 모델 경로로 선택", "done" if artifacts else "needs_input"),
             EnvVarStatus("3. 선택 모델 환경 변환 + requirements.txt 재정의/확인", "done" if (work_path / "runtest_2.py").exists() and (work_path / "requirements.txt").exists() else "pending"),
             EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not missing_env else "needs_input"),
-            EnvVarStatus("5. 원격 MLflow 등록 실행", "done" if args.execute and return_code == 0 else "pending"),
-            EnvVarStatus("6. 추론 테스트", "pending"),
+            EnvVarStatus("5. 학습 실행 및 원격 MLflow 등록", mlflow_run_status),
+            EnvVarStatus("6. 추론 테스트", "selectable"),
             EnvVarStatus("7. 오류 수정 및 재실행", "needed" if failures else "pending"),
         ]
     else:
+        mlflow_run_status = "blocked" if missing_env else ("done" if args.execute and return_code == 0 else "pending")
         process_checklist = [
             EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
             EnvVarStatus("2. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
             EnvVarStatus("3. 환경 변수 입력/export", "done" if not missing_env else "needs_input"),
             EnvVarStatus("4. 패키지 설치", "manual_check"),
-            EnvVarStatus("5. 모델 실행 및 원격 MLflow 기록", "done" if args.execute and return_code == 0 else "pending"),
+            EnvVarStatus("5. 모델 실행 및 원격 MLflow 기록", mlflow_run_status),
             EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),
         ]
 
