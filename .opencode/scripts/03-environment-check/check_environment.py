@@ -532,37 +532,73 @@ def inferred_requirements_from_imports(project: Path) -> list[str]:
     return requirements
 
 
+def required_requirement_lines() -> list[str]:
+    lines: list[str] = []
+    for name, specifier in EXPECTED_PACKAGE_VERSIONS.items():
+        lines.append(f"{name}{specifier}")
+    return lines
+
+
 def update_requirements_from_imports(project: Path) -> list[str]:
     inferred = inferred_requirements_from_imports(project)
-    if not inferred:
-        return []
     requirements_path = project / "requirements.txt"
-    existing_lines = []
+    existing_lines: list[str] = []
     if requirements_path.exists():
         existing_lines = requirements_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    existing_names = {
-        name
-        for line in existing_lines
-        for parsed in [parse_requirement_line(line)]
-        if parsed is not None
-        for name in [parsed[0]]
+    required_lines = required_requirement_lines()
+    required_by_name = {
+        package_name: requirement
+        for requirement in required_lines
+        for package_name in [requirement_package_name(requirement)]
+        if package_name is not None
     }
-    additions = []
+
+    updated_lines: list[str] = []
+    seen_names: set[str] = set()
+    changed_requirements: list[str] = []
+
+    for line in existing_lines:
+        parsed = parse_requirement_line(line)
+        if parsed is None:
+            updated_lines.append(line)
+            continue
+        package_name, _specifier = parsed
+        required_requirement = required_by_name.get(package_name)
+        if required_requirement is not None:
+            updated_lines.append(required_requirement)
+            seen_names.add(package_name)
+            if line.strip() != required_requirement:
+                changed_requirements.append(required_requirement)
+            continue
+        updated_lines.append(line)
+        seen_names.add(package_name)
+
+    for requirement in required_lines:
+        package_name = requirement_package_name(requirement)
+        if package_name is None or package_name in seen_names:
+            continue
+        updated_lines.append(requirement)
+        seen_names.add(package_name)
+        changed_requirements.append(requirement)
+
     for requirement in inferred:
         package_name = requirement_package_name(requirement)
-        if package_name is None or package_name in existing_names:
+        if package_name is None or package_name in seen_names:
             continue
-        existing_names.add(package_name)
-        additions.append(requirement)
-    if not additions:
+        updated_lines.append(requirement)
+        seen_names.add(package_name)
+        changed_requirements.append(requirement)
+
+    updated_text = "\n".join(updated_lines).rstrip()
+    if not updated_text:
         return []
-    if requirements_path.exists():
-        prefix = requirements_path.read_text(encoding="utf-8", errors="ignore").rstrip()
-        updated = (prefix + "\n" if prefix else "") + "\n".join(additions) + "\n"
-    else:
-        updated = "\n".join(additions) + "\n"
-    requirements_path.write_text(updated, encoding="utf-8")
-    return additions
+
+    previous_text = requirements_path.read_text(encoding="utf-8", errors="ignore").rstrip() if requirements_path.exists() else ""
+    if previous_text == updated_text:
+        return []
+
+    requirements_path.write_text(updated_text + "\n", encoding="utf-8")
+    return changed_requirements
 
 
 def parse_python_literal_assignments(path: Path) -> dict[str, object]:
