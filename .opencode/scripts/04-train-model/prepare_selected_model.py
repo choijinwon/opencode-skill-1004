@@ -68,6 +68,16 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
 AIU_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
+AIU_STUDIO_COPY_IGNORE_FILES = {"runtest_2.py"}
+SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
+    "runtest_2.py",
+    "requirements.txt",
+    "input_example.json",
+    "aiu_custom/mapping.json",
+    "aiu_custom/model.py",
+    "aiu_custom/predict.py",
+    "local_serving/localservingtest.py",
+}
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
     ".mypy_cache",
@@ -569,21 +579,19 @@ def current_selected_model_path(project: Path) -> Path | None:
 
 
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
+    current_selected = current_selected_model_path(project)
     if not raw:
-        stored = current_selected_model_path(project)
-        if stored is not None and stored.is_file():
-            return stored, None
+        if current_selected is not None and current_selected.is_file():
+            return current_selected, None
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
     if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
-        stored = current_selected_model_path(project)
-        if stored is not None:
-            return stored, None
-        return None, "stored_model_selection_missing"
-    if value.isdigit():
-        current_selected = current_selected_model_path(project)
-        if current_selected is not None and current_selected.is_file():
+        if current_selected is not None:
             return current_selected, None
+        return None, "stored_model_selection_missing"
+    if current_selected is not None and current_selected.is_file():
+        return current_selected, None
+    if value.isdigit():
         index = int(value)
         if 1 <= index <= len(models):
             return models[index - 1], None
@@ -746,10 +754,14 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
     if target.exists() and not target.is_dir():
         failures.append(f"workspace_target_not_directory:{target}")
         return copied, skipped, failures
+    current_selected = current_selected_model_path(project)
+    selected_model_locked = current_selected is not None and current_selected.is_file()
     if execute:
         for source in AIU_STUDIO_SAMPLE_DIR.rglob("*"):
             relative = source.relative_to(AIU_STUDIO_SAMPLE_DIR)
             if any(part in AIU_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
+                continue
+            if relative.as_posix() in AIU_STUDIO_COPY_IGNORE_FILES:
                 continue
             destination = target / relative
             if source.is_dir():
@@ -757,6 +769,9 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
                 continue
             if relative.as_posix() in PROTECTED_REFERENCE_ENTRYPOINTS and destination.exists():
                 skipped.append(f"{relative.as_posix()} protected_existing_reference")
+                continue
+            if selected_model_locked and relative.as_posix() in SELECTED_MODEL_LOCKED_RELATIVE_PATHS and destination.exists():
+                skipped.append(f"{relative.as_posix()} selected_model_locked")
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
@@ -2485,6 +2500,17 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if not args.model and current_selected is not None and selected_model is not None and current_selected.resolve() == selected_model.resolve():
         report.warnings.append(f"selected_model_reused_automatically:{rel(selected_model, project)}")
         report.next_steps.append(f"TODO 2는 이미 완료되어 현재 선택 모델을 자동 재사용합니다: {rel(selected_model, project)}")
+    if (
+        args.model
+        and current_selected is not None
+        and selected_model is not None
+        and current_selected.resolve() == selected_model.resolve()
+    ):
+        requested_value = normalize_path_text(args.model.strip())
+        current_value = rel(selected_model, project)
+        if requested_value and requested_value.lower() not in {"selected", "current", "last", "기존", "현재", "선택", current_value.lower()}:
+            report.warnings.append(f"selected_model_locked_to_current:{requested_value}->{current_value}")
+            report.next_steps.append(f"처음 선택된 모델을 유지합니다: {current_value}")
     if (
         args.model
         and normalize_path_text(args.model.strip()).isdigit()

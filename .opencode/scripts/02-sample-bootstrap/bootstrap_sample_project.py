@@ -77,6 +77,19 @@ CONFIG_ROOT_FILES = {
     "config.yml",
 }
 
+SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
+    "runtest_2.py",
+    "requirements.txt",
+    "input_example.json",
+    "aiu_custom/mapping.json",
+    "aiu_custom/model.py",
+    "aiu_custom/predict.py",
+    "local_serving/localservingtest.py",
+}
+SAMPLE_COPY_IGNORE_FILES = {
+    "runtest_2.py",
+}
+
 IGNORABLE_PROJECT_ROOT_NAMES = {
     ".git",
     ".gitignore",
@@ -145,6 +158,8 @@ def iter_sample_files(sample: Path, skip_run_model: bool = False):
         relative = path.relative_to(sample)
         if skip_run_model and relative == Path("run_model.py"):
             continue
+        if relative.as_posix() in SAMPLE_COPY_IGNORE_FILES:
+            continue
         if should_ignore(relative):
             continue
         yield path
@@ -188,10 +203,25 @@ def reference_runtest_path(project: Path) -> Path | None:
     return None
 
 
+def selected_model_locked(project: Path) -> bool:
+    if (project / "runtest_2.py").is_file():
+        return True
+    mapping_path = project / "aiu_custom" / "mapping.json"
+    if not mapping_path.is_file():
+        return False
+    try:
+        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    source_path = payload.get("model", {}).get("source_path") if isinstance(payload, dict) else None
+    return isinstance(source_path, str) and bool(source_path.strip())
+
+
 def copy_existing_project_scaffold(sample: Path, project: Path, execute: bool) -> tuple[Path, list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
     skip_run_model = bool(reference_runtest_path(project)) or any((project / name).exists() for name in ["run_model.py", "train.py"])
+    model_locked = selected_model_locked(project)
 
     for source in iter_sample_files(sample, skip_run_model=skip_run_model):
         relative = source.relative_to(sample)
@@ -210,6 +240,9 @@ def copy_existing_project_scaffold(sample: Path, project: Path, execute: bool) -
             continue
 
         if target.exists():
+            if model_locked and target_relative.as_posix() in SELECTED_MODEL_LOCKED_RELATIVE_PATHS:
+                append_unique(skipped, display_path(target_relative) + " selected_model_locked")
+                continue
             append_unique(skipped, display_path(target_relative))
             continue
 
@@ -236,6 +269,7 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
     copied: list[str] = []
     skipped: list[str] = []
     skip_run_model = bool(reference_runtest_path(project) or reference_runtest_path(target_root))
+    model_locked = selected_model_locked(target_root)
 
     if target_root.exists() and copy_mode == "folder" and force and execute:
         shutil.rmtree(target_root)
@@ -256,6 +290,9 @@ def copy_sample(sample: Path, project: Path, force: bool, execute: bool, copy_mo
             continue
 
         if target.exists() and not force:
+            if model_locked and target_relative.as_posix() in SELECTED_MODEL_LOCKED_RELATIVE_PATHS:
+                skipped.append(display_path(display_relative) + " selected_model_locked")
+                continue
             skipped.append(display_path(display_relative))
             continue
 
