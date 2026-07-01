@@ -55,16 +55,16 @@ Step 1. 모델 목록 확인
         현재 --project 루트 바로 아래와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 모델 선택
         model_artifact_paths를 번호로 보여주되, 자동 준비에는 실제 경로 선택을 우선한다.
-        처음 선택한 모델은 이후 단계에서 계속 고정된다.
+        처음 선택한 모델은 이후 단계에서 계속 유지된다.
         번호는 현재 출력된 목록 순서에 의존하지만, 이미 준비된 선택 모델이 있으면 다른 번호를 눌러도 기존 선택 모델을 유지한다.
         이미 준비된 선택 모델은 --model selected로 재사용한다.
-        고정 기준은 aiu_custom/mapping.json의 model.source_path이며, runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
+        runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 템플릿 변환
         aiu_studio/ 템플릿을 먼저 복사한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
-        모델 선택 명령 한 번으로 이 단계까지 수행한다. `--sync-runtime`은 aiu_custom/mapping.json의 선택 모델 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
+        모델 선택 명령 한 번으로 이 단계까지 수행한다. `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
         requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
         내부 일치 검증은 선택된 runtest_2.py와 런타임 파일 기준으로 수행한다.
 Step 4. 환경변수/requirements 갱신

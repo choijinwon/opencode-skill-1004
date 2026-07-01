@@ -69,8 +69,9 @@ QA / Maintenance
 ```
 
 화면에 표시된 모델 번호나 TODO 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.
-모델은 처음 선택한 값으로 고정된다. 이후 다른 숫자를 눌러도 기존 선택 모델을 유지하고, 나머지 단계도 같은 모델 기준으로 진행한다.
-고정 기준은 `aiu_custom/mapping.json`의 `model.source_path`다. `runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
+모델은 처음 선택한 값으로 유지된다. 이후 다른 숫자를 눌러도 기존 선택 모델을 유지하고, 나머지 단계도 같은 모델 기준으로 진행한다.
+여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 최초 선택 모델 하나만 기준으로 수행한다.
+`runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
 
 기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
 
@@ -170,7 +171,7 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project <mod
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model data/<임의폴더>/model.joblib --execute
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model data/torch/model.pt --execute
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model selected --execute
-# 보정용: aiu_custom/mapping.json의 선택 모델 기준으로 런타임 파일만 다시 맞출 때 사용
+# 보정용: 이미 선택된 모델 기준으로 런타임 파일만 다시 맞출 때 사용
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --sync-runtime --execute
 ```
 

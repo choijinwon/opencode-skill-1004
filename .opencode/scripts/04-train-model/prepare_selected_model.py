@@ -368,6 +368,9 @@ class PreparedModelReport:
     generated_entrypoint: str
     generated_inference_test: str
     execute: bool
+    requested_model_path: str | None = None
+    model_selection_locked: bool = False
+    locked_model_path: str | None = None
     required_requirements: list[str] = field(default_factory=list)
     additional_requirements: list[str] = field(default_factory=list)
     prepared_paths: list[str] = field(default_factory=list)
@@ -606,7 +609,7 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
 
 
 def current_selected_model_path(project: Path) -> Path | None:
-    # The first selected model is locked by aiu_custom/mapping.json.
+    # The first selected model is kept across later TODO steps.
     # runtest_2.py is a generated artifact and must not become the selection source.
     return stored_selected_model_path(project)
 
@@ -639,6 +642,30 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
     if candidate.exists():
         return resolve_single_artifact(project, artifacts_under(candidate), value)
     return match_model_by_text(project, models, value)
+
+
+def requested_model_path_from_raw(project: Path, models: list[Path], raw: str | None) -> Path | None:
+    if not raw:
+        return None
+    value = normalize_path_text(raw.strip())
+    if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
+        return current_selected_model_path(project)
+    if value.isdigit():
+        index = int(value)
+        if 1 <= index <= len(models):
+            return models[index - 1]
+        return None
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        candidate = project / candidate
+    candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate
+    resolved, _error = resolve_single_artifact(project, artifacts_under(candidate), value)
+    if resolved is not None:
+        return resolved
+    resolved, _error = match_model_by_text(project, models, value)
+    return resolved
 
 
 def ensure_under_project(project: Path, model_path: Path) -> bool:
@@ -2191,7 +2218,7 @@ def _resolve_model_path():
     model = _mapping_model()
     raw_path = model.get("relative_path") or model.get("source_path")
     if not raw_path:
-        raise ValueError("selected_model_path_missing: aiu_custom/mapping.json")
+        raise ValueError("selected_model_path_missing: selected model metadata")
     path = _normalize_server_path(raw_path)
     workspace_root = _workspace_root()
     if os.path.isabs(path):
@@ -2228,7 +2255,7 @@ AIU_REQUIRED_PACKAGE = str(_mapping_model().get("required_package") or "{require
 AIU_LOAD_HINT = str(_mapping_model().get("load_hint") or "{load_hint}")
 
 # AIU Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
-# 모델 위치와 종류는 aiu_custom/mapping.json에서 읽습니다.
+# 모델 위치와 종류는 선택 모델 정보에서 읽습니다.
 # MODEL_KIND={kind}, loader={load_hint}
 
 {loader}
@@ -2491,9 +2518,9 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
     changed.append(
-        "runtest_2.py generated from mapping selected model (refreshed)"
+        "runtest_2.py generated from selected model (refreshed)"
         if existed_before
-        else "runtest_2.py generated from mapping selected model"
+        else "runtest_2.py generated from selected model"
     )
     return changed, skipped, failures
 
@@ -2759,12 +2786,23 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     model_paths = [rel(path, project) for path in models]
     data_paths = [rel(path, project) for path in data_files]
     entrypoint_paths = [rel(path, project) for path in entrypoints]
+    requested_model = requested_model_path_from_raw(project, models, args.model)
+    locked_model = current_selected_model_path(project)
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
     if args.sync_runtime:
         selected_model, selected_kind, selection_error = selected_model_from_mapping(project)
         if selected_model is not None and selected_kind is None:
             selected_kind = model_kind(selected_model)
+        requested_model = selected_model
+        locked_model = selected_model
+    model_selection_locked = (
+        locked_model is not None
+        and selected_model is not None
+        and requested_model is not None
+        and rel(locked_model, project) == rel(selected_model, project)
+        and rel(requested_model, project) != rel(selected_model, project)
+    )
 
     report = PreparedModelReport(
         project_path=str(project),
@@ -2778,6 +2816,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         generated_entrypoint="runtest_2.py",
         generated_inference_test="local_serving/localservingtest.py",
         execute=args.execute,
+        requested_model_path=rel(requested_model, project) if requested_model else None,
+        model_selection_locked=model_selection_locked,
+        locked_model_path=rel(locked_model, project) if locked_model else None,
     )
     if selected_kind:
         required_requirements, additional_requirements, _packages = requirements_packages_for_kind(selected_kind)
@@ -2890,7 +2931,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 ]
             )
         elif not report.failures:
-            report.next_steps.append("검토 후 --execute를 붙여 mapping.json의 선택 모델 기준으로 런타임 폴더/파일을 변환하세요.")
+            report.next_steps.append("검토 후 --execute를 붙여 선택 모델 기준으로 런타임 폴더/파일을 변환하세요.")
         return report
 
     template_changed, template_skipped, template_failures = copy_aiu_studio_folder(project, args.execute)
@@ -2934,11 +2975,19 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.skipped.extend(verify_skipped)
     report.failures.extend(verify_failures)
 
+    if report.model_selection_locked:
+        report.skipped.append(
+            f"requested_model_ignored:first_selected_model_locked:{report.requested_model_path}->{report.selected_model_path}"
+        )
+        report.next_steps.append(
+            f"최초 선택 모델 유지: 요청 모델 {report.requested_model_path} 대신 {report.selected_model_path} 기준으로 변환했습니다."
+        )
+
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
-                f"선택 모델 고정: {rel(selected_model, project)}",
+                f"선택 모델 유지: {rel(selected_model, project)}",
                 powershell_python_script(
                     CHECK_ENVIRONMENT_SCRIPT,
                     "--project",
@@ -2969,6 +3018,9 @@ def print_report(report: PreparedModelReport) -> None:
         if report.selected_model_path:
             print(f"- 선택 모델: {report.selected_model_path}")
             print("- 처음 선택한 모델을 계속 유지합니다.")
+            if report.model_selection_locked:
+                print(f"- 요청 모델은 무시됨: {report.requested_model_path}")
+                print("- 이유: 최초 선택 모델 기준으로만 스킬 변환을 진행합니다.")
         else:
             if data_model_count == total_model_count:
                 print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
@@ -3097,7 +3149,7 @@ def main() -> int:
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="write the selected-model runtest_2.py or sync runtime files when --sync-runtime is used")
     parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
-    parser.add_argument("--sync-runtime", action="store_true", help="read selected model from aiu_custom/mapping.json and transform runtime folders/files for that model")
+    parser.add_argument("--sync-runtime", action="store_true", help="reuse the selected model and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
