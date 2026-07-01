@@ -18,7 +18,7 @@ metadata:
 현재 단계: 4. 환경변수/requirements 갱신
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
-다음 단계: 5. 학습 실행 및 원격 MLflow 등록
+다음 단계: 5. 원격 MLflow 등록 실행
 ```
 
 ## Workflow
@@ -28,7 +28,7 @@ metadata:
 2. 모델 선택
 3. 템플릿 변환
 4. 환경변수/requirements 갱신
-5. 학습 실행 및 원격 MLflow 등록
+5. 원격 MLflow 등록 실행
 6. 추론 테스트
 7. 오류 수정 및 재실행
 ```

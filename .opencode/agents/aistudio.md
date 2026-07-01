@@ -75,11 +75,11 @@ AIU Studio MLflow Onboarding
 3. 모델 있음 7단계
    1 모델 목록 확인
    2 모델 선택
-   3 템플릿 복사 및 선택 모델 기준 변환
+   3 템플릿 변환
    4 환경변수/requirements 갱신
-   5 학습 실행 및 원격 MLflow 등록
+   5 원격 MLflow 등록 실행
    6 추론 테스트
-   7 오류 수정 및 실패 단계부터 재실행
+   7 오류 수정 및 재실행
 
 4. 모델 없음
    AIU Studio에서 샘플 선택: 1 sklearn / 2 pytorch / 3 tensorflow

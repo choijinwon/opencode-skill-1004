@@ -12,6 +12,12 @@ import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+SCRIPT_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+
 
 ENV_KEYS = [
     "MLFLOW_TRACKING_URI",
@@ -62,6 +68,7 @@ MODEL_MARKERS = [
     "input_example.json",
     "MLmodel",
 ]
+
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 ARTIFACT_DIRS = ["ai_studio", "saved_model", "model", "artifacts"]
 MODEL_SCAN_SKIP_DIRS = {
@@ -1169,13 +1176,13 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if existing_model_flow:
         entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
         tod_guide = [
-            "1. 모델 목록 확인: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
-            "2. 모델 선택: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
-            "3. 템플릿 변환: .opencode/samples/aiu_studio/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
-            f"4. 환경변수/requirements 갱신: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
-            f"5. 학습 실행 및 원격 MLflow 등록: python {entrypoint_display} 로 선택 모델을 학습 실행하고 원격 MLflow 서버에 기록/등록한다.",
-            "6. 추론 테스트: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
-            "7. 오류 수정 및 재실행: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
+            f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
+            f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
+            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .opencode/samples/aiu_studio/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
+            f"4. {AI_STUDIO_PROCESS_STEPS[3]}: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
+            f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
+            f"7. {AI_STUDIO_PROCESS_STEPS[6]}: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
         ]
         if entrypoint is None:
             if entrypoint_candidates:

@@ -49,6 +49,12 @@ PYTHON_ENTRYPOINTS = [
     "app.py",
 ]
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_ROOT = ROOT / "scripts"
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+
 AIU_STUDIO_SAMPLE_DIR_NAME = "aiu_studio"
 AIU_STUDIO_SAMPLE_DIR = ROOT / "samples" / AIU_STUDIO_SAMPLE_DIR_NAME
 REQUIRED_REQUIREMENTS_FILE = ROOT / "scripts" / "03-environment-check" / "requirements.required.txt"
@@ -56,6 +62,7 @@ CHECK_ENVIRONMENT_SCRIPT = ROOT / "scripts" / "03-environment-check" / "check_en
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 RUN_TRAINING_SCRIPT = ROOT / "scripts" / "04-train-model" / "run_training.py"
 PYTORCH_REFERENCE_ENTRYPOINT = ROOT / "samples" / "pytorch_sample" / "runtest.py"
+
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
     "safetensors": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -1370,7 +1377,7 @@ model_output_dir = str(MODEL_OUTPUT_DIR)
 model_output_path = str(MODEL_OUTPUT_PATH)
 saved_model_dir = str(MODEL_OUTPUT_DIR)
 
-# Step 5 학습 실행 및 원격 MLflow 등록 중 상대경로 산출물은 선택한 현재 프로젝트 경로 아래에 생성되도록 고정합니다.
+# Step 5 원격 MLflow 등록 실행 중 상대경로 산출물은 선택한 현재 프로젝트 경로 아래에 생성되도록 고정합니다.
 os.chdir(AI_STUDIO_DIR)
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1423,7 +1430,7 @@ def _aiu_print_existing_model_tod():
     print("- 2. 모델 선택 - 완료")
     print("- 3. 템플릿 변환 - 완료")
     print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 학습 실행 및 원격 MLflow 등록 - 완료")
+    print("- 5. 원격 MLflow 등록 실행 - 완료")
     print("- 6. 추론 테스트 - 선택 시")
     print("- 7. 오류 수정 및 재실행 - 오류 시")
 
@@ -1674,6 +1681,31 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
     return payload
 
 
+def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
+    experiment_name, registered_model_name = default_mlflow_names(project, selected_model)
+    return {
+        "model": model_profile(project, selected_model, kind),
+        "mlflow": {
+            "artifact_path": "ai_studio",
+            "experiment_name": experiment_name,
+            "registered_model_name": registered_model_name,
+        },
+        "runtime": {
+            "entrypoint": "runtest_2.py",
+            "model_entrypoint": "aiu_custom/model.py",
+            "predict_entrypoint": "aiu_custom/predict.py",
+            "mapping": "aiu_custom/mapping.json",
+            "input_example": "input_example.json",
+            "local_serving_test": "local_serving/localservingtest.py",
+        },
+        "policy": {
+            "copy_model_to_aiu_studio": False,
+            "model_source": "selected_project_model_path",
+            "secret_output": "masked",
+        },
+    }
+
+
 def ensure_linux_code_paths(text: str) -> str:
     if "mlflow.pyfunc.log_model(" not in text or "code_paths=" in text:
         return text
@@ -1910,8 +1942,8 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     if preserve_code:
         transformed = insert_preserved_data_prep_block(transformed, kind)
     transformed = transformed.replace(
-        "학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
-        "학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
+        "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
+        "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
     )
     transformed = ensure_linux_code_paths(transformed)
     return transformed.rstrip() + "\n"
@@ -2004,7 +2036,7 @@ def _print_tod(local_status="완료"):
     print("- 2. 모델 선택 - 완료")
     print("- 3. 템플릿 변환 - 완료")
     print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 학습 실행 및 원격 MLflow 등록 - 완료")
+    print("- 5. 원격 MLflow 등록 실행 - 완료")
     print(f"- 6. 추론 테스트 - {{local_status}}")
     print("- 7. 오류 수정 및 재실행 - 오류 시")
 
@@ -2367,6 +2399,22 @@ def write_input_example(project: Path, selected_model: Path, kind: str, execute:
     return changed, skipped, failures
 
 
+def write_config_json(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / "config" / "config.json"
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    existed_before = target.exists()
+    if execute:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps(selected_model_config_data(project, selected_model, kind), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    changed.append("config/config.json (refreshed)" if existed_before else "config/config.json")
+    return changed, skipped, failures
+
+
 def write_localservingtest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / "local_serving" / "localservingtest.py"
     changed: list[str] = []
@@ -2448,6 +2496,7 @@ def sync_selected_model_runtime(
         ensure_runtime_directories(project, execute),
         write_requirements(project, kind, execute),
         write_input_example(project, selected_model, kind, execute),
+        write_config_json(project, selected_model, kind, execute),
         write_localservingtest(project, selected_model, kind, runtime_reference, execute),
         write_aiu_model(project, selected_model, kind, execute),
         write_aiu_predict(project, selected_model, kind, execute),
@@ -2476,6 +2525,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         project / "aiu_custom" / "mapping.json",
         project / "local_serving" / "localservingtest.py",
         project / "input_example.json",
+        project / "config" / "config.json",
     ]
     changed = ["선택 모델 연결부 변환 검증"]
     failures: list[str] = []
@@ -2484,6 +2534,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         "aiu_custom/mapping.json",
         "local_serving/localservingtest.py",
         "input_example.json",
+        "config/config.json",
     }
 
     for path in required_text_files:
@@ -2529,6 +2580,19 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append(f"selected_model_mapping_path_mismatch:{mapped_path}->{selected_relative}")
             if mapped_kind != kind:
                 failures.append(f"selected_model_mapping_kind_mismatch:{mapped_kind}->{kind}")
+        if display_path == "config/config.json":
+            try:
+                config = json.loads(text)
+            except json.JSONDecodeError as exc:
+                failures.append(f"selected_model_config_invalid_json:{exc.lineno}")
+                config = {}
+            model_config = config.get("model", {}) if isinstance(config, dict) else {}
+            config_path = model_config.get("model_relative_path") or model_config.get("runtime_model_path")
+            config_kind = model_config.get("model_kind")
+            if normalize_path_text(str(config_path or "")) != normalize_path_text(selected_relative):
+                failures.append(f"selected_model_config_path_mismatch:{config_path}->{selected_relative}")
+            if config_kind != kind:
+                failures.append(f"selected_model_config_kind_mismatch:{config_kind}->{kind}")
 
         for other_model in models:
             other_relative = rel(other_model, project)
@@ -2751,7 +2815,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "--entrypoint",
                     "runtest_2.py",
                 ),
-                "환경 체크 완료 후 5번 학습 실행 및 원격 MLflow 등록을 진행하세요.",
+                "환경 체크 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
                 "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
                 f"cd {powershell_quote_path(project)}",
                 "python runtest_2.py",
@@ -2862,6 +2926,7 @@ def print_report(report: PreparedModelReport) -> None:
             "aiu_custom/mapping.json",
             "local_serving/localservingtest.py",
             "input_example.json",
+            "config/config.json",
             "requirements.txt",
         ]
     )
@@ -2878,13 +2943,17 @@ def print_report(report: PreparedModelReport) -> None:
         current_selected = current_selected_model_path(Path(report.project_path))
         if current_selected is not None and rel(current_selected, Path(report.project_path)) == report.selected_model_path:
             selected_model_locked = True
-    step_line(1, "모델 목록 확인", model_list_status)
-    step_line(2, "모델 선택", "고정" if selected_model_locked else ("완료" if model_selected else "대기"))
-    step_line(3, "템플릿 변환", "완료" if runtime_ready else ("진행중" if auto_ready else "대기"))
-    step_line(4, "환경변수/requirements 갱신", "다음" if runtime_ready else "3번 완료 후")
-    step_line(5, "학습 실행 및 원격 MLflow 등록", "4번 완료 후")
-    step_line(6, "추론 테스트", "선택 시")
-    step_line(7, "오류 수정 및 재실행", "오류 시")
+    statuses = [
+        model_list_status,
+        "고정" if selected_model_locked else ("완료" if model_selected else "대기"),
+        "완료" if runtime_ready else ("진행중" if auto_ready else "대기"),
+        "다음" if runtime_ready else "3번 완료 후",
+        "4번 완료 후",
+        "선택 시",
+        "오류 시",
+    ]
+    for index, (title, status) in enumerate(zip(AI_STUDIO_PROCESS_STEPS, statuses), start=1):
+        step_line(index, title, status)
     if report.next_steps:
         print("Next steps:")
         for step in report.next_steps:

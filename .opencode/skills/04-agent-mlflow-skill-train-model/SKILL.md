@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 5. 학습 실행 및 원격 MLflow 등록
+현재 단계: 5. 원격 MLflow 등록 실행
 현재 대상: selected_project_path 또는 copied sample folder
 핵심 판단: entrypoint 확정, 실행 성공, ai_studio 산출물 생성
 다음 단계: 추론 테스트
@@ -31,7 +31,7 @@ metadata:
    - 고정 기준은 `aiu_custom/mapping.json`이며 `runtest_2.py` 안의 모델 경로를 다시 선택 기준으로 삼지 않는다.
 3. 템플릿 변환
 4. 환경변수/requirements 갱신
-5. 학습 실행 및 원격 MLflow 등록
+5. 원격 MLflow 등록 실행
 6. 추론 테스트
 7. 오류 수정 및 재실행
 ```
@@ -80,7 +80,7 @@ MLflow artifact:
 실행 파일 자동 판단:
 python .opencode/scripts/04-train-model/run_training.py --project <project>
 
-학습 실행 및 원격 MLflow 등록:
+원격 MLflow 등록 실행:
 python .opencode/scripts/04-train-model/run_training.py --project <project> --execute
 
 명시적 entrypoint 실행:
@@ -176,7 +176,7 @@ blocked:
    템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
 4. 환경변수/requirements 갱신
    필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
-5. runtest_2.py 학습 실행 및 원격 MLflow 등록
+5. runtest_2.py 원격 MLflow 등록 실행
 6. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
 7. 오류가 있으면 수정 후 실패한 단계부터 재실행
 ```

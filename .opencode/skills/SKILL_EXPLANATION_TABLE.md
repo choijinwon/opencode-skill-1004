@@ -28,7 +28,7 @@
 | 2 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `prepare_selected_model.py --model ... --execute` |
 | 3 | `04-agent-mlflow-skill-train-model` | 템플릿 변환 | 템플릿 복사 + 복사된 템플릿 기준 연결부 수정 |
 | 4 | `03-agent-mlflow-skill-environment-check` | 환경변수/requirements 갱신 | `check_environment.py --entrypoint runtest_2.py` |
-| 5 | `04-agent-mlflow-skill-train-model` | 학습 실행 및 원격 MLflow 등록 | `python runtest_2.py` |
+| 5 | `04-agent-mlflow-skill-train-model` | 원격 MLflow 등록 실행 | `python runtest_2.py` |
 | 6 | `05-agent-mlflow-skill-inference-test` | 추론 테스트 | 사용자가 6번 선택 시 `python local_serving/localservingtest.py` |
 | 7 | 실패한 단계의 스킬 | 오류 수정 및 재실행 | `Failures` 기준으로 재실행 |
 
@@ -40,7 +40,7 @@
 | 2 | 사용할 모델을 선택 |
 | 3 | 템플릿 복사와 연결부 수정 |
 | 4 | 환경변수와 requirements 갱신 |
-| 5 | 학습 실행 및 원격 MLflow 등록 |
+| 5 | 원격 MLflow 등록 실행 |
 | 6 | 추론 테스트 |
 | 7 | 오류가 있으면 실패한 단계부터 다시 실행 |
 

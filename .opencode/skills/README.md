@@ -70,7 +70,7 @@ Step 3. 템플릿 변환
 Step 4. 환경변수/requirements 갱신
         입력값 3개와 자동값 2개 상태를 확인한다.
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
-Step 5. 학습 실행 및 원격 MLflow 등록
+Step 5. 원격 MLflow 등록 실행
         runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
 Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.

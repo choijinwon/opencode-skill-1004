@@ -3,6 +3,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+SCRIPT_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+
 
 MODEL_HINTS = [
     "aiu_studio/runtest.py",
@@ -120,13 +126,8 @@ def main() -> int:
 
     print("- 다음 단계:")
     if model_found:
-        print("  1. 모델 목록 확인")
-        print("  2. 모델 선택")
-        print("  3. 템플릿 복사 및 선택 모델 기준 변환")
-        print("  4. 환경변수/requirements 갱신")
-        print("  5. 학습 실행 및 원격 MLflow 등록")
-        print("  6. 추론 테스트")
-        print("  7. 오류 수정 및 실패 단계부터 재실행")
+        for index, title in enumerate(AI_STUDIO_PROCESS_STEPS, start=1):
+            print(f"  {index}. {title}")
     else:
         print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
         print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode AIU Studio 빌드 모드에서 선택해주세요.")
