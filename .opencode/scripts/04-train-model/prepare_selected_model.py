@@ -2074,6 +2074,7 @@ if hasattr(sys.stdout, "buffer"):
 # ------------------------------------------------------------
 # 할당받은 MLflow Tracking Server URI / 계정 정보 기재
 project_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(project_dir)
 
 
 def load_env_file(path):
@@ -2151,8 +2152,10 @@ def first_existing_file(label, candidates):
 
 
 def mlflow_artifact_uri(path):
-    # Windows에서는 C:\\... native 경로를 유지하고, Linux에서는 /... 경로를 유지합니다.
-    return normalize_local_path(path)
+    # MLmodel artifacts.*.uri에는 절대경로가 아니라 프로젝트 기준 상대경로를 기록합니다.
+    absolute_path = normalize_local_path(path)
+    relative_path = os.path.relpath(absolute_path, project_dir)
+    return os.path.normpath(relative_path)
 
 
 def handle_mlflow_connection_error(exc):
@@ -2413,8 +2416,8 @@ def normalize_upload_uri(path) -> str:
 
 
 def server_upload_path(path: Path) -> str:
-    # MLflow에 넘기는 원본 uri는 Windows 실행 환경의 native 경로를 유지합니다.
-    return normalize_upload_uri(path)
+    # MLmodel artifacts.*.uri에는 절대경로가 아니라 프로젝트 기준 상대경로를 기록합니다.
+    return server_relative_path(path)
 
 
 def server_relative_path(path: Path) -> str:
