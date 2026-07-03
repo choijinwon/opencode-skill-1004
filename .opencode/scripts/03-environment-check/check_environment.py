@@ -1462,8 +1462,6 @@ def run_package_auto_fix(project: Path) -> int:
 
 
 def should_auto_run_template_conversion(report: EnvironmentReport) -> bool:
-    if report.source_input_required:
-        return False
     if not report.selected_model_path:
         return False
     if not PREPARE_SELECTED_MODEL_SCRIPT.is_file():

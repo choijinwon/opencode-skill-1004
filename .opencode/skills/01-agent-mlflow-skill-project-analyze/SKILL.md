@@ -156,7 +156,7 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 
 ```text
 python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder>
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model 1 --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
 python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <model-project-folder> --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
 ```
 

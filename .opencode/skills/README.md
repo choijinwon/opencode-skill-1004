@@ -33,10 +33,11 @@
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 선택 모델 파일은 템플릿 폴더로 복사하지 않고, 변환된 코드는 선택 모델 원본 경로에 연결한다.
-- 모델 선택 단계에서는 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`를 생성/갱신한다.
-- 모델 선택 단계에서 템플릿을 복사한 뒤 `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
-- 모델 선택 명령은 1~3번 모델 목록 확인, 모델 선택, 템플릿 변환 흐름을 한 번에 수행한다.
-- 패키지/환경 상태는 다음 환경체크 단계에서 확인하고, 필요 패키지는 안내한다.
+- 모델 선택 단계에서는 사용할 모델만 확정하고 이후 단계가 같은 선택 모델을 계속 사용한다.
+- 템플릿 생성/변환은 3번 환경검증 후 4번에서 자동 실행한다.
+- 4번 템플릿 생성/변환에서 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`를 생성/갱신한다.
+- 4번 템플릿 생성/변환에서 템플릿을 복사한 뒤 `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `input_example.json`을 선택 모델 기준으로 준비한다.
+- `requirements.txt`는 템플릿에서 복사하지 않고 3번 환경검증에서 워크스페이스 루트에 생성/갱신한다.
 - 사용자에게 프로세스를 보여줄 때는 현재 복사/변환 흐름만 보여주고 하위 호환 또는 미사용 경로 설명은 넣지 않는다.
 - 복사된 템플릿 파일 구성은 고정하지 않고 비교/수정하지 않는다.
 - `data/` 원본에는 새 파일을 생성하지 않는다.
@@ -57,7 +58,7 @@ Step 1. 모델 목록 확인
         현재 --project 루트 바로 아래와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 모델 선택
         model_artifact_paths를 프로젝트 기준 상대경로 알파벳 순서로 번호 표시한다.
-        `--model <번호|경로>`를 명시하면 그 모델을 새 선택값으로 반영한다.
+        `--model <번호|경로> --select-only --execute`를 명시하면 그 모델을 새 선택값으로 반영한다.
         같은 파일 목록이면 분석 화면과 준비 스크립트의 번호가 항상 같다.
         이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 계속 사용한다.
         이미 준비된 선택 모델은 --model selected로 재사용한다.
@@ -90,7 +91,7 @@ Step 7. 오류 재실행
 
 ```text
 python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder>
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model 1 --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
 ```
 
 ## Folder Order

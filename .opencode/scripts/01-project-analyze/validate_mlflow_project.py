@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
 PS_BOOTSTRAP_COMMAND = r"python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py"
 
 # The skill pack does not require a fixed file name. These common names are
@@ -831,7 +831,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
 
     next_steps = []
     if artifacts:
-        next_steps.append("Data/root model found. Select one model by number or path before automatic preparation.")
+        next_steps.append("Data/root model found. Select one model by number or path, then run step 3 environment check.")
         next_steps.append(f"Run: {PS_PREPARE_MODEL_COMMAND}")
     if any(check.status == "block" for check in checks):
         next_steps.append("Resolve blocked checks before MLflow registration.")

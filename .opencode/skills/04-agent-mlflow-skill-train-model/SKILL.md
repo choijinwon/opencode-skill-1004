@@ -96,8 +96,9 @@ python .opencode\scripts\04-train-model\run_training.py --project <project> --en
 
 선택 모델 준비:
 python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project>
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model 1 --execute
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model data/torch/model.pt --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model 1 --select-only --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model data/torch/model.pt --select-only --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model selected --execute
 
 AI Studio/MLflow 연결부 보강 dry-run:
 python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <project> --entrypoint <file>

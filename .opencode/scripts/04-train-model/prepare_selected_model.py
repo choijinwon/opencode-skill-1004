@@ -67,7 +67,7 @@ PYTORCH_REFERENCE_DIR = ROOT / "samples" / "pytorch_sample"
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
 PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_environment.py --project . --entrypoint runtest_2.py"
 PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
-PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -3603,7 +3603,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                r"모델 선택 후 자동 준비 실행: python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+                r"2번 모델 선택 실행: python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -3627,6 +3627,31 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             f"selected_model_changed:{rel(current_selected, project)}->{rel(selected_model, project)}"
         )
         report.next_steps.append(f"선택 모델을 새 값으로 변경합니다: {rel(selected_model, project)}")
+
+    if args.select_only:
+        changed, skipped, failures = write_config_json(project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(["selected_model locked"] + changed)
+        report.skipped.extend(skipped)
+        report.failures.extend(failures)
+        if args.execute and not report.failures:
+            report.next_steps.extend(
+                [
+                    "2번 모델 선택 완료: 선택 모델을 고정했습니다.",
+                    "3번 환경변수/requirements 갱신을 실행하세요.",
+                    "3번 완료 후 4번 템플릿 생성/변환이 자동실행됩니다.",
+                    powershell_python_script(
+                        CHECK_ENVIRONMENT_SCRIPT,
+                        "--project",
+                        powershell_quote_path(project),
+                        "--entrypoint",
+                        "runtest_2.py",
+                    ),
+                ]
+            )
+        elif not report.failures:
+            report.next_steps.append("검토 후 --execute를 붙여 선택 모델을 고정하세요.")
+        return report
+
     if args.sync_runtime:
         runtime_reference = project / "runtest_2.py"
         reference = find_reference_entrypoint(project, selected_kind)
@@ -3782,6 +3807,21 @@ def print_todo_guide(report: PreparedModelReport) -> None:
 
 
 def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
+    if (
+        not verbose
+        and report.execute
+        and report.selected_model_path
+        and not report.failures
+        and "selected_model locked" in report.prepared_paths
+    ):
+        print("선택 결과:")
+        print(f"- 선택 모델: {report.selected_model_path}")
+        print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+        print("- 완료: 선택 모델 고정")
+        print("- 다음: 3번 환경변수/requirements 갱신")
+        print("- 4번 템플릿 생성/변환은 3번 완료 후 자동실행")
+        return
+
     if not verbose and report.execute and report.selected_model_path and not report.failures:
         print("준비 결과:")
         print(f"- 선택 모델: {report.selected_model_path}")
@@ -3815,7 +3855,8 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             for index, path in enumerate(report.model_artifact_paths, start=1):
                 print(f"  {index}. {path}")
             print(f"- 실행 예: {PS_PREPARE_MODEL_COMMAND}")
-            print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> input_example.json 생성 -> 선택 모델 기준 연결부 변환")
+            print("- 선택 후 진행: 3번 환경변수/requirements 갱신")
+            print("- 4번 템플릿 생성/변환은 3번 완료 후 자동실행")
 
     print_todo_guide(report)
 
@@ -3930,6 +3971,7 @@ def main() -> int:
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="write the selected-model runtest_2.py or sync runtime files when --sync-runtime is used")
     parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
+    parser.add_argument("--select-only", action="store_true", help="step 2 only: lock the selected model; do not copy or transform templates")
     parser.add_argument("--sync-runtime", action="store_true", help="reuse the selected model and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     parser.add_argument("--verbose", action="store_true", help="print detailed model lists, prepared files, warnings, and next steps")
