@@ -30,7 +30,7 @@
 | 4 | `03-agent-mlflow-skill-environment-check` | 환경변수/requirements 갱신 | `check_environment.py --entrypoint runtest_2.py` |
 | 5 | `04-agent-mlflow-skill-train-model` | 원격 MLflow 등록 실행 | `run_training.py --entrypoint runtest_2.py --execute` |
 | 6 | `05-agent-mlflow-skill-inference-test` | 추론 테스트 | 사용자가 6번 선택 시 `python local_serving/localservingtest.py` |
-| 7 | 실패한 단계의 스킬 | 오류 수정 및 재실행 | `Failures` 기준으로 재실행 |
+| 7 | 실패한 단계의 스킬 | 오류 재실행 | `Failures` 기준으로 재실행 |
 
 ## 4. 사용자 입장에서 보는 간략 설명
 

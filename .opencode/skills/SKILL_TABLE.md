@@ -20,7 +20,7 @@
 | 4 | 템플릿 변환 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute` | 템플릿 복사 후, 선택 모델 연결부 수정 및 `input_example.json` 생성 |
 | 5 | 원격 MLflow 등록 실행 | `python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute` | 선택 모델 기준 재검증/변환 후 원격 MLflow 서버에 기록/등록 |
 | 6 | 추론 테스트 | 사용자가 6번 선택 시 `python local_serving/localservingtest.py` | `input_example.json` 기반 입력/출력 추론 테스트 |
-| 7 | 오류 수정 및 재실행 | 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 수정 후 실패한 단계부터 다시 실행 |
+| 7 | 오류 재실행 | 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 실패한 단계부터 다시 실행 |
 
 ## 3. 3번 단계 상세
 
@@ -75,4 +75,4 @@
 | 4 | 템플릿 변환 |
 | 5 | 원격 MLflow 등록 실행 |
 | 6 | 추론 테스트 |
-| 7 | 오류 수정 및 재실행 |
+| 7 | 오류 재실행 |

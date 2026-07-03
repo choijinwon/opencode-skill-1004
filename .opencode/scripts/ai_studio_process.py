@@ -11,7 +11,7 @@ AI_STUDIO_PROCESS_STEPS = (
     "템플릿 변환",
     "원격 MLflow 등록 실행",
     "추론 테스트",
-    "오류 수정 및 재실행",
+    "오류 재실행",
 )
 
 if len(AI_STUDIO_PROCESS_STEPS) != 7:

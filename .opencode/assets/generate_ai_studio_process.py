@@ -183,7 +183,7 @@ def draw_process(path: Path, bottom_text: str) -> None:
         ("4", "템플릿 변환", "template", "템플릿 복사,\n연결부 수정", blue),
         ("5", "원격 MLflow\n등록 실행", "mlflow", "runtest_2.py\n실행", blue),
         ("6", "추론 테스트", "inference", "추론 테스트\n실행", green),
-        ("7", "오류 수정 및\n재실행", "retry", "실패 단계부터\n다시 실행", green),
+        ("7", "오류 재실행", "retry", "실패 단계부터\n다시 실행", green),
     ]
 
     card_w, card_h = 282, 720

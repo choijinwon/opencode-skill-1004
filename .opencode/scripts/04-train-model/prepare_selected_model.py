@@ -1584,7 +1584,7 @@ def _aiu_print_existing_model_tod():
     print("[4] 템플릿 변환: 완료")
     print("[5] 원격 MLflow 등록 실행: 완료")
     print("[6] 추론 테스트: 선택 시")
-    print("[7] 오류 수정 및 재실행: 오류 시")
+    print("[7] 오류 재실행: 오류 시")
     print("============================================================")
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
@@ -2060,6 +2060,21 @@ def workspace_path(*parts):
     return normalize_local_path(os.path.join(project_dir, *parts))
 
 
+def split_relative_path(path):
+    value = str(path).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+    return [part for part in value.split("/") if part and part != "."]
+
+
+def workspace_relative_path(path):
+    parts = split_relative_path(path)
+    return workspace_path(*parts) if parts else workspace_path(str(path))
+
+
+def relative_basename(path):
+    parts = split_relative_path(path)
+    return parts[-1] if parts else os.path.basename(str(path))
+
+
 def first_existing_file(label, candidates):
     normalized_candidates = [normalize_local_path(candidate) for candidate in candidates]
     for candidate in normalized_candidates:
@@ -2149,8 +2164,9 @@ selected_model_relative_path = {selected_relative!r}
 selected_model_path = first_existing_file(
     "selected_model",
     [
-        os.path.join(project_dir, selected_model_relative_path),
-        os.path.join(project_dir, "saved_model", os.path.basename(selected_model_relative_path)),
+        workspace_relative_path(selected_model_relative_path),
+        workspace_path("saved_model", relative_basename(selected_model_relative_path)),
+        workspace_path(relative_basename(selected_model_relative_path)),
     ],
 )
 model_kind = {kind!r}
@@ -2284,7 +2300,7 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
     model_dir_path = workspace_path(model_dir)
     os.makedirs(model_dir_path, exist_ok=True)
 
-    model_path = workspace_path(model_dir, os.path.basename(selected_model_path))
+    model_path = workspace_path(model_dir, relative_basename(selected_model_path))
     if os.path.abspath(selected_model_path) != os.path.abspath(model_path):
         with open(selected_model_path, "rb") as src, open(model_path, "wb") as dst:
             dst.write(src.read())
@@ -2682,7 +2698,19 @@ warnings.filterwarnings(
 
 LOCAL_SERVING_DIR = Path(__file__).resolve().parent
 AI_STUDIO_DIR = LOCAL_SERVING_DIR.parent
-ORIGINAL_MODEL_PATH = AI_STUDIO_DIR / {selected_relative!r}
+
+
+def split_relative_path(value):
+    text = str(value).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+    return [part for part in text.split("/") if part and part != "."]
+
+
+def workspace_relative_path(value):
+    parts = split_relative_path(value)
+    return AI_STUDIO_DIR.joinpath(*parts) if parts else AI_STUDIO_DIR / str(value)
+
+
+ORIGINAL_MODEL_PATH = workspace_relative_path({selected_relative!r})
 SAVED_MODEL_PATH = AI_STUDIO_DIR / "saved_model" / ORIGINAL_MODEL_PATH.name
 MODEL_PATH_CANDIDATES = [ORIGINAL_MODEL_PATH, SAVED_MODEL_PATH]
 MODEL_KIND = "{kind}"
@@ -2866,6 +2894,21 @@ def _first_existing_path(candidates):
     return os.path.normpath(candidates[0]) if candidates else None
 
 
+def _split_relative_path(path):
+    value = _normalize_server_path(path)
+    return [part for part in value.split("/") if part and part != "."]
+
+
+def _join_workspace_relative(workspace_root, path):
+    parts = _split_relative_path(path)
+    return os.path.join(workspace_root, *parts) if parts else os.path.join(workspace_root, str(path))
+
+
+def _path_basename(path):
+    parts = _split_relative_path(path)
+    return parts[-1] if parts else os.path.basename(str(path))
+
+
 def _resolve_model_path():
     if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
         return _CONTEXT_ARTIFACT_MODEL_PATH
@@ -2879,9 +2922,9 @@ def _resolve_model_path():
     if os.path.isabs(path):
         return _first_existing_path([path])
     return _first_existing_path([
-        os.path.join(workspace_root, path),
-        os.path.join(workspace_root, "saved_model", os.path.basename(path)),
-        os.path.join(workspace_root, os.path.basename(path)),
+        _join_workspace_relative(workspace_root, path),
+        os.path.join(workspace_root, "saved_model", _path_basename(path)),
+        os.path.join(workspace_root, _path_basename(path)),
     ])
 
 
@@ -2897,8 +2940,8 @@ def _context_artifact_path(context, name):
     if os.path.isabs(path):
         return _first_existing_path([path])
     return _first_existing_path([
-        os.path.join(workspace_root, path),
-        os.path.join(workspace_root, os.path.basename(path)),
+        _join_workspace_relative(workspace_root, path),
+        os.path.join(workspace_root, _path_basename(path)),
     ])
 
 

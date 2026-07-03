@@ -19,7 +19,7 @@ metadata:
 진행 조건: 사용자가 6번을 선택했을 때만 실행
 현재 대상: trained model project
 핵심 판단: config/config.json 선택 모델, input_example, load mode, predict contract, output schema
-다음 단계: 7. 오류 수정 및 재실행
+다음 단계: 7. 오류 재실행
 ```
 
 ## Workflow
@@ -31,7 +31,7 @@ metadata:
 4. 템플릿 변환
 5. 원격 MLflow 등록 실행
 6. 추론 테스트
-7. 오류 수정 및 재실행
+7. 오류 재실행
 ```
 
 ## What To Do Now

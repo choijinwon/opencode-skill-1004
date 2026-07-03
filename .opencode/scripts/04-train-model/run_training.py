@@ -527,7 +527,7 @@ def main():
             EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not (missing_env or remote_url_failure) else "needs_input"),
             EnvVarStatus("5. 학습 실행 및 원격 MLflow 등록", mlflow_run_status),
             EnvVarStatus("6. 추론 테스트", "selectable"),
-            EnvVarStatus("7. 오류 수정 및 재실행", "needed" if failures else "pending"),
+            EnvVarStatus("7. 오류 재실행", "needed" if failures else "pending"),
         ]
     else:
         mlflow_run_status = "blocked" if (missing_env or remote_url_failure) else ("done" if args.execute and return_code == 0 else "pending")

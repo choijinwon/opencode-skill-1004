@@ -65,7 +65,7 @@ QA / Maintenance
 4. 템플릿 변환                     -> 템플릿 복사 + 복사된 템플릿 기준 연결부 수정
 5. 학습 실행 및 원격 MLflow 등록   -> run_training.py --entrypoint runtest_2.py --execute
 6. 추론 테스트                     -> 사용자가 6번 선택 시 python local_serving/localservingtest.py
-7. 오류 수정 및 재실행             -> Failures 기준으로 실패한 단계부터 재실행
+7. 오류 재실행             -> Failures 기준으로 실패한 단계부터 재실행
 ```
 
 화면에 표시된 모델 번호나 TODO 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.

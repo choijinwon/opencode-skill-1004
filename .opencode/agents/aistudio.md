@@ -80,7 +80,7 @@ AI Studio TODO Guide - 7단계
    4 템플릿 변환
    5 원격 MLflow 등록 실행
    6 추론 테스트
-   7 오류 수정 및 재실행
+   7 오류 재실행
 ```
 
 ## Work Rules
