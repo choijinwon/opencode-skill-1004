@@ -76,8 +76,8 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_keras": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
-AIU_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
-AIU_STUDIO_COPY_IGNORE_FILES = {"runtest_2.py"}
+ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
+ai_STUDIO_COPY_IGNORE_FILES = {"runtest_2.py"}
 FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
     "PROJECT_DIR = Path(__file__).resolve().parent",
     "SOURCE_MODEL_PATH",
@@ -765,7 +765,7 @@ def absolute_path_text(path: Path) -> str:
     return str(path.resolve())
 
 
-def runtime_path_expr(path: Path, constructor: str = "_AIUPath") -> str:
+def runtime_path_expr(path: Path, constructor: str = "_aiPath") -> str:
     return f"{constructor}({absolute_path_text(path)!r})"
 
 
@@ -807,7 +807,7 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
 def runtime_project_path_expr(project: Path, path: Path) -> str:
     relative = rel(path, project)
     if Path(relative).is_absolute():
-        return f'_AIUPath({relative!r})'
+        return f'_aiPath({relative!r})'
     return f'AI_STUDIO_DIR / "{relative}"'
 
 
@@ -858,9 +858,9 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
     if execute:
         for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
             relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
-            if any(part in AIU_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
+            if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
                 continue
-            if relative.as_posix() in AIU_STUDIO_COPY_IGNORE_FILES:
+            if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
                 continue
             destination = target / relative
             if source.is_dir():
@@ -904,7 +904,7 @@ def ensure_aiu_custom_template_copied(project: Path, execute: bool) -> tuple[lis
         path.relative_to(template_dir).as_posix()
         for path in template_dir.rglob("*")
         if path.is_file()
-        and not any(part in AIU_STUDIO_COPY_IGNORE_DIRS for part in path.relative_to(template_dir).parts)
+        and not any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in path.relative_to(template_dir).parts)
     ]
     if not template_files:
         failures.append("aiu_custom_template_files_empty")
@@ -991,19 +991,19 @@ def assignment_line(name: str, expression: str, comment: str) -> str:
 
 def converted_assignment_comment(name: str, selected_relative: str, kind: str, load_hint: str, required_package: str) -> str | None:
     if name in {"MODEL_KIND"}:
-        return f"# AIU Studio 변환: 선택 모델 종류 {kind}"
+        return f"# ai Studio 변환: 선택 모델 종류 {kind}"
     if name in {"MODEL_LOAD_HINT", "model_load_hint"}:
-        return f"# AIU Studio 변환: 선택 모델 로더 {load_hint}"
+        return f"# ai Studio 변환: 선택 모델 로더 {load_hint}"
     if name in {"REQUIRED_PACKAGE", "required_package"}:
-        return f"# AIU Studio 변환: 선택 모델 필요 패키지 {required_package}"
+        return f"# ai Studio 변환: 선택 모델 필요 패키지 {required_package}"
     if name in DATA_PREP_VARIABLE_NAMES:
-        return f"# AIU Studio 변환: 선택 모델 {kind} 기준 데이터 준비 값"
+        return f"# ai Studio 변환: 선택 모델 {kind} 기준 데이터 준비 값"
     if name in MODEL_PREP_VARIABLE_NAMES:
-        return f"# AIU Studio 변환: 선택 모델 {kind} 기준 모델 준비 값"
+        return f"# ai Studio 변환: 선택 모델 {kind} 기준 모델 준비 값"
     if name in SUMMARY_VARIABLE_NAMES:
-        return f"# AIU Studio 변환: 선택 모델 {kind} 기준 요약 산출물"
+        return f"# ai Studio 변환: 선택 모델 {kind} 기준 요약 산출물"
     if name in MODEL_RELATED_SETTING_NAMES:
-        return f"# AIU Studio 변환: 선택 모델 {selected_relative} 기준 경로"
+        return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 경로"
     return None
 
 
@@ -1023,14 +1023,14 @@ def text_contains_model_path(value: str) -> bool:
 def rewrite_model_comment(comment: str, selected_relative: str, kind: str, load_hint: str) -> str:
     if not text_contains_model_path(comment):
         if MODEL_COMMENT_HINT_PATTERN.search(comment):
-            return f"# AIU Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
+            return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
         return comment
     prefix = "#"
     body = comment[1:].strip() if comment.lstrip().startswith("#") else comment.strip()
     converted = MODEL_PATH_REFERENCE_PATTERN.sub(selected_relative, body)
     if converted == body:
-        return f"# AIU Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
-    return f"{prefix} AIU Studio 변환: {converted}"
+        return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
+    return f"{prefix} ai Studio 변환: {converted}"
 
 
 def model_path_literal_expression(token_text: str) -> str | None:
@@ -1159,7 +1159,7 @@ def rewrite_model_loader_line(line: str, kind: str, load_hint: str) -> str:
         converted_code = f"{indent}{lhs} = load_selected_model()"
     else:
         converted_code = f"{indent}load_selected_model()"
-    converted_comment = f"# AIU Studio 변환: 선택 모델 종류 {kind}, 로더 {load_hint}"
+    converted_comment = f"# ai Studio 변환: 선택 모델 종류 {kind}, 로더 {load_hint}"
     return f"{converted_code}  {converted_comment}{suffix}"
 
 
@@ -1170,7 +1170,7 @@ def rewrite_data_prep_call_line(line: str, kind: str) -> str:
     suffix = "\n" if line.endswith("\n") else ""
     indent = code[: len(code) - len(code.lstrip())]
     stripped_code = code.strip()
-    converted_comment = f"# AIU Studio 변환: 선택 모델 {kind} 기준 synthetic input_example 사용"
+    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 synthetic input_example 사용"
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
         name = lhs.split(",", 1)[0].strip()
@@ -1193,14 +1193,14 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
 
     if MODEL_TRAIN_CALL_PATTERN.search(code):
         return (
-            f"{indent}# AIU Studio 변환: 선택 모델 {kind}은 이미 학습된 모델을 로드하므로 원본 학습 호출을 실행하지 않습니다.{suffix}"
+            f"{indent}# ai Studio 변환: 선택 모델 {kind}은 이미 학습된 모델을 로드하므로 원본 학습 호출을 실행하지 않습니다.{suffix}"
             f"{indent}# {stripped_code}{suffix}"
         )
 
     if not MODEL_PREP_CALL_PATTERN.search(code):
         return line
 
-    converted_comment = f"# AIU Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용"
+    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용"
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
         first_name = lhs.split(",", 1)[0].strip()
@@ -1208,7 +1208,7 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
             return line
         return f"{indent}{lhs} = load_selected_model()  {converted_comment}{suffix}"
     return (
-        f"{indent}# AIU Studio 변환: 선택 모델 {kind}은 load_selected_model()으로 준비됩니다.{suffix}"
+        f"{indent}# ai Studio 변환: 선택 모델 {kind}은 load_selected_model()으로 준비됩니다.{suffix}"
         f"{indent}# {stripped_code}{suffix}"
     )
 
@@ -1248,7 +1248,7 @@ def collapse_multiline_model_prep_calls(text: str, kind: str) -> str:
 
         output.append(
             f"{indent}{name} = load_selected_model()  "
-            f"# AIU Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용\n"
+            f"# ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용\n"
         )
         for skipped_line in skipped:
             if skipped_line.strip():
@@ -1267,7 +1267,7 @@ def rewrite_summary_line(line: str, kind: str) -> str:
 
     suffix = "\n" if line.endswith("\n") else ""
     indent = code[: len(code) - len(code.lstrip())]
-    converted_comment = f"# AIU Studio 변환: 선택 모델 {kind} 기준 요약으로 대체"
+    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 요약으로 대체"
 
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
@@ -1282,7 +1282,7 @@ def rewrite_summary_line(line: str, kind: str) -> str:
         return f"{indent}print(_aiu_model_summary())  {converted_comment}{suffix}"
 
     return (
-        f"{indent}# AIU Studio 변환: 원본 summary 호출은 선택 모델 요약으로 대체합니다.{suffix}"
+        f"{indent}# ai Studio 변환: 원본 summary 호출은 선택 모델 요약으로 대체합니다.{suffix}"
         f"{indent}_aiu_model_summary()  {converted_comment}{suffix}"
     )
 
@@ -1315,7 +1315,7 @@ def rewrite_model_import_line(line: str, required_package: str) -> str:
     indent = line[: len(line) - len(line.lstrip())]
     original = line.rstrip("\n")
     return (
-        f"{indent}# AIU Studio 변환: 선택 모델 로더는 {required_package} 기준이라 {module_name} import를 비활성화합니다.{suffix}"
+        f"{indent}# ai Studio 변환: 선택 모델 로더는 {required_package} 기준이라 {module_name} import를 비활성화합니다.{suffix}"
         f"{indent}# {original.lstrip()}{suffix}"
     )
 
@@ -1445,7 +1445,7 @@ def transform_reference_text(
             continue
 
         if not preserve_code and name in MLFLOW_SETTING_NAMES and not indent:
-            output.append(f"# AIU Studio preserved original assignment; value is defined in the conversion block above.\n")
+            output.append(f"# ai Studio preserved original assignment; value is defined in the conversion block above.\n")
             output.append(f"# {line.rstrip()}\n")
             continue
         if not preserve_code and name in MLFLOW_SETTING_NAMES:
@@ -1488,16 +1488,16 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
     data_prep = aiu_data_prep_block(kind)
     return f'''
 
-# --- AIU Studio selected model conversion ---
+# --- ai Studio selected model conversion ---
 # 선택된 모델을 먼저 판별하고, 원본 모델 경로를 직접 읽도록 변환합니다.
 # MODEL_KIND에 맞는 load_selected_model()을 생성해 워크스페이스 템플릿 코드를 선택 모델 기준으로 갱신합니다.
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
 import os
 import atexit as _aiu_atexit
 import json as _aiu_json
-from pathlib import Path as _AIUPath
+from pathlib import Path as _aiPath
 
-AI_STUDIO_DIR = _AIUPath(__file__).resolve().parent
+AI_STUDIO_DIR = _aiPath(__file__).resolve().parent
 ORIGINAL_MODEL_PATH = {selected_model_expr}
 SOURCE_MODEL_PATH = {selected_model_expr}
 DATA_MODEL_PATH = SOURCE_MODEL_PATH
@@ -1509,8 +1509,8 @@ MODEL_OUTPUT_DIR = {model_output_dir_expr}
 MODEL_OUTPUT_PATH = {model_output_path_expr}
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
-AIU_REQUIRED_PACKAGE = "{required_package}"
-AIU_LOAD_HINT = "{load_hint}"
+ai_REQUIRED_PACKAGE = "{required_package}"
+ai_LOAD_HINT = "{load_hint}"
 REFERENCE_ENTRYPOINT = {reference_expr}
 
 # 자주 쓰는 소문자 변수명도 선택 모델 및 aiu_studio 산출물 경로를 보도록 맞춥니다.
@@ -1588,7 +1588,7 @@ def _aiu_print_existing_model_tod():
     print("============================================================")
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
-# --- /AIU Studio selected model conversion ---
+# --- /ai Studio selected model conversion ---
 
 '''
 
@@ -1790,7 +1790,7 @@ def selected_model_input_example_block(kind: str) -> str:
     payload = selected_model_input_example_payload(kind)
     return f'''
 def selected_model_input_example():
-    # AIU Studio 변환: 선택 모델 종류에 맞는 배포용 synthetic input_example입니다.
+    # ai Studio 변환: 선택 모델 종류에 맞는 배포용 synthetic input_example입니다.
     return {payload}
 
 
@@ -2494,7 +2494,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     preserve_code = preserve_reference_code(reference)
     if preserve_code:
         return generated_selected_model_runtest_text(project, selected_model, kind, reference)
-    path_constructor = "Path" if preserve_code else "_AIUPath"
+    path_constructor = "Path" if preserve_code else "_aiPath"
     aiu_studio_path = project
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     details = MODEL_KIND_DETAILS.get(kind, {})
@@ -2571,10 +2571,10 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "model_file": "str(MODEL_PATH)",
         "CHECKPOINT_PATH": "SOURCE_MODEL_PATH",
         "checkpoint_path": "str(MODEL_PATH)",
-        "MODEL_LOAD_HINT": repr(load_hint) if preserve_code else "AIU_LOAD_HINT",
-        "model_load_hint": "AIU_LOAD_HINT",
-        "REQUIRED_PACKAGE": "AIU_REQUIRED_PACKAGE",
-        "required_package": "AIU_REQUIRED_PACKAGE",
+        "MODEL_LOAD_HINT": repr(load_hint) if preserve_code else "ai_LOAD_HINT",
+        "model_load_hint": "ai_LOAD_HINT",
+        "REQUIRED_PACKAGE": "ai_REQUIRED_PACKAGE",
+        "required_package": "ai_REQUIRED_PACKAGE",
         "mlflow_tracking_url": '""',
         "mlflow_tracking_username": '""',
         "mlflow_tracking_password": '""',
@@ -2687,11 +2687,11 @@ SAVED_MODEL_PATH = AI_STUDIO_DIR / "saved_model" / ORIGINAL_MODEL_PATH.name
 MODEL_PATH_CANDIDATES = [ORIGINAL_MODEL_PATH, SAVED_MODEL_PATH]
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
-AIU_REQUIRED_PACKAGE = "{required_package}"
-AIU_LOAD_HINT = "{load_hint}"
+ai_REQUIRED_PACKAGE = "{required_package}"
+ai_LOAD_HINT = "{load_hint}"
 REFERENCE_ENTRYPOINT = {reference_entrypoint!r}
 
-# AIU Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
+# ai Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
 # 추론 테스트는 선택 모델 원본 경로와 saved_model/ 복사본 후보를 확인합니다.
 # MODEL_KIND={kind}, loader={load_hint}
 
@@ -2907,10 +2907,10 @@ def _model_kind():
 
 
 MODEL_KIND = _model_kind()
-AIU_REQUIRED_PACKAGE = str(_config_model().get("required_package") or "{required_package}")
-AIU_LOAD_HINT = str(_config_model().get("load_hint") or "{load_hint}")
+ai_REQUIRED_PACKAGE = str(_config_model().get("required_package") or "{required_package}")
+ai_LOAD_HINT = str(_config_model().get("load_hint") or "{load_hint}")
 
-# AIU Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
+# ai Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
 # 모델 위치와 종류는 선택 모델 정보에서 읽습니다.
 # MODEL_KIND={kind}, loader={load_hint}
 

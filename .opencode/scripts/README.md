@@ -76,7 +76,7 @@ QA / Maintenance
 여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 현재 선택 모델 하나만 기준으로 수행한다.
 `runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
 
-기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
+기존 모델 흐름에서 `runtest_2.py`가 있으면 ai Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
 
 ```text
 1~3 -> python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
@@ -147,7 +147,7 @@ python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .
 
 ### doctor.py
 
-AIU Studio/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
+ai Studio/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
 
 ```text
 python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .
@@ -164,7 +164,7 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model
 3. requirements.txt 패키지 설치/버전 상태
 4. model_artifact_paths와 MODEL_KIND
 5. 실행 파일 확정
-6. AIU Studio 코드 적합성
+6. ai Studio 코드 적합성
 7. MLflow 입력값 3개와 requirements.txt 상태
 ```
 
@@ -216,7 +216,7 @@ generated_entrypoint: runtest_2.py
 
 ### adapt_ai_studio.py
 
-사용자가 가져온 임의 Python 실행 파일을 AIU Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
+사용자가 가져온 임의 Python 실행 파일을 ai Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
 실행 파일을 찾지 못하면 자동 생성하지 않는다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 `--entrypoint <file>`로 지정해야 한다.
 파일 후보가 여러 개일 때도 추측하지 않고 사용자가 직접 지정한다.
 
@@ -358,7 +358,7 @@ mlflow_tracking_username=
 mlflow_tracking_password=
 ```
 
-`mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/AIU Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
+`mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/ai Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
 `mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
 tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트 실행을 중단한다. 사용자가 값을 직접 입력한 뒤 다시 실행한다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.

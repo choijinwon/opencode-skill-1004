@@ -1,4 +1,4 @@
-# AIU Studio Skill Table
+# ai Studio Skill Table
 
 ## 1. 스킬 문서 요약
 

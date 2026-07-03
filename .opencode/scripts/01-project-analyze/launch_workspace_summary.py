@@ -130,7 +130,7 @@ def main() -> int:
             print(f"  {index}. {title}")
     else:
         print("  - 모델이 없으면 sklearn / pytorch / tensorflow 중 하나를 선택해 샘플을 생성할 수 있습니다.")
-        print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode AIU Studio 빌드 모드에서 선택해주세요.")
+        print("  - 실제 샘플 복사/모델 생성/검증 실행은 OpenCode ai Studio 빌드 모드에서 선택해주세요.")
         print("  - 추천 요청: 모델이 없으니 sklearn 샘플로 생성해줘.")
 
     return 0
