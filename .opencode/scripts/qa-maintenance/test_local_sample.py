@@ -27,7 +27,7 @@ def python_in_venv(venv_dir: Path) -> Path:
 
 
 def run(cmd, cwd: Path):
-    print(f"[run] cwd={cwd} cmd={' '.join(str(c) for c in cmd)}")
+    print(f"[run] cwd=. cmd={' '.join(str(c) for c in cmd)}")
     subprocess.run(cmd, cwd=cwd, check=True)
 
 

@@ -17,6 +17,7 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PREPARE_SELECTED_MODEL_COMMAND = ".opencode/scripts/04-train-model/prepare_selected_model.py"
 PATH_SEPARATOR_TRANSLATION = str.maketrans({
     "\\": "/",
     "＼": "/",
@@ -64,7 +65,7 @@ def normalize_argv(argv: list[str]) -> list[str]:
 def load_prepare_module():
     spec = importlib.util.spec_from_file_location("prepare_selected_model_impl", PREPARE_SELECTED_MODEL_SCRIPT)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load prepare script: {PREPARE_SELECTED_MODEL_SCRIPT}")
+        raise RuntimeError(f"cannot load prepare script: {PREPARE_SELECTED_MODEL_COMMAND}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)

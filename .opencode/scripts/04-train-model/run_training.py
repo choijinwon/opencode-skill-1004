@@ -17,7 +17,7 @@ if str(SCRIPT_ROOT) not in sys.path:
 from ai_studio_process import AI_STUDIO_PROCESS_STEPS
 
 SAMPLES_DIR = ROOT / "samples"
-PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "04-train-model" / "prepare_selected_model.py"
 PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute"
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
@@ -219,8 +219,15 @@ def resolve_entrypoint(project: Path, entrypoint_name: str | None) -> tuple[Path
     return find_entrypoint(project), candidates, None
 
 
-def build_command(python_bin: str, entrypoint: Path, prepare_only: bool) -> list[str]:
-    cmd = [python_bin, str(entrypoint)]
+def project_relative_path(path: Path, project: Path) -> str:
+    try:
+        return path.resolve().relative_to(project.resolve()).as_posix()
+    except ValueError:
+        return path.name
+
+
+def build_command(python_bin: str, entrypoint: Path, prepare_only: bool, project: Path) -> list[str]:
+    cmd = ["python", project_relative_path(entrypoint, project)]
     if prepare_only and entrypoint.name in {"run_model.py", "register_model.py"}:
         cmd.append("--prepare-only")
     return cmd
@@ -426,14 +433,14 @@ def is_runtest_2_entrypoint(entrypoint: Path | None, project: Path) -> bool:
 
 
 def sync_selected_model_runtime_before_registration(project: Path, python_bin: str) -> tuple[list[str], list[str]]:
-    if not PREPARE_SELECTED_MODEL_SCRIPT.is_file():
-        return [], [f"preflight_script_missing:{PREPARE_SELECTED_MODEL_SCRIPT}"]
+    if not (project / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT).is_file():
+        return [], [f"preflight_script_missing:{PROJECT_PREPARE_SELECTED_MODEL_SCRIPT.as_posix()}"]
 
     cmd = [
-        python_bin,
-        str(PREPARE_SELECTED_MODEL_SCRIPT),
+        "python",
+        PROJECT_PREPARE_SELECTED_MODEL_SCRIPT.as_posix(),
         "--project",
-        str(project),
+        ".",
         "--sync-runtime",
         "--execute",
     ]
@@ -458,7 +465,7 @@ def sync_selected_model_runtime_before_registration(project: Path, python_bin: s
 def main():
     parser = argparse.ArgumentParser(description="Run local training for an existing project after .env checks.")
     parser.add_argument("--project", default=".", help="user-specified model project folder")
-    parser.add_argument("--python", default=sys.executable, help="Python interpreter to use")
+    parser.add_argument("--python", default="python", help="Python interpreter to use")
     parser.add_argument("--execute", action="store_true", help="actually run the selected command")
     parser.add_argument("--entrypoint", help="training/model creation file confirmed by the user, relative to --project")
     parser.add_argument("--force-sample", action="store_true", help="deprecated; use bootstrap_sample_project.py for sample folder copy")
@@ -505,7 +512,7 @@ def main():
             if entrypoint_candidates:
                 next_steps.append("Entrypoint candidates: " + ", ".join(str(path.relative_to(work_path)) for path in entrypoint_candidates))
         else:
-            cmd = build_command(args.python, entrypoint, args.prepare_only)
+            cmd = build_command(args.python, entrypoint, args.prepare_only, work_path)
 
     if args.execute and model_found and entrypoint is not None and is_runtest_2_entrypoint(entrypoint, work_path):
         sync_messages, sync_failures = sync_selected_model_runtime_before_registration(work_path, args.python)
@@ -594,8 +601,8 @@ def main():
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print(f"Project: {report.project_path}")
-        print(f"Work path: {report.work_path}")
+        print("Project: .")
+        print("Work path: .")
         print(f"Model found: {report.model_found}")
         print(f"Selected sample: {report.selected_sample or 'none'}")
         print(f"Entrypoint: {report.entrypoint or 'missing'}")

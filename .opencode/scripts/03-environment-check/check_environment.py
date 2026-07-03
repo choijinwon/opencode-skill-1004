@@ -273,18 +273,14 @@ def powershell_quote_text(value: str | Path) -> str:
 def prepare_selected_model_script_for_project(project: Path) -> Path:
     project_local_script = project / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT
     if project_local_script.is_file():
-        return project_local_script
-    return PREPARE_SELECTED_MODEL_SCRIPT
+        return PROJECT_PREPARE_SELECTED_MODEL_SCRIPT
+    return PROJECT_PREPARE_SELECTED_MODEL_SCRIPT
 
 
 def powershell_prepare_selected_command(project: Path) -> str:
     script = prepare_selected_model_script_for_project(project)
-    try:
-        script_display = script.resolve().relative_to(project.resolve())
-    except ValueError:
-        script_display = script
     return (
-        f"python {powershell_quote_text(script_display)} "
+        f"python {powershell_quote_text(script)} "
         "--project . --model selected --execute"
     )
 
@@ -1410,7 +1406,7 @@ def print_text(report: EnvironmentReport):
     print("Project: .")
     print("Scope: 선택한 워크스페이스 루트 기준")
     print(f"OS: {report.os}")
-    print(f"Python: {report.python_version} ({report.python_executable})")
+    print(f"Python: {report.python_version}")
     print(f"Expected Python: {report.expected_python_version} ({report.python_version_status})")
     print(f"Virtual env: {report.virtual_env}")
     print(f"Dependency files: {', '.join(report.dependency_files) if report.dependency_files else 'missing'}")

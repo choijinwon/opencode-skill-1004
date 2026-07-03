@@ -298,7 +298,7 @@ def scan_workspace(project: Path, max_files: int, large_mb: int) -> tuple[list[F
 
 def render_text(project: Path, findings: list[Finding]) -> None:
     print("OpenCode closed-network response speed check")
-    print(f"Project: {project}")
+    print("Project: .")
     print("")
 
     for index, finding in enumerate(findings, start=1):
@@ -338,7 +338,7 @@ def main() -> int:
     findings.extend(scan_findings)
 
     if args.json:
-        print(json.dumps({"project": str(project), "findings": [asdict(item) for item in findings]}, ensure_ascii=False, indent=2))
+        print(json.dumps({"project": ".", "findings": [asdict(item) for item in findings]}, ensure_ascii=False, indent=2))
     else:
         render_text(project, findings)
 

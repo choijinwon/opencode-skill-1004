@@ -448,12 +448,12 @@ def is_opencode_sample_source(path: Path) -> bool:
 def check_python_version() -> DoctorCheck:
     current = platform.python_version()
     if current == EXPECTED_PYTHON_VERSION:
-        return DoctorCheck("환경 검증", "pass", f"Python {current}", [sys.executable])
+        return DoctorCheck("환경 검증", "pass", f"Python {current}", [])
     return DoctorCheck(
         "환경 검증",
         "warn",
         f"Python 버전 차이 ({current} vs 기대 {EXPECTED_PYTHON_VERSION})",
-        [sys.executable],
+        [],
         [f"Python {EXPECTED_PYTHON_VERSION} 환경에서 최종 QA를 실행하세요."],
     )
 
@@ -565,7 +565,7 @@ def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorChec
 
     if missing:
         copy_command = (
-            f"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project {project} "
+            "python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . "
             f"--sample {sample} --scaffold-existing --execute"
         )
         if project == workspace:
@@ -804,8 +804,8 @@ def build_report(workspace: Path, project: Path, sample: str, setting_file: str 
 
 def print_text(report: DoctorReport) -> None:
     print("OpenCode MLflow Doctor")
-    print(f"Workspace: {report.workspace}")
-    print(f"Project: {report.project}")
+    print("Workspace: .")
+    print("Project: .")
     print(f"OS: {report.os}")
     print(f"Python: {report.python} (expected {report.expected_python})")
     print("")

@@ -754,19 +754,19 @@ def write_permission_check(project: Path) -> Check:
             name="Windows/write permission check",
             status="pass",
             message="project directory is writable",
-            evidence=[str(project)],
+            evidence=["."],
         )
     except OSError as exc:
         return Check(
             name="Windows/write permission check",
             status="block",
             message=f"project directory is not writable: {exc}",
-            evidence=[str(project)],
+            evidence=["."],
         )
 
 
 def windows_path_check(project: Path) -> Check:
-    evidence = [str(project)]
+    evidence = ["."]
     path_text = str(project)
     warnings = []
     if " " in path_text:
@@ -832,16 +832,16 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     project = project.resolve()
 
     if not safe_exists(project):
-        checks.append(Check("local model path selection", "block", "selected project path does not exist", [str(project)]))
-        return ValidationReport(str(project), reason, platform.platform(), sys.version.split()[0], checks, ["Provide a valid --project path."])
+        checks.append(Check("local model path selection", "block", "selected project path does not exist", ["."]))
+        return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Provide a valid --project path."])
     if is_filesystem_root(project):
-        checks.append(Check("local model path selection", "block", "drive/root scan is not allowed", [str(project)]))
-        return ValidationReport(str(project), reason, platform.platform(), sys.version.split()[0], checks, ["Run the command from the model project folder or pass --project <current-project-folder>."])
+        checks.append(Check("local model path selection", "block", "drive/root scan is not allowed", ["."]))
+        return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Run the command from the model project folder or pass --project <current-project-folder>."])
     if is_opencode_sample_source(project):
-        checks.append(Check("local model path selection", "block", ".opencode/ is bundled skill source, not a user model project", [str(project)]))
-        return ValidationReport(str(project), reason, platform.platform(), sys.version.split()[0], checks, ["Use the actual selected model project folder as --project."])
+        checks.append(Check("local model path selection", "block", ".opencode/ is bundled skill source, not a user model project", ["."]))
+        return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Use the actual selected model project folder as --project."])
 
-    checks.append(Check("local model path selection", "pass", "project selected", [str(project), reason]))
+    checks.append(Check("local model path selection", "pass", "project selected", [".", reason]))
 
     requirements_path, requirements_text, packages = parse_requirements(project)
     artifacts = find_artifacts(project)
@@ -1008,7 +1008,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             f"Sample spec scaffold missing: {', '.join(missing_spec)}."
         )
         next_steps.append(
-            f"Copy missing scaffold without overwriting existing model files: {PS_BOOTSTRAP_COMMAND} --project {project} --sample {sample_key} --scaffold-existing --execute"
+            f"Copy missing scaffold without overwriting existing model files: {PS_BOOTSTRAP_COMMAND} --project . --sample {sample_key} --scaffold-existing --execute"
         )
     if not prepare_found:
         next_steps.append("Confirm a prepare-only or preflight behavior before registration.")
@@ -1018,7 +1018,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         next_steps.append("Proceed to local/remote MLflow registration guidance.")
 
     return ValidationReport(
-        str(project),
+        ".",
         reason,
         platform.platform(),
         sys.version.split()[0],

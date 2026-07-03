@@ -435,8 +435,8 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
     report.next_steps.extend(
         [
             "수정된 entrypoint의 TODO와 MLflow 설정값 5개를 확인하세요.",
-            f"python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project {project} --entrypoint {rel(entrypoint, project)}",
-            f"python .opencode/scripts/03-environment-check/check_environment.py --project {project} --entrypoint {rel(entrypoint, project)}",
+            f"python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project . --entrypoint {rel(entrypoint, project)}",
+            f"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint {rel(entrypoint, project)}",
         ]
     )
     return report
@@ -444,7 +444,7 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
 
 def print_text(report: AdaptReport) -> None:
     print("AI Studio Adapter")
-    print(f"Project: {report.project_path}")
+    print("Project: .")
     print(f"Entrypoint: {report.entrypoint or 'missing'}")
     print(f"Framework: {report.framework}")
     print(f"Execute: {report.execute}")

@@ -3803,8 +3803,8 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print("- 변환: inferencetest.py, config/config.json, input_example.json, requirements.txt")
         return
 
-    print(f"Project: {report.project_path}")
-    print(f"Data root: {report.data_root}")
+    print("Project: .")
+    print("Data root: data")
     print("Scope: 선택한 워크스페이스 루트 기준")
 
     if report.model_artifact_paths or report.training_code_paths:

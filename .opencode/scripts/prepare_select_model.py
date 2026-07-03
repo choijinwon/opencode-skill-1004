@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "04-train-model" / "prepare_selected_model.py"
+PREPARE_SELECTED_MODEL_COMMAND = ".opencode/scripts/04-train-model/prepare_selected_model.py"
 PATH_SEPARATOR_TRANSLATION = str.maketrans({
     "\\": "/",
     "＼": "/",
@@ -66,7 +67,7 @@ def normalize_argv(argv: list[str]) -> list[str]:
 def load_prepare_module():
     spec = importlib.util.spec_from_file_location("prepare_selected_model_impl", PREPARE_SELECTED_MODEL_SCRIPT)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load prepare script: {PREPARE_SELECTED_MODEL_SCRIPT}")
+        raise RuntimeError(f"cannot load prepare script: {PREPARE_SELECTED_MODEL_COMMAND}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -78,7 +79,7 @@ def main() -> int:
     normalized = normalize_argv(sys.argv[1:])
     if "--model" in normalized and "--select-only" not in normalized and "--sync-runtime" not in normalized:
         normalized.append("--select-only")
-    sys.argv = [str(PREPARE_SELECTED_MODEL_SCRIPT), *normalized]
+    sys.argv = [PREPARE_SELECTED_MODEL_COMMAND, *normalized]
     return int(module.main())
 
 

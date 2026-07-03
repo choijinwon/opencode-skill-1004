@@ -17,14 +17,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+PYTHON_COMMAND = "python"
 OPENCODE_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_ROOT = OPENCODE_ROOT / "scripts"
-LAUNCH_SUMMARY_SCRIPT = SCRIPTS_ROOT / "launch_workspace_summary.py"
-SELECT_MODEL_SCRIPT = SCRIPTS_ROOT / "02-model-select" / "select_model.py"
-PREPARE_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "prepare_selected_model.py"
-ENV_SCRIPT = SCRIPTS_ROOT / "03-environment-check" / "check_environment.py"
-RUN_TRAINING_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "run_training.py"
-PROCESS_SCRIPT = SCRIPTS_ROOT / "ai_studio_process.py"
+LAUNCH_SUMMARY_SCRIPT = ".opencode/scripts/launch_workspace_summary.py"
+SELECT_MODEL_SCRIPT = ".opencode/scripts/02-model-select/select_model.py"
+PREPARE_SCRIPT = ".opencode/scripts/04-train-model/prepare_selected_model.py"
+ENV_SCRIPT = ".opencode/scripts/03-environment-check/check_environment.py"
+RUN_TRAINING_SCRIPT = ".opencode/scripts/04-train-model/run_training.py"
+PROCESS_SCRIPT = ".opencode/scripts/ai_studio_process.py"
+PROCESS_SCRIPT_PATH = OPENCODE_ROOT / "scripts" / "ai_studio_process.py"
 
 REQUIRED_GENERATED_PATHS = [
     "runtest_2.py",
@@ -84,7 +85,7 @@ def selected_model_from_prepare_output(output: str) -> str:
 
 
 def run_command(cmd: list[str], cwd: Path, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
-    print(f"[run] cwd={cwd}")
+    print("[run] cwd=.")
     print("[cmd] " + " ".join(str(part) for part in cmd))
     result = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
     if result.stdout.strip():
@@ -152,7 +153,7 @@ def assert_windows_relative_path(value: str, label: str) -> None:
 
 def verify_process_contract() -> None:
     namespace: dict[str, object] = {}
-    exec(PROCESS_SCRIPT.read_text(encoding="utf-8"), namespace)
+    exec(PROCESS_SCRIPT_PATH.read_text(encoding="utf-8"), namespace)
     steps = namespace["AI_STUDIO_PROCESS_STEPS"]
     expected = (
         "모델 목록 확인",
@@ -251,14 +252,14 @@ def main() -> int:
 
     try:
         # 1. 모델 목록 확인
-        step1 = run_command([sys.executable, str(LAUNCH_SUMMARY_SCRIPT), str(project), "--json"], project, allow_failure=True)
+        step1 = run_command([PYTHON_COMMAND, LAUNCH_SUMMARY_SCRIPT, ".", "--json"], project, allow_failure=True)
         assert_contains(step1.stdout, '"model_artifact_paths"', "step 1 model list")
         model_paths = json.loads(step1.stdout).get("model_artifact_paths", [])
         results.append(StepResult(1, "모델 목록 확인", "PASS", "model_artifact_paths 출력 확인"))
 
         # 2. 모델 선택
         step2 = run_command(
-            [sys.executable, str(SELECT_MODEL_SCRIPT), "--project", str(project), *model_selection_args(args.model)],
+            [PYTHON_COMMAND, SELECT_MODEL_SCRIPT, "--project", ".", *model_selection_args(args.model)],
             project,
         )
         assert_contains(step2.stdout, "선택 결과:", "step 2 selection result")
@@ -273,7 +274,7 @@ def main() -> int:
         if env_path.exists():
             env_path.unlink()
         step3 = run_command(
-            [sys.executable, str(ENV_SCRIPT), "--project", str(project), "--entrypoint", "runtest_2.py", "--no-fix-packages"],
+            [PYTHON_COMMAND, ENV_SCRIPT, "--project", ".", "--entrypoint", "runtest_2.py", "--no-fix-packages"],
             project,
             allow_failure=True,
         )
@@ -301,7 +302,7 @@ def main() -> int:
         )
         if wrong_model_index is not None:
             wrong_step4 = run_command(
-                [sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", str(wrong_model_index), "--execute"],
+                [PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", str(wrong_model_index), "--execute"],
                 project,
                 allow_failure=True,
             )
@@ -315,7 +316,7 @@ def main() -> int:
             verify_selected_model_is_preserved(project, selected_source_path)
 
         step4 = run_command(
-            [sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", "selected", "--execute"],
+            [PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", "selected", "--execute"],
             project,
         )
         assert_contains(step4.stdout, "준비 결과:", "step 4 template conversion result")
@@ -328,13 +329,13 @@ def main() -> int:
             if not mlflow_env_ready(project):
                 raise AssertionError("--run-remote requires .env mlflow_tracking_uri/username/password")
             step5 = run_command(
-                [sys.executable, str(RUN_TRAINING_SCRIPT), "--project", str(project), "--entrypoint", "runtest_2.py", "--execute"],
+                [PYTHON_COMMAND, RUN_TRAINING_SCRIPT, "--project", ".", "--entrypoint", "runtest_2.py", "--execute"],
                 project,
             )
             assert_contains(step5.stdout, "원격 MLflow", "step 5 remote registration")
             results.append(StepResult(5, "원격 MLflow 등록 실행", "PASS", "실제 원격 등록 명령 성공"))
         else:
-            step5 = run_command([sys.executable, "runtest_2.py"], project, allow_failure=True)
+            step5 = run_command([PYTHON_COMMAND, "runtest_2.py"], project, allow_failure=True)
             combined = step5.stdout + step5.stderr
             if mlflow_env_ready(project):
                 results.append(StepResult(5, "원격 MLflow 등록 실행", "SKIP", "--run-remote 미지정: 실제 원격 등록 생략"))
@@ -344,7 +345,7 @@ def main() -> int:
 
         # 6. 추론 테스트
         if args.run_inference and not args.skip_inference:
-            step6 = run_command([sys.executable, "inferencetest.py"], project, allow_failure=True)
+            step6 = run_command([PYTHON_COMMAND, "inferencetest.py"], project, allow_failure=True)
             combined = step6.stdout + step6.stderr
             assert_contains(combined, "req_url 값을 입력", "step 6 req_url gate")
             results.append(StepResult(6, "추론 테스트", "PASS", "inferencetest.py URL 입력 게이트 확인"))
@@ -352,7 +353,7 @@ def main() -> int:
             results.append(StepResult(6, "추론 테스트", "SKIP", "사용자가 6번 또는 --run-inference를 선택하지 않아 실행하지 않음"))
 
         # 7. 오류 재실행
-        step7 = run_command([sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", "selected", "--execute"], project)
+        step7 = run_command([PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", "selected", "--execute"], project)
         assert_contains(step7.stdout, "준비 결과:", "step 7 rerun result")
         assert_contains(step7.stdout, selected_source_path.replace("\\", "/"), "step 7 selected model output")
         verify_generated_files(project)

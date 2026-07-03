@@ -196,7 +196,7 @@ def main():
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print(f"Project: {report.project_path}")
+        print("Project: .")
         print(f"Model path: {report.model_path or 'missing'}")
         print(f"Input example: {report.input_example_path or 'missing'}")
         print(f"Result path: {report.result_path or 'not written'}")

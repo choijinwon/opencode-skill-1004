@@ -141,7 +141,7 @@ def main() -> int:
     if not project.exists():
         raise SystemExit(f"project not found: {project}")
 
-    print(f"Project: {project}")
+    print("Project: .")
     for name, patterns in TARGET_FILES.items():
         path = project / name
         block = managed_block(patterns)
