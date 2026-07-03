@@ -1969,26 +1969,26 @@ def constant_free_loader_text(kind: str) -> str:
 '''
 
 
-def reference_style_input_example_code(kind: str, input_example: dict) -> str:
+def reference_style_input_example_code(kind: str, input_example: dict, saved_model_path: str, source_model_path: str) -> str:
     if kind in {"pytorch", "safetensors"}:
-        return '''sample_shape = [1, 1, 28, 28]
+        return f'''sample_shape = [1, 1, 28, 28]
 sample_data = [0.0] * 784
 
-request_input_example = {
+request_input_example = {{
     "inputs": [
-        {
+        {{
             "name": "selected_pytorch_tensor",
             "shape": sample_shape,
             "datatype": "FP32",
             "data": sample_data,
-        }
+        }}
     ],
     "model_kind": model_kind,
-    "url": selected_model_runtime_windows_path,
-    "path": selected_model_runtime_windows_path,
-    "model_path": selected_model_runtime_windows_path,
-    "source_path": selected_model_source_windows_path,
-}
+    "url": {saved_model_path!r},
+    "path": {saved_model_path!r},
+    "model_path": {saved_model_path!r},
+    "source_path": {source_model_path!r},
+}}
 '''
     return f'''request_input_example = {repr(input_example)}
 '''
@@ -2033,13 +2033,20 @@ def generated_constant_free_runtest_text(project: Path, selected_model: Path, ki
     saved_model_relative = f"saved_model/{selected_model.name}"
     saved_model_windows_relative = saved_model_relative.replace("/", "\\")
     saved_model_windows_relative = f"saved_model\\{selected_model.name}"
+    selected_linux_relative = normalize_path_text(selected_relative)
+    saved_model_linux_relative = saved_model_relative
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     profile = model_profile(project, selected_model, kind)
     input_example = selected_model_input_example_data(project, selected_model, kind)
     config = selected_model_config_data(project, selected_model, kind)
     config_literal = pformat(config, width=100, sort_dicts=False)
     loader = reference_style_loader_code(kind)
-    input_example_code = reference_style_input_example_code(kind, input_example).rstrip()
+    input_example_code = reference_style_input_example_code(
+        kind,
+        input_example,
+        saved_model_windows_relative,
+        selected_windows_relative,
+    ).rstrip()
     reference_header = ""
     if reference is not None:
         reference_header = (
@@ -2197,22 +2204,13 @@ except Exception as exc:
 # ------------------------------------------------------------
 # 데이터 준비
 # ------------------------------------------------------------
-selected_model_source_relative_path = {selected_windows_relative!r}
-selected_model_runtime_relative_path = {saved_model_windows_relative!r}
-selected_model_relative_path = selected_model_runtime_relative_path
-selected_model_linux_path = selected_model_runtime_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
-selected_model_source_linux_path = selected_model_source_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
-selected_model_windows_url = selected_model_linux_path.replace("/", "\\\\")
-selected_model_windows_path = selected_model_windows_url
-selected_model_runtime_windows_path = selected_model_windows_path
-selected_model_source_windows_path = selected_model_source_linux_path.replace("/", "\\\\")
 selected_model_path = first_existing_file(
     "selected_model",
     [
-        workspace_relative_path(selected_model_runtime_relative_path),
-        workspace_relative_path(selected_model_source_relative_path),
-        workspace_path("saved_model", relative_basename(selected_model_relative_path)),
-        workspace_path(relative_basename(selected_model_relative_path)),
+        workspace_relative_path({saved_model_windows_relative!r}),
+        workspace_relative_path({selected_windows_relative!r}),
+        workspace_path("saved_model", {selected_model.name!r}),
+        workspace_path({selected_model.name!r}),
     ],
 )
 model_kind = {kind!r}
@@ -2250,13 +2248,13 @@ os.makedirs(config_dir_path, exist_ok=True)
 config_path = workspace_path(config_dir, "config.json")
 
 params = {config_literal}
-params["model"]["url"] = selected_model_windows_url
-params["model"]["path"] = selected_model_windows_path
-params["model"]["runtime_model_path"] = selected_model_windows_path
-params["model"]["model_relative_path"] = selected_model_windows_path
-params["model"]["linux_path"] = selected_model_linux_path
-params["model"]["source_path"] = selected_model_source_windows_path
-params["model"]["linux_source_path"] = selected_model_source_linux_path
+params["model"]["url"] = {saved_model_windows_relative!r}
+params["model"]["path"] = {saved_model_windows_relative!r}
+params["model"]["runtime_model_path"] = {saved_model_windows_relative!r}
+params["model"]["model_relative_path"] = {saved_model_windows_relative!r}
+params["model"]["linux_path"] = {saved_model_linux_relative!r}
+params["model"]["source_path"] = {selected_windows_relative!r}
+params["model"]["linux_source_path"] = {selected_linux_relative!r}
 
 with open(config_path, "w", encoding="utf-8") as f:
     json.dump(params, f, indent=4, ensure_ascii=False)
@@ -2338,8 +2336,8 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         {{
             "model_name": params["model"]["model_name"],
             "model_kind": model_kind,
-            "model_url": selected_model_windows_url,
-            "model_path": selected_model_windows_path,
+            "model_url": {saved_model_windows_relative!r},
+            "model_path": {saved_model_windows_relative!r},
         }}
     )
 
@@ -3481,6 +3479,9 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 "_workspace_dir",
                 "_selected_model_path",
                 "_selected_model_kind",
+                "selected_model_source_relative_path",
+                "selected_model_runtime_relative_path",
+                "selected_model_relative_path",
             ]
             embedded = [name for name in forbidden_helpers if name in text]
             if embedded:
