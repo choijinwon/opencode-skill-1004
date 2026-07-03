@@ -27,6 +27,16 @@ SUPPORTED_MODEL_KINDS = {
     ".ubj": "xgboost_ubj",
 }
 DATA_FILE_SUFFIXES = {".csv"}
+CODE_SCAN_SUFFIXES = {".py", ".ipynb"}
+CODE_SCAN_SKIP_FILES = {"runtest_2.py"}
+TRAINING_CODE_PATTERN = re.compile(
+    r"("
+    r"\bmodel\.fit\s*\(|"
+    r"\bmodel\.compile\s*\(|"
+    r"\btorch\.save\s*\("
+    r")",
+    re.IGNORECASE,
+)
 GENERIC_MODEL_STEMS = {
     "best",
     "checkpoint",
@@ -385,6 +395,7 @@ class PreparedModelReport:
     project_path: str
     data_root: str
     model_artifact_paths: list[str]
+    training_code_paths: list[str]
     data_file_paths: list[str]
     entrypoint_paths: list[str]
     selected_model_path: str | None
@@ -505,6 +516,63 @@ def scan_data_files(project: Path) -> list[Path]:
             if path.is_file() and path.suffix.lower() in DATA_FILE_SUFFIXES:
                 found.append(path)
     return sorted(set(found))
+
+
+def read_code_text(path: Path) -> str:
+    if path.suffix.lower() == ".ipynb":
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+        except (json.JSONDecodeError, OSError):
+            return ""
+        cells = payload.get("cells", []) if isinstance(payload, dict) else []
+        chunks: list[str] = []
+        for cell in cells:
+            if not isinstance(cell, dict) or cell.get("cell_type") != "code":
+                continue
+            source = cell.get("source", "")
+            if isinstance(source, list):
+                chunks.append("".join(str(item) for item in source))
+            elif isinstance(source, str):
+                chunks.append(source)
+        return "\n".join(chunks)
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+
+
+def scan_training_code(project: Path) -> list[Path]:
+    if is_opencode_sample_source(project):
+        return []
+    found: list[Path] = []
+    for root, dirs, files in os.walk(project):
+        root_path = Path(root)
+        try:
+            relative_parts = root_path.relative_to(project).parts
+        except ValueError:
+            dirs[:] = []
+            continue
+        if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
+            dirs[:] = []
+            continue
+        dirs[:] = [dirname for dirname in dirs if dirname not in MODEL_SCAN_SKIP_DIRS]
+        for filename in files:
+            path = root_path / filename
+            if filename in CODE_SCAN_SKIP_FILES or path.suffix.lower() not in CODE_SCAN_SUFFIXES:
+                continue
+            if TRAINING_CODE_PATTERN.search(read_code_text(path)):
+                found.append(path)
+    return sorted(set(found), key=lambda path: model_sort_key(path, project))
+
+
+def training_code_run_hint(project: Path, training_code_paths: list[str]) -> str:
+    python_entrypoints = [path for path in training_code_paths if Path(path).suffix.lower() == ".py"]
+    if python_entrypoints:
+        return (
+            "실행 예: python .opencode/scripts/04-train-model/run_training.py --project "
+            f"{powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(python_entrypoints[0]))} --execute"
+        )
+    return "노트북 학습 코드는 먼저 .py entrypoint로 변환한 뒤 run_training.py --entrypoint <파일.py>로 실행하세요."
 
 
 def find_python_entrypoints(project: Path) -> list[Path]:
@@ -3409,9 +3477,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
     data_root = project / "data"
     models = scan_model_artifacts(project)
+    training_code = scan_training_code(project)
     data_files = scan_data_files(project)
     entrypoints = find_python_entrypoints(project)
     model_paths = [rel(path, project) for path in models]
+    training_code_paths = [rel(path, project) for path in training_code]
     data_paths = [rel(path, project) for path in data_files]
     entrypoint_paths = [rel(path, project) for path in entrypoints]
     requested_model = requested_model_path_from_raw(project, models, args.model)
@@ -3430,6 +3500,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         project_path=str(project),
         data_root=str(data_root),
         model_artifact_paths=model_paths,
+        training_code_paths=training_code_paths,
         data_file_paths=data_paths,
         entrypoint_paths=entrypoint_paths,
         selected_model_path=rel(selected_model, project) if selected_model else None,
@@ -3448,7 +3519,12 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.additional_requirements = additional_requirements
 
     if not models:
-        if entrypoints and data_files:
+        if training_code:
+            report.next_steps.append("Case 1: 학습 코드가 감지되었습니다. 2번 목록의 학습 코드 후보에서 사용할 entrypoint를 확인하세요.")
+            report.next_steps.append(f"감지된 학습 코드: {', '.join(training_code_paths[:5])}")
+            report.next_steps.append(training_code_run_hint(project, training_code_paths))
+            return report
+        elif entrypoints and data_files:
             report.failures.append("model_artifact_missing_entrypoint_with_csv")
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터로 판단합니다. Python 실행파일을 모델 생성/등록 entrypoint로 사용하세요.")
             report.next_steps.append(f"감지된 CSV 데이터: {', '.join(data_paths[:5])}")
@@ -3641,6 +3717,8 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
     )
     if report.model_artifact_paths:
         model_list_status = "완료"
+    elif report.training_code_paths:
+        model_list_status = "학습 코드 있음"
     elif report.entrypoint_paths:
         model_list_status = "실행파일 있음"
     elif report.data_file_paths:
@@ -3692,7 +3770,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
     print(f"Project: {report.project_path}")
     print(f"Data root: {report.data_root}")
 
-    if report.model_artifact_paths:
+    if report.model_artifact_paths or report.training_code_paths:
         data_model_count = sum(1 for path in report.model_artifact_paths if path == "data" or path.startswith("data/"))
         total_model_count = len(report.model_artifact_paths)
         print("\n모델 선택 화면")
@@ -3702,17 +3780,30 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             print("- 이후 단계는 이 선택 모델 기준으로 계속 진행합니다.")
         else:
             print(format_model_selection_hint())
-            if data_model_count == total_model_count:
-                print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
-            elif data_model_count:
-                print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+            if report.training_code_paths:
+                print("- case 1: 학습 코드가 감지되었습니다. 아래 학습 코드 후보도 2번 목록에 표시합니다.")
+            if total_model_count:
+                if data_model_count == total_model_count:
+                    print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+                elif data_model_count:
+                    print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+                else:
+                    print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            print("- 목록은 프로젝트 기준 상대경로 알파벳 순서입니다.")
+            if report.model_artifact_paths:
+                print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
             else:
-                print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
-            print("- 모델 목록은 프로젝트 기준 상대경로 알파벳 순서입니다.")
-            print("- 숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
-            for index, path in enumerate(report.model_artifact_paths, start=1):
-                print(f"  {index}. {path}")
-            print(f"- 실행 예: {PS_PREPARE_MODEL_COMMAND}")
+                print("- 학습 코드는 아래 번호로 확인하고, 실행 시 --entrypoint 경로를 사용합니다.")
+            if report.model_artifact_paths:
+                print("  모델 artifact 후보:")
+                for index, path in enumerate(report.model_artifact_paths, start=1):
+                    print(f"  {index}. {path}")
+                print(f"- 모델 artifact 선택 실행 예: {PS_PREPARE_MODEL_COMMAND}")
+            if report.training_code_paths:
+                print("  학습 코드 후보:")
+                for index, path in enumerate(report.training_code_paths, start=1):
+                    print(f"  {index}. {path}")
+                print(f"- 학습 코드 실행 안내: {training_code_run_hint(Path(report.project_path), report.training_code_paths)}")
             print("- 선택 후 진행: 3번 환경 검증")
             print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
 
@@ -3758,6 +3849,12 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
     print("\nmodel_artifact_paths:")
     if report.model_artifact_paths:
         for index, path in enumerate(report.model_artifact_paths, start=1):
+            print(f"{index}. {path}")
+    else:
+        print("- none")
+    print("training_code_paths:")
+    if report.training_code_paths:
+        for index, path in enumerate(report.training_code_paths, start=1):
             print(f"{index}. {path}")
     else:
         print("- none")

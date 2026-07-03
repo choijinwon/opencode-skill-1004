@@ -81,11 +81,9 @@ ARTIFACT_KIND_BY_SUFFIX = {
 
 TRAINING_CODE_PATTERN = re.compile(
     r"("
-    r"\b(?:model|clf|classifier|regressor|estimator|net)\.fit\s*\(|"
-    r"\b(?:model|net)\.compile\s*\(|"
-    r"\b(?:model|net)\.train\s*\(|"
-    r"\boptimizer\.step\s*\(|"
-    r"\bloss\.backward\s*\("
+    r"\bmodel\.fit\s*\(|"
+    r"\bmodel\.compile\s*\(|"
+    r"\btorch\.save\s*\("
     r")",
     re.IGNORECASE,
 )
@@ -95,8 +93,8 @@ CODE_SCAN_SKIP_FILES = {"runtest_2.py"}
 
 FRAMEWORK_CODE_RULES = [
     ("tensorflow", ["tensorflow", "tf.keras", "keras", ".compile("]),
-    ("pytorch", ["torch", "torch.nn", "optimizer.step", "loss.backward", ".train("]),
-    ("sklearn", ["sklearn", "scikit", "train_test_split", ".fit("]),
+    ("pytorch", ["torch", "torch.save"]),
+    ("sklearn", ["sklearn", "scikit", "train_test_split", "model.fit("]),
     ("xgboost", ["xgboost", "xgb.", "xgbclassifier", "xgbregressor"]),
 ]
 
