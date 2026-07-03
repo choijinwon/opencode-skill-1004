@@ -5,8 +5,8 @@ license: MIT
 compatibility: opencode
 metadata:
   flow: ml-workspace-development
-  stage: 04-inference-test
-  step: 4
+  stage: 06-inference-test
+  step: 6
 ---
 
 # Inference Test
@@ -80,7 +80,7 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 
 보조 스크립트:
-python .opencode\scripts\05-inference-test\test_inference.py --project <project> --execute
+python .opencode\scripts\06-inference-test\test_inference.py --project <project> --execute
 ```
 
 <details>

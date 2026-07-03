@@ -45,7 +45,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
   04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
-  05-inference-test/test_inference.py                수동 추론 계약 점검
+  06-inference-test/test_inference.py                수동 추론 계약 점검
 
 QA / Maintenance
   qa-maintenance/doctor.py                           전체 워크플로우 상태 1페이지 점검

@@ -102,7 +102,7 @@ python .opencode\scripts\04-train-model\prepare_selected_model.py --project <mod
 02-agent-mlflow-skill-sample-bootstrap
 03-agent-mlflow-skill-environment-check
 04-agent-mlflow-skill-train-model
-05-agent-mlflow-skill-inference-test
+06-agent-mlflow-skill-inference-test
 ```
 
 폴더명은 순서 표시용입니다. 각 `SKILL.md`의 `name:` 값은 기존 호출 호환성을 위해 변경하지 않습니다.
@@ -132,7 +132,7 @@ python .opencode\scripts\04-train-model\prepare_selected_model.py --project <mod
    04-train-model/adapt_ai_studio.py
 
 05 Inference Test
-   05-inference-test/test_inference.py
+   06-inference-test/test_inference.py
    generated: local_serving/localservingtest.py
 
 QA / Maintenance

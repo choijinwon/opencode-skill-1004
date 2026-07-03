@@ -51,13 +51,13 @@
     ],
     "purpose": "lock selected model, transform templates on step 4, and run confirmed entrypoint on step 5"
   },
-  "05-inference-test": {
-    "skill_folder": "05-agent-mlflow-skill-inference-test",
+  "06-inference-test": {
+    "skill_folder": "06-agent-mlflow-skill-inference-test",
     "process_steps": [
       "6. 추론 테스트"
     ],
     "primary_scripts": [
-      "05-inference-test/test_inference.py"
+      "06-inference-test/test_inference.py"
     ],
     "generated_entrypoints": [
       "local_serving/localservingtest.py"

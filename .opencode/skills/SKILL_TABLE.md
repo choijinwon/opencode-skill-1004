@@ -8,7 +8,7 @@
 | 2 | `02-agent-mlflow-skill-sample-bootstrap` | 샘플/템플릿 복사 | `02-sample-bootstrap/*` | 샘플 파일, 템플릿 파일 |
 | 3 | `03-agent-mlflow-skill-environment-check` | Python, 패키지, MLflow 설정 점검 | `03-environment-check/*` | 환경 점검 결과, `requirements.txt` 갱신 |
 | 4 | `04-agent-mlflow-skill-train-model` | 모델 선택, `runtest_2.py` 생성, 템플릿 변환, 원격 MLflow 등록 실행 | `04-train-model/*` | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
-| 5 | `05-agent-mlflow-skill-inference-test` | 로컬 추론 테스트 | `05-inference-test/*` | 추론 테스트 결과 |
+| 6 | `06-agent-mlflow-skill-inference-test` | 로컬 추론 테스트 | `06-inference-test/*` | 추론 테스트 결과 |
 
 ## 2. 모델 있을 때 프로세스
 

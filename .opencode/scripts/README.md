@@ -44,7 +44,7 @@ KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 
    04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
-   05-inference-test/test_inference.py                수동 추론 계약 점검
+   06-inference-test/test_inference.py                수동 추론 계약 점검
    generated: local_serving/localservingtest.py
 
 QA / Maintenance

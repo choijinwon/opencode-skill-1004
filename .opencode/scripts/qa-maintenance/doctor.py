@@ -33,7 +33,7 @@ SKILL_FOLDERS = [
     "02-agent-mlflow-skill-sample-bootstrap",
     "03-agent-mlflow-skill-environment-check",
     "04-agent-mlflow-skill-train-model",
-    "05-agent-mlflow-skill-inference-test",
+    "06-agent-mlflow-skill-inference-test",
 ]
 
 SAMPLE_SPEC_DIRS = [

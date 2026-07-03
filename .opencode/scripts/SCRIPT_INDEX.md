@@ -59,11 +59,11 @@ Support scripts:
 ## 05 Inference Test
 
 Skill folder:
-`05-agent-mlflow-skill-inference-test`
+`06-agent-mlflow-skill-inference-test`
 
 Primary scripts:
 
-- `05-inference-test/test_inference.py` - 추론 계약 점검
+- `06-inference-test/test_inference.py` - 추론 계약 점검
 
 Generated runtime entrypoint:
 
