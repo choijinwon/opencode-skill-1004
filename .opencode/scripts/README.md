@@ -27,6 +27,7 @@ KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 
 ```text
 01 Project Analyze
     01-project-analyze/validate_mlflow_project.py      상세 분석
+    launch_workspace_summary.py                        기존 런치 분석 명령 호환
    04-train-model/prepare_selected_model.py           모델 목록/선택
 
 02 Sample Bootstrap
@@ -96,9 +97,10 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 ```
 
-워크스페이스 첫 분석은 아래 명령으로 실행한다.
+워크스페이스 첫 분석은 아래 명령으로 실행한다. 기존 런치 가이드 호환 명령도 같은 분석 스크립트로 연결된다.
 
 ```powershell
+python .opencode\scripts\launch_workspace_summary.py .
 python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
 ```
 
@@ -238,6 +240,7 @@ python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <model-proj
 ```text
 python .opencode\scripts\01-project-analyze\validate_mlflow_project.py --project <model-project-folder>
 python .opencode\scripts\01-project-analyze\validate_mlflow_project.py --project <model-project-folder> --json
+python .opencode\scripts\launch_workspace_summary.py <model-project-folder>
 ```
 
 ### bootstrap_sample_project.py

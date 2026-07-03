@@ -3,6 +3,7 @@
     "skill_folder": "01-agent-mlflow-skill-project-analyze",
     "primary_scripts": [
       "01-project-analyze/validate_mlflow_project.py",
+      "launch_workspace_summary.py",
       "04-train-model/prepare_selected_model.py"
     ],
     "purpose": "workspace analysis, model_found decision, model list and model selection"

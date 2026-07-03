@@ -6,6 +6,7 @@ Skill folder:
 Scripts:
 
 - `validate_mlflow_project.py`
+- `../launch_workspace_summary.py`
 - `../04-train-model/prepare_selected_model.py`
 
 Responsibility:
