@@ -29,7 +29,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 01 Project Analyze
   01-project-analyze/validate_mlflow_project.py      상세 프로젝트 분석
   launch_workspace_summary.py                        Windows 런치 분석 명령 호환
-  04-train-model/prepare_selected_model.py           모델 목록 확인/모델 선택
+  04-train-model/prepare_selected_model.py           모델 목록 확인
 
 02 Sample Bootstrap
   02-sample-bootstrap/bootstrap_sample_project.py    sklearn/pytorch/tensorflow 샘플 복사
@@ -40,8 +40,8 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
   03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-  04-train-model/prepare_selected_model.py           runtest.py 참조 + runtest_2.py 변환 생성 + --sync-runtime
-  04-train-model/run_training.py                     확정 entrypoint 실행
+  04-train-model/prepare_selected_model.py           2번 모델 선택 고정 + 4번 템플릿 변환
+  04-train-model/run_training.py                     5번 원격 MLflow 등록 실행
   04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
@@ -51,6 +51,18 @@ QA / Maintenance
   qa-maintenance/doctor.py                           전체 워크플로우 상태 1페이지 점검
   qa-maintenance/test_local_sample.py                번들 샘플 QA
   SCRIPT_INDEX.md                 스킬 목록 기준 스크립트 정리표
+```
+
+고정 7단계 매핑:
+
+```text
+1 모델 목록 확인                  -> prepare_selected_model.py --project .
+2 모델 선택                       -> prepare_selected_model.py --model <번호|경로> --select-only --execute
+3 환경변수/requirements 갱신      -> check_environment.py
+4 템플릿 변환                     -> prepare_selected_model.py --model selected --execute
+5 원격 MLflow 등록 실행           -> run_training.py --execute
+6 추론 테스트                     -> local_serving/localservingtest.py
+7 오류 재실행                     -> 실패 단계 스크립트 재실행
 ```
 
 ## doctor.py

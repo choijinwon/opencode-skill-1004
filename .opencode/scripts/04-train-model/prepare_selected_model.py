@@ -645,6 +645,12 @@ def current_selected_model_path(project: Path) -> Path | None:
     return stored_selected_model_path(project)
 
 
+def is_selected_model_alias(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"selected", "current", "last", "기존", "현재", "선택"}
+
+
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     current_selected = current_selected_model_path(project)
     if not raw:
@@ -652,7 +658,7 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
             return current_selected, None
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
-    if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
+    if is_selected_model_alias(value):
         if current_selected is not None:
             return current_selected, None
         return None, "stored_model_selection_missing"
@@ -678,7 +684,7 @@ def requested_model_path_from_raw(project: Path, models: list[Path], raw: str | 
     if not raw:
         return None
     value = normalize_path_text(raw.strip())
-    if value.lower() in {"selected", "current", "last", "기존", "현재", "선택"}:
+    if is_selected_model_alias(value):
         return current_selected_model_path(project)
     if value.isdigit():
         index = int(value)
@@ -3629,7 +3635,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         )
         report.next_steps.append(f"선택 모델을 새 값으로 변경합니다: {rel(selected_model, project)}")
 
-    if args.select_only:
+    explicit_model_selection = bool(args.model and not is_selected_model_alias(args.model) and not args.sync_runtime)
+    if args.select_only or explicit_model_selection:
         changed, skipped, failures = write_config_json(project, selected_model, selected_kind, args.execute)
         report.prepared_paths.extend(["selected_model locked"] + changed)
         report.skipped.extend(skipped)
@@ -3639,7 +3646,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 [
                     "2번 모델 선택 완료: 선택 모델을 고정했습니다.",
                     "3번 환경변수/requirements 갱신을 실행하세요.",
-                    "3번 완료 후 4번 템플릿 생성/변환이 자동실행됩니다.",
+                    "4번 템플릿 변환은 사용자가 선택했을 때만 실행합니다.",
                     powershell_python_script(
                         CHECK_ENVIRONMENT_SCRIPT,
                         "--project",
@@ -3650,7 +3657,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 ]
             )
         elif not report.failures:
-            report.next_steps.append("검토 후 --execute를 붙여 선택 모델을 고정하세요.")
+            report.next_steps.append("검토 후 --execute를 붙여 선택 모델을 고정하세요. 템플릿 변환은 --model selected --execute로 별도 실행합니다.")
         return report
 
     if args.sync_runtime:
@@ -3752,7 +3759,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 f"선택 모델 유지: {rel(selected_model, project)}",
                 "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
                 f"3번은 사용자가 선택해 실행합니다: {PS_CHECK_ENV_COMMAND}",
-                "4번 템플릿 변환은 3번 완료 후 자동실행됩니다.",
+                "4번 템플릿 변환은 사용자가 선택했을 때만 진행합니다.",
                 "5번 원격 MLflow 등록 실행은 사용자가 선택했을 때만 진행합니다.",
                 "6번 추론 테스트와 7번 오류 재실행도 사용자가 선택했을 때만 진행합니다.",
             ]
@@ -3796,7 +3803,7 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
         model_list_status,
         "완료" if model_selected else "대기",
         "사용자 선택" if model_selected else "2번 완료 후",
-        "3번 후 자동실행",
+        "사용자 선택",
         "사용자 선택",
         "사용자 선택",
         "사용자 선택",
@@ -3820,7 +3827,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
         print("- 완료: 선택 모델 고정")
         print("- 다음: 3번 환경변수/requirements 갱신")
-        print("- 4번 템플릿 생성/변환은 3번 완료 후 자동실행")
+        print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
         return
 
     if not verbose and report.execute and report.selected_model_path and not report.failures:
@@ -3857,7 +3864,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                 print(f"  {index}. {path}")
             print(f"- 실행 예: {PS_PREPARE_MODEL_COMMAND}")
             print("- 선택 후 진행: 3번 환경변수/requirements 갱신")
-            print("- 4번 템플릿 생성/변환은 3번 완료 후 자동실행")
+            print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
 
     print_todo_guide(report)
 
@@ -3890,7 +3897,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
             print(f"- 3번 환경변수/requirements 갱신은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
-            print("- 4번 템플릿 변환은 3번 완료 후 자동실행")
+            print(r"- 4번 템플릿 변환은 사용자가 선택: python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute")
             print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {PS_RUN_TRAINING_COMMAND}")
             print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")
         elif report.next_steps:

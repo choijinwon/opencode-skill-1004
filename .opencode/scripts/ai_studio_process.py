@@ -33,7 +33,7 @@ def normalize_todo_statuses(statuses: list[str] | tuple[str, ...] | None = None)
         "대기",
         "대기",
         "사용자 선택",
-        "3번 후 자동실행",
+        "사용자 선택",
         "사용자 선택",
         "사용자 선택",
         "사용자 선택",

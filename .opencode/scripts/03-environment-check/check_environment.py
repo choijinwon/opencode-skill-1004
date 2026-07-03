@@ -1270,7 +1270,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             source_input_required = []
         if selected_path is None:
             failures.append("selected_model_config_missing")
-            next_steps.append("3번 환경검증은 config/config.json의 선택 모델 기준으로만 진행합니다. 먼저 2번 모델 선택과 4번 템플릿 변환을 다시 실행하세요.")
+            next_steps.append("3번 환경검증은 2번에서 고정한 선택 모델 기준으로 진행합니다. 먼저 2번 모델 선택을 실행하세요.")
     else:
         entrypoint_display = setting_file or "run_model.py, runtest.py 또는 run_test.py"
         tod_guide = [
@@ -1335,9 +1335,18 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
         next_steps.append(f"사용자가 직접 .env에 입력해야 하는 값: {required_names}.")
-    if entrypoint_name and model_settings is None:
+    entrypoint_pending_until_step4 = (
+        existing_model_flow
+        and selected_path is not None
+        and entrypoint_name is not None
+        and entrypoint_name.replace("\\", "/").lstrip("./") == "runtest_2.py"
+        and not (project / "runtest_2.py").exists()
+    )
+    if entrypoint_name and model_settings is None and not entrypoint_pending_until_step4:
         failures.append(f"entrypoint_not_found:{entrypoint_name}")
         next_steps.append(f"지정한 실행 파일 경로를 찾지 못했습니다: {entrypoint_name}")
+    elif entrypoint_pending_until_step4:
+        next_steps.append("runtest_2.py는 4번 템플릿 변환에서 생성됩니다.")
     if not Path(ai_env.path).exists():
         failures.append("missing_model_settings_file:.env")
         if existing_model_flow and entrypoint is None:
@@ -1455,7 +1464,7 @@ def print_text(report: EnvironmentReport):
     if report.tod_guide:
         settings_ready = not report.source_input_required
         step3_status = "완료" if settings_ready else "입력 필요"
-        step4_status = "자동실행 완료" if report.template_auto_run_return_code == 0 else ("자동실행 실패" if report.template_auto_run_attempted else "3번 후 자동실행")
+        step4_status = "사용자 선택" if settings_ready else "3번 완료 후"
         step5_status = "사용자 선택" if settings_ready else "3번 완료 후"
         print(format_todo_guide(("완료", "완료", step3_status, step4_status, step5_status, "사용자 선택", "사용자 선택")))
     if report.blocked_summary:
@@ -1505,32 +1514,6 @@ def run_package_auto_fix(project: Path) -> int:
     return proc.returncode
 
 
-def should_auto_run_template_conversion(report: EnvironmentReport) -> bool:
-    if not report.selected_model_path:
-        return False
-    project = Path(report.project_path)
-    if not prepare_selected_model_script_for_project(project).is_file():
-        return False
-    return True
-
-
-def run_template_auto_conversion(project: Path) -> tuple[int, list[str]]:
-    prepare_script = prepare_selected_model_script_for_project(project)
-    command = [
-        sys.executable,
-        str(prepare_script),
-        "--project",
-        ".",
-        "--model",
-        "selected",
-        "--execute",
-    ]
-    proc = subprocess.run(command, cwd=str(project), text=True, capture_output=True)
-    output = (proc.stdout + "\n" + proc.stderr).strip()
-    lines = output.splitlines()[-20:] if output else []
-    return proc.returncode, lines
-
-
 def print_action_items(report: EnvironmentReport) -> None:
     package_issues = package_action_items(report)
     python_issue = report.python_version_status == "version_mismatch"
@@ -1550,13 +1533,8 @@ def print_action_items(report: EnvironmentReport) -> None:
 
     if actionable_count == 0:
         print("\n처리해야 할 항목: 없음")
-        if report.template_auto_run_attempted:
-            status = "완료" if report.template_auto_run_return_code == 0 else "실패"
-            print(f"\n4번 템플릿 변환 자동실행: {status}")
-            if report.template_auto_run_output:
-                for line in report.template_auto_run_output[-8:]:
-                    print(f"- {line}")
         print("\n처리 완료 후 실행:")
+        print(f"- 4번 템플릿 변환은 사용자가 선택: {PS_PREPARE_SELECTED_COMMAND}")
         print(f"- 원격 MLflow 등록 실행: {PS_RUN_TRAINING_COMMAND}")
         print(f"- 추론 테스트는 사용자가 선택할 때만 실행: {PS_INFERENCE_COMMAND}")
         return
@@ -1599,9 +1577,7 @@ def print_action_items(report: EnvironmentReport) -> None:
         print("  mlflow_tracking_password (secret — 출력하지 않음)")
 
     print("\n처리 완료 후 실행:")
-    if report.template_auto_run_attempted:
-        status = "완료" if report.template_auto_run_return_code == 0 else "실패"
-        print(f"- 4번 템플릿 변환 자동실행: {status}")
+    print(f"- 4번 템플릿 변환은 사용자가 선택: {PS_PREPARE_SELECTED_COMMAND}")
     print(f"- 원격 MLflow 등록 실행: {PS_RUN_TRAINING_COMMAND}")
     print(f"- 추론 테스트는 사용자가 선택할 때만 실행: {PS_INFERENCE_COMMAND}")
 
@@ -1629,14 +1605,6 @@ def main():
             report.package_auto_fix_return_code = package_fix_return_code
         elif args.fix_packages and not args.json:
             print("패키지 자동 처리: 불일치/미설치 항목이 없습니다.")
-    if not args.json and should_auto_run_template_conversion(report):
-        print("\n4번 템플릿 변환 자동실행:")
-        print(powershell_prepare_selected_command(project))
-        template_return_code, template_output = run_template_auto_conversion(project)
-        report = build_report(project, args.entrypoint)
-        report.template_auto_run_attempted = True
-        report.template_auto_run_return_code = template_return_code
-        report.template_auto_run_output = template_output
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

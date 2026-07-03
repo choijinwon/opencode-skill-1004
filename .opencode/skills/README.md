@@ -34,7 +34,7 @@
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
 - 선택 모델 파일은 템플릿 폴더로 복사하지 않고, 변환된 코드는 선택 모델 원본 경로에 연결한다.
 - 모델 선택 단계에서는 사용할 모델만 확정하고 이후 단계가 같은 선택 모델을 계속 사용한다.
-- 템플릿 생성/변환은 3번 환경검증 후 4번에서 자동 실행한다.
+- 템플릿 생성/변환은 사용자가 4번을 선택했을 때만 실행한다.
 - 4번 템플릿 생성/변환에서 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`를 생성/갱신한다.
 - 4번 템플릿 생성/변환에서 템플릿을 복사한 뒤 `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `input_example.json`을 선택 모델 기준으로 준비한다.
 - `requirements.txt`는 템플릿에서 복사하지 않고 3번 환경검증에서 워크스페이스 루트에 생성/갱신한다.
@@ -71,7 +71,7 @@ Step 3. 환경변수/requirements 갱신
         Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 4. 템플릿 변환
-        3번 환경변수/requirements 갱신이 끝나면 자동실행한다.
+        사용자가 4번을 선택했을 때만 실행한다.
         pytorch_sample/ 템플릿을 먼저 복사한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
@@ -115,7 +115,7 @@ python .opencode\scripts\04-train-model\prepare_selected_model.py --project <mod
 ```text
 01 Project Analyze
    01-project-analyze/validate_mlflow_project.py
-   04-train-model/prepare_selected_model.py
+        04-train-model/prepare_selected_model.py
 
 02 Sample Bootstrap
    02-sample-bootstrap/bootstrap_sample_project.py

@@ -491,7 +491,7 @@ def main():
             for failure in report.failures:
                 print(f"- {failure}")
         if report.tod_guide:
-            print(format_todo_guide(("샘플 흐름", "샘플 선택 완료", "사용자 선택", "3번 후 자동실행", "사용자 선택", "사용자 선택", "사용자 선택")))
+            print(format_todo_guide(("샘플 흐름", "샘플 선택 완료", "사용자 선택", "사용자 선택", "사용자 선택", "사용자 선택", "사용자 선택")))
         if report.next_steps:
             print("Next steps:")
             for step in report.next_steps:

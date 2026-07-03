@@ -13,7 +13,7 @@ Primary scripts:
 
 - `01-project-analyze/validate_mlflow_project.py` - 상세 워크스페이스 분석
 - `launch_workspace_summary.py` - 기존 런치 분석 명령 호환 wrapper
-- `04-train-model/prepare_selected_model.py` - 모델 목록 확인, 모델 선택
+- `04-train-model/prepare_selected_model.py` - 모델 목록 확인
 
 ## 02 Sample Bootstrap
 
@@ -49,8 +49,8 @@ Skill folder:
 
 Primary scripts:
 
-- `04-train-model/prepare_selected_model.py` - `runtest.py` 참조, 선택 모델 기준 `runtest_2.py` 생성, `--sync-runtime` 후속 변환
-- `04-train-model/run_training.py` - 확정된 entrypoint 실행
+- `04-train-model/prepare_selected_model.py` - 2번 모델 선택 고정, 4번 템플릿 변환
+- `04-train-model/run_training.py` - 5번 원격 MLflow 등록 실행
 
 Support scripts:
 
@@ -67,7 +67,19 @@ Primary scripts:
 
 Generated runtime entrypoint:
 
-- `local_serving/localservingtest.py` - `prepare_selected_model.py --sync-runtime --execute`가 프로젝트 루트에 생성
+- `local_serving/localservingtest.py` - 4번 템플릿 변환이 프로젝트 루트에 생성
+
+## Fixed 7-Step Process Map
+
+```text
+1. 모델 목록 확인                  -> 04-train-model/prepare_selected_model.py --project .
+2. 모델 선택                       -> 04-train-model/prepare_selected_model.py --model <번호|경로> --select-only --execute
+3. 환경변수/requirements 갱신      -> 03-environment-check/check_environment.py
+4. 템플릿 변환                     -> 04-train-model/prepare_selected_model.py --model selected --execute
+5. 원격 MLflow 등록 실행           -> 04-train-model/run_training.py --execute
+6. 추론 테스트                     -> local_serving/localservingtest.py
+7. 오류 재실행                     -> 실패 단계 스크립트 재실행
+```
 
 ## QA / Maintenance
 

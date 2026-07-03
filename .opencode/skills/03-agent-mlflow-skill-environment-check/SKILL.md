@@ -18,7 +18,7 @@ metadata:
 현재 단계: 3. 환경변수/requirements 갱신
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
-다음 단계: 4. 템플릿 변환 자동실행 후, 사용자가 5. 원격 MLflow 등록 실행 선택
+다음 단계: 사용자가 4. 템플릿 변환 선택 후, 사용자가 5. 원격 MLflow 등록 실행 선택
 ```
 
 ## Workflow
@@ -27,7 +27,7 @@ metadata:
 1. 모델 목록 확인
 2. 모델 선택
 3. 환경변수/requirements 갱신
-4. 템플릿 변환 (3번 후 자동실행)
+4. 템플릿 변환 (사용자 선택)
 5. 원격 MLflow 등록 실행 (사용자 선택)
 6. 추론 테스트 (사용자 선택)
 7. 오류 재실행 (사용자 선택)
@@ -98,7 +98,7 @@ Secrets: mlflow_tracking_password=set, value hidden
   mlflow_tracking_password (secret — 출력하지 않음)
 
 처리 완료 후 실행:
-- 4번 템플릿 변환은 자동실행됨
+- 4번 템플릿 변환은 사용자가 선택: python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute
 - 5번 원격 MLflow 등록 실행은 사용자가 선택: python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute
 - 6번 추론 테스트는 사용자가 선택: python .\local_serving\localservingtest.py
 ```
