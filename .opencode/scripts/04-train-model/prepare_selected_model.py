@@ -3647,13 +3647,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "2번 모델 선택 완료: 선택 모델을 고정했습니다.",
                     "3번 환경변수/requirements 갱신을 실행하세요.",
                     "4번 템플릿 변환은 사용자가 선택했을 때만 실행합니다.",
-                    powershell_python_script(
-                        CHECK_ENVIRONMENT_SCRIPT,
-                        "--project",
-                        powershell_quote_path(project),
-                        "--entrypoint",
-                        "runtest_2.py",
-                    ),
+                    PS_CHECK_ENV_COMMAND,
                 ]
             )
         elif not report.failures:
@@ -3698,13 +3692,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 경로와 모델 형식 연결부를 수정했습니다.",
                     "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
                     "다음은 3번 환경변수/requirements 갱신입니다.",
-                    powershell_python_script(
-                        CHECK_ENVIRONMENT_SCRIPT,
-                        "--project",
-                        powershell_quote_path(project),
-                        "--entrypoint",
-                        "runtest_2.py",
-                    ),
+                    PS_CHECK_ENV_COMMAND,
                 ]
             )
         elif not report.failures:

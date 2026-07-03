@@ -16,6 +16,11 @@ AI Studio TODO Guide - 7단계
    자연어로도 선택 가능:
    "첫 번째 모델", "파이토치 모델", "data/... 사용"
 
+   숫자 1번 선택 시 실행:
+   python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model 1 --select-only --execute
+
+   Windows PowerShell에서 현재 워크스페이스 루트 기준 상대경로로 실행합니다.
+
 4. 모델 있음 7단계
    1 모델 목록 확인
    2 모델 선택
