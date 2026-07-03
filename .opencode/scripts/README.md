@@ -307,7 +307,7 @@ Python 기준 버전은 3.11.9이다. 다른 버전이면 `version_mismatch:pyth
 `requirements.txt`가 있으면 필요한 pip 패키지 목록, 현재 설치 여부, 설치된 버전, 요구 버전, 버전 불일치 여부를 함께 출력한다.
 환경검증 화면에는 설치 기준 파일을 `requirements.txt`로 별도 표시한다.
 환경검증은 복사 후 변환된 템플릿 파일들 가운데 실제 존재하는 Python 파일들의 import를 확인해 누락된 Python 패키지를 `requirements.txt`에 추가한다. 대표 예시는 `runtest_2.py`, `aiu_custom/model.py`, `aiu_custom/predict.py`, `local_serving/localservingtest.py`다. pip 설치는 자동 실행하지 않고 `python -m pip install -r requirements.txt` 명령만 안내한다.
-`mlflow_tracking_url`이 있으면 원격 MLflow 서버의 `/version`을 확인하고, 서버 version과 로컬 `mlflow` 설치 version 및 `requirements.txt` 요구 version이 다르면 불일치로 표시한다.
+`mlflow_tracking_uri`이 있으면 원격 MLflow 서버의 `/version`을 확인하고, 서버 version과 로컬 `mlflow` 설치 version 및 `requirements.txt` 요구 version이 다르면 불일치로 표시한다.
 Python 버전이 다르면 `차단 항목 요약`에 다음 형식으로 표시한다.
 
 ```text
@@ -338,7 +338,7 @@ ai_studio.env
 사용자가 직접 입력할 키:
 
 ```text
-mlflow_tracking_url
+mlflow_tracking_uri
 mlflow_tracking_username
 mlflow_tracking_password
 ```
@@ -353,25 +353,25 @@ mlflow_register_model_name
 작성 예시:
 
 ```text
-mlflow_tracking_url=http://<tracking-server>
+mlflow_tracking_uri=http://<tracking-server>
 mlflow_tracking_username=
 mlflow_tracking_password=
 ```
 
 `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다. 사용자는 해당 파일의 MLflow/ai Studio 설정 블록에 tracking URL, username, password만 직접 입력한다.
-`mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
+`mlflow_tracking_uri`은 원격 MLflow/리포트 URI만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
 tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트 실행을 중단한다. 사용자가 값을 직접 입력한 뒤 다시 실행한다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
 
 ```text
-mlflow_tracking_url -> MLFLOW_TRACKING_URI
+mlflow_tracking_uri -> MLFLOW_TRACKING_URI
 mlflow_tracking_username -> MLFLOW_TRACKING_USERNAME
 mlflow_tracking_password -> MLFLOW_TRACKING_PASSWORD
 mlflow_experiment_name -> MLFLOW_EXPERIMENT_NAME
 mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
-원격 배포 기본값은 `mlflow_tracking_url = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URL을 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
+원격 배포 기본값은 `mlflow_tracking_uri = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URI를 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
 Windows 워크스페이스 기준으로 준비/등록을 실행하며, MLflow에 전달하는 `code_paths`는 `aiu_custom`, artifact uri는 `saved_model\...`, `config\config.json` 같은 Windows 상대경로를 사용한다. KServe에 올라간 뒤에는 MLflow가 넘겨주는 Linux 컨테이너 내부 `context.artifacts["model"]`, `context.artifacts["config"]` 경로를 최우선으로 사용한다. Windows 로컬 절대경로는 KServe 런타임 경로로 사용하지 않는다.
 
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.

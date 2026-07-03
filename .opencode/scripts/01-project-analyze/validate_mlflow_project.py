@@ -101,7 +101,7 @@ SAMPLE_SPEC_FILES = [
 ]
 
 AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_url",
+    "mlflow_tracking_uri",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -652,7 +652,7 @@ def has_register_flow(entrypoints: list[Path]) -> tuple[bool, list[str]]:
 def find_mlflow_code_settings(entrypoints: list[Path]) -> list[str]:
     evidence = []
     setting_names = [
-        "mlflow_tracking_url",
+        "mlflow_tracking_uri",
         "mlflow_tracking_username",
         "mlflow_tracking_password",
         "mlflow_experiment_name",
@@ -781,7 +781,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if config_file and config_file.suffix == ".json":
         try:
             payload = json.loads(read_text(config_file))
-            for key in ["registered_model_name", "experiment_name", "tracking_uri", "tracking_url"]:
+            for key in ["registered_model_name", "experiment_name", "tracking_uri", "tracking_uri"]:
                 if key in payload:
                     local_remote_evidence.append(f"{key}: present")
         except json.JSONDecodeError:
@@ -827,7 +827,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if not prepare_found:
         next_steps.append("Confirm a prepare-only or preflight behavior before registration.")
     if not local_remote_evidence:
-        next_steps.append("runtest_2.py 설정 블록에 원격 MLflow/리포트 URL, username, password를 직접 입력하세요.")
+        next_steps.append("runtest_2.py 설정 블록에 원격 MLflow/리포트 URI, username, password를 직접 입력하세요.")
     if not next_steps:
         next_steps.append("Proceed to local/remote MLflow registration guidance.")
 

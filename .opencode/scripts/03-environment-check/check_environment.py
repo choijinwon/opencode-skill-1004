@@ -31,7 +31,7 @@ ENV_KEYS = [
 ]
 
 AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_url",
+    "mlflow_tracking_uri",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -90,11 +90,9 @@ MODEL_SCAN_SKIP_DIRS = {
 }
 
 SETTING_ALIASES = {
-    "mlflow_tracking_url": {
-        "mlflow_tracking_url",
-        "mflow_tracking_url",
-        "tracking_url",
+    "mlflow_tracking_uri": {
         "mlflow_tracking_uri",
+        "tracking_uri",
         "MLFLOW_TRACKING_URI",
     },
     "mlflow_tracking_username": {
@@ -132,7 +130,7 @@ ALIAS_TO_SETTING = {
 }
 
 EXPORT_ENV_MAP = {
-    "mlflow_tracking_url": "MLFLOW_TRACKING_URI",
+    "mlflow_tracking_uri": "MLFLOW_TRACKING_URI",
     "mlflow_tracking_username": "MLFLOW_TRACKING_USERNAME",
     "mlflow_tracking_password": "MLFLOW_TRACKING_PASSWORD",
     "mlflow_experiment_name": "MLFLOW_EXPERIMENT_NAME",
@@ -916,7 +914,7 @@ def remote_version_status(server_version: str | None, local_version: str | None)
 
 def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = None) -> RemoteMlflowStatus:
     settings = resolved_mlflow_settings(project, entrypoint_name)
-    tracking_uri = settings.get("mlflow_tracking_url")
+    tracking_uri = settings.get("mlflow_tracking_uri")
     local_version = package_version("mlflow")
 
     if tracking_uri is None:
@@ -924,7 +922,7 @@ def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = Non
             tracking_uri_status="missing",
             status="skipped",
             local_version=local_version,
-            detail="mlflow_tracking_url is missing",
+            detail="mlflow_tracking_uri is missing",
         )
     if tracking_uri.lower().startswith("file://"):
         return RemoteMlflowStatus(
@@ -1265,7 +1263,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
                 break
     tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported"} for item in export_ready)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
-        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_url에 원격 MLflow/리포트 URL을 직접 입력하세요.")
+        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_uri에 원격 MLflow/리포트 URI를 직접 입력하세요.")
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
         next_steps.append(f"사용자가 직접 소스에 입력해야 하는 값: {required_names}.")
@@ -1451,7 +1449,7 @@ def print_action_items(report: EnvironmentReport) -> None:
     needs_mlflow_input = any(
         name in input_names
         for name in {
-            "mlflow_tracking_url",
+            "mlflow_tracking_uri",
             "mlflow_tracking_username",
             "mlflow_tracking_password",
         }
@@ -1499,7 +1497,7 @@ def print_action_items(report: EnvironmentReport) -> None:
             except ValueError:
                 source_path = Path(report.model_settings.path).name
         print(f"- 직접 입력 필요: {source_path} 설정 블록")
-        print("  mlflow_tracking_url — 원격 MLflow 서버 URL (http://... 또는 https://...)")
+        print("  mlflow_tracking_uri — 원격 MLflow 서버 URI (http://... 또는 https://...)")
         print("  mlflow_tracking_username")
         print("  mlflow_tracking_password (secret — 출력하지 않음)")
 

@@ -24,7 +24,7 @@ requirements.txt
 필수 값:
 
 ```text
-mlflow_tracking_url = ""          # tracking 서버 URL
+mlflow_tracking_uri = ""          # tracking 서버 URI
 mlflow_tracking_username = ""     # 사용자명
 mlflow_tracking_password = ""     # 비밀번호, 출력 금지
 mlflow_experiment_name = "sklearn_sample"
@@ -32,9 +32,8 @@ mlflow_register_model_name = "sklearn_sample_model"
 ```
 
 `run_model.py` 실행 시 위 값은 `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_REGISTER_MODEL_NAME`으로 export됩니다.
-원격 배포 기본값은 `mlflow_tracking_url = ""`입니다. 자동 tracking URI를 넣지 않으므로 사용자가 직접 원격 MLflow tracking 서버 URL을 입력해야 합니다.
+원격 배포 기본값은 `mlflow_tracking_uri = ""`입니다. 자동 tracking URI를 넣지 않으므로 사용자가 직접 원격 MLflow tracking 서버 URI를 입력해야 합니다.
 
-주의: `mflow_tracking_url`이 아니라 `mlflow_tracking_url`을 사용합니다.
 
 주의:
 

@@ -144,7 +144,7 @@ entrypoint를 찾지 못한 경우:
 - 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣게 안내한다.
 - 파일을 넣은 뒤 --entrypoint <file>로 다시 실행한다.
 - tracking URL, username, password는 사용자가 직접 입력해야 함
-- 5번 원격 MLflow 등록 실행의 tracking URL은 원격 `http://` 또는 `https://` URL이어야 하며 `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
+- 5번 원격 MLflow 등록 실행의 tracking URI는 원격 `http://` 또는 `https://` URL이어야 하며 `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
 - mlflow_experiment_name, mlflow_register_model_name은 자동 생성 가능
 - tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트를 실행하지 않고 사용자가 직접 입력 후 다시 실행하도록 안내한다.
 

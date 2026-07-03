@@ -46,7 +46,7 @@ MODEL_PATH = MODEL_DIR / "model.pt"
 # AI 환경 설정
 # 할당 받은 MLflow tracking server 값을 사용자가 직접 입력합니다.
 # 비밀번호 값은 출력하지 않습니다.
-mlflow_tracking_url = ""
+mlflow_tracking_uri = ""
 mlflow_tracking_username = ""
 mlflow_tracking_password = ""
 mlflow_experiment_name = "pytorch_sample"
@@ -64,7 +64,7 @@ class TinyTorchModel(nn.Module):
 
 def missing_mlflow_settings() -> list[str]:
     required = {
-        "mlflow_tracking_url": mlflow_tracking_url,
+        "mlflow_tracking_uri": mlflow_tracking_uri,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
     }
@@ -73,7 +73,7 @@ def missing_mlflow_settings() -> list[str]:
 
 def export_mlflow_environment() -> None:
     exports = {
-        "MLFLOW_TRACKING_URI": mlflow_tracking_url,
+        "MLFLOW_TRACKING_URI": mlflow_tracking_uri,
         "MLFLOW_TRACKING_USERNAME": mlflow_tracking_username,
         "MLFLOW_TRACKING_PASSWORD": mlflow_tracking_password,
         "MLFLOW_EXPERIMENT_NAME": mlflow_experiment_name,
@@ -147,7 +147,7 @@ def main() -> None:
         return
 
     export_mlflow_environment()
-    mlflow.set_tracking_uri(mlflow_tracking_url)
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
 
     train_x, train_y, test_x, test_y = prepare_data()

@@ -40,7 +40,7 @@ metadata:
 2. Python 실행 파일과 버전을 확인한다.
 3. dependency 파일과 핵심 패키지를 확인한다.
 4. MLflow 3.13.0 설치/version을 확인한다.
-5. mlflow_tracking_url이 있으면 원격 MLflow 서버 version을 확인한다.
+5. mlflow_tracking_uri이 있으면 원격 MLflow 서버 version을 확인한다.
 6. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트한다. 이때 필수 패키지 5개는 항상 유지한다.
 7. Python 3.13 등에서 kserve 설치 호환성 문제가 보여도 `kserve==0.15.0`을 requirements.txt에서 제거하지 않는다. Python 버전 차단/전환 대상으로 안내한다.
 7. runtest_2.py 설정 블록의 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
@@ -75,7 +75,7 @@ Python: version_mismatch, current=<현재버전>, expected=3.11.9
 MLflow: set
 Remote MLflow: version_match | version_mismatch | unreachable | skipped
 Secrets: mlflow_tracking_password=set, value hidden
-입력이 필요한 값: mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password
+입력이 필요한 값: mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password
 ```
 
 환경 검증 결과를 설명할 때는 `다음단계 진행하시겠습니까?`처럼 질문하지 않는다.
@@ -92,7 +92,7 @@ Secrets: mlflow_tracking_password=set, value hidden
     요구 버전: ==2.2.3
     설치 버전: 2.3.3
 - 직접 입력 필요: runtest_2.py 설정 블록
-  mlflow_tracking_url — 원격 MLflow 서버 URL (http://... 또는 https://...)
+  mlflow_tracking_uri — 원격 MLflow 서버 URI (http://... 또는 https://...)
   mlflow_tracking_username
   mlflow_tracking_password (secret — 출력하지 않음)
 
@@ -153,7 +153,7 @@ warn:
 - 원격 MLflow 서버 version 확인 실패(unreachable)지만 URL/인증을 다시 확인할 수 있음
 
 needs_user_input:
-- mlflow_tracking_url, username, password 입력 필요
+- mlflow_tracking_uri, username, password 입력 필요
 - 실제 entrypoint 확인 필요
 
 blocked:
@@ -166,7 +166,7 @@ blocked:
 사용자가 직접 입력할 설정:
 
 ```text
-mlflow_tracking_url
+mlflow_tracking_uri
 mlflow_tracking_username
 mlflow_tracking_password
 ```
@@ -180,7 +180,7 @@ mlflow_experiment_name
 mlflow_register_model_name
 ```
 
-`mlflow_tracking_url`은 사용자가 직접 입력한다. 단, 5번 원격 MLflow 등록 실행에서는 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:` 로컬 tracking은 사용하지 않는다.
+`mlflow_tracking_uri`은 사용자가 직접 입력한다. 단, 5번 원격 MLflow 등록 실행에서는 원격 MLflow/리포트 URI만 사용한다. `http://` 또는 `https://`를 입력하고, `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:` 로컬 tracking은 사용하지 않는다.
 
 </details>
 
@@ -202,7 +202,7 @@ mlflow_register_model_name
 
 증상: torch가 SSL 문제로 설치 불가
 원인: pip가 https:// PyPI 또는 https://download.pytorch.org 인덱스를 사용함
-조치: SSL 설치 금지. 내부 http:// PyPI/Nexus 미러 URL을 사용해 requirements.txt 기준으로 설치
+조치: SSL 설치 금지. 내부 http:// PyPI/Nexus 미러 URI를 사용해 requirements.txt 기준으로 설치
 ```
 
 </details>
@@ -213,13 +213,12 @@ mlflow_register_model_name
 허용 alias:
 
 ```text
-tracking_url -> mlflow_tracking_url
+tracking_uri -> mlflow_tracking_uri
 username -> mlflow_tracking_username
 password -> mlflow_tracking_password
-mflow_tracking_url -> 오타, mlflow_tracking_url로 수정 안내
 ```
 
-원격 tracking/report URL:
+원격 tracking/report URI:
 
 ```text
 MLFLOW_TRACKING_URI=<사용자가 입력한 원격 http://... 또는 https://...>
@@ -233,7 +232,7 @@ MLflow artifact는 artifact_path="ai_studio" 아래 code/ 구조로 기록
 
 - secret 값을 로그나 응답에 포함하지 않는다.
 - `MLFLOW_TRACKING_PASSWORD`와 `mlflow_tracking_password` 값은 절대 출력하지 않는다.
-- 폐쇄망에서는 GitHub issue, crash report, telemetry URL을 열지 않는다.
+- 폐쇄망에서는 GitHub issue, crash report, telemetry URI를 열지 않는다.
 - 환경 검증의 차단/경고 항목은 프로세스를 종료시키는 실패가 아니라 보고서 항목으로 출력한다.
 - Bun 런타임은 사용하지 않는다.
 - JavaScript 설치가 필요하고 `package.json`이 있으면 `npm i`만 사용한다.

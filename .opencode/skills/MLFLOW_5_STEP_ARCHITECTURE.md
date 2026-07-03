@@ -114,7 +114,7 @@ input_example.json
 필수 키:
 
 ```env
-mlflow_tracking_url=""
+mlflow_tracking_uri=""
 mlflow_tracking_username=""
 mlflow_tracking_password=""
 mlflow_experiment_name=""

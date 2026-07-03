@@ -115,7 +115,7 @@ MODEL_SCAN_SKIP_DIRS = {
     "venv",
 }
 MLFLOW_SETTING_NAMES = {
-    "mlflow_tracking_url",
+    "mlflow_tracking_uri",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -1349,7 +1349,7 @@ SAFE_EXECUTION_REGISTRATION_FIELDS = {
     "INPUT_EXAMPLE_PATH",
     "CONFIG_DIR",
     "CONFIG_PATH",
-    "mlflow_tracking_url",
+    "mlflow_tracking_uri",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -1534,13 +1534,13 @@ MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # tracking URL, username, password는 사용자가 직접 입력합니다.
 # experiment/model name은 선택 모델 파일명 기준으로 자동 생성됩니다.
 # password 값은 출력하지 않습니다.
-mlflow_tracking_url = ""
+mlflow_tracking_uri = ""
 mlflow_tracking_username = ""
 mlflow_tracking_password = ""
 mlflow_experiment_name = "{default_experiment_name}"
 mlflow_register_model_name = "{default_register_model_name}"
 
-effective_mlflow_tracking_uri = mlflow_tracking_url
+effective_mlflow_tracking_uri = mlflow_tracking_uri
 
 {loader}
 
@@ -1549,7 +1549,7 @@ effective_mlflow_tracking_uri = mlflow_tracking_url
 _aiu_missing_mlflow_settings = [
     _aiu_name
     for _aiu_name, _aiu_value in {{
-        "mlflow_tracking_url": mlflow_tracking_url,
+        "mlflow_tracking_uri": mlflow_tracking_uri,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
     }}.items()
@@ -2038,8 +2038,8 @@ if hasattr(sys.stdout, "buffer"):
 # ------------------------------------------------------------
 # MLflow 환경 설정
 # ------------------------------------------------------------
-# 할당받은 MLflow Tracking Server URL / 계정 정보 기재
-mlflow_tracking_url = ""
+# 할당받은 MLflow Tracking Server URI / 계정 정보 기재
+mlflow_tracking_uri = ""
 mlflow_tracking_username = ""
 mlflow_tracking_password = ""
 
@@ -2092,18 +2092,18 @@ def mlflow_artifact_uri(path):
     return normalize_local_path(path)
 
 
-def validate_mlflow_tracking_url(value):
-    tracking_url = str(value).strip()
-    lowered = tracking_url.lower()
-    if not tracking_url:
-        raise ValueError("mlflow_tracking_url_required: 원격 MLflow Tracking Server URL을 입력하세요.")
+def validate_mlflow_tracking_uri(value):
+    tracking_uri = str(value).strip()
+    lowered = tracking_uri.lower()
+    if not tracking_uri:
+        raise ValueError("mlflow_tracking_uri_required: 원격 MLflow Tracking Server URI를 입력하세요.")
     if lowered.startswith(("sqlite:", "file:")):
         raise ValueError(
-            "mlflow_tracking_url_invalid: sqlite/file 로컬 tracking은 사용하지 않습니다. "
-            "원격 MLflow 서버 URL(http:// 또는 https://)을 입력하세요."
+            "mlflow_tracking_uri_invalid: sqlite/file 로컬 tracking은 사용하지 않습니다. "
+            "원격 MLflow 서버 URI(http:// 또는 https://)을 입력하세요."
         )
     if not lowered.startswith(("http://", "https://")):
-        raise ValueError("mlflow_tracking_url_invalid: http:// 또는 https:// URL만 사용할 수 있습니다.")
+        raise ValueError("mlflow_tracking_uri_invalid: http:// 또는 https:// URI만 사용할 수 있습니다.")
     if lowered.startswith((
         "http://127.",
         "https://127.",
@@ -2113,10 +2113,10 @@ def validate_mlflow_tracking_url(value):
         "https://0.0.0.0",
     )):
         raise ValueError(
-            "mlflow_tracking_url_invalid: 5번 원격 MLflow 등록 실행에는 원격 서버 URL이 필요합니다. "
-            "localhost/127.0.0.1/0.0.0.0 대신 원격 http:// 또는 https:// URL을 입력하세요."
+            "mlflow_tracking_uri_invalid: 5번 원격 MLflow 등록 실행에는 원격 서버 URI가 필요합니다. "
+            "localhost/127.0.0.1/0.0.0.0 대신 원격 http:// 또는 https:// URI를 입력하세요."
         )
-    return tracking_url
+    return tracking_uri
 
 
 def handle_mlflow_connection_error(exc):
@@ -2124,7 +2124,7 @@ def handle_mlflow_connection_error(exc):
     if "sqlite3.OperationalError" in message and "disk I/O error" in message:
         print("MLflow 서버 저장소 오류: SQLite disk I/O error가 발생했습니다.")
         print("원인 후보: MLflow 서버가 sqlite/mlflow.db backend로 떠 있고, 해당 경로 권한/잠금/드라이브 I/O 문제가 있습니다.")
-        print("조치: mlflow_tracking_url을 원격 MLflow 서버 URL로 바꾸거나, 서버 backend-store-uri와 artifact-root 경로 권한을 확인하세요.")
+        print("조치: mlflow_tracking_uri를 원격 MLflow 서버 URI로 바꾸거나, 서버 backend-store-uri와 artifact-root 경로 권한을 확인하세요.")
         print("주의: runtest_2.py에서는 로컬 sqlite/file tracking을 사용하지 않습니다.")
         raise SystemExit(1)
     raise exc
@@ -2133,7 +2133,7 @@ def handle_mlflow_connection_error(exc):
 missing_mlflow_settings = [
     name
     for name, value in {{
-        "mlflow_tracking_url": mlflow_tracking_url,
+        "mlflow_tracking_uri": mlflow_tracking_uri,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
     }}.items()
@@ -2148,9 +2148,9 @@ if missing_mlflow_settings:
     print("비밀번호 값은 출력하지 않습니다.")
     raise SystemExit(0)
 
-mlflow_tracking_url = validate_mlflow_tracking_url(mlflow_tracking_url)
+mlflow_tracking_uri = validate_mlflow_tracking_uri(mlflow_tracking_uri)
 try:
-    mlflow.set_tracking_uri(mlflow_tracking_url)
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
 except Exception as exc:
     handle_mlflow_connection_error(exc)
@@ -2218,9 +2218,9 @@ mlflow_test_ds = None
 
 
 def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, str]:
-    base_url = str(mlflow_tracking_url).strip().rstrip("/")
+    base_url = str(mlflow_tracking_uri).strip().rstrip("/")
     urls = {{
-        "tracking_url": base_url,
+        "tracking_uri": base_url,
         "experiment_url": f"{{base_url}}/#/experiments/{{experiment_id}}",
         "experiment_models_url": f"{{base_url}}/#/experiments/{{experiment_id}}/models",
         "traces_url": f"{{base_url}}/#/experiments/{{experiment_id}}/traces?startTime=ALL",
@@ -2235,14 +2235,14 @@ def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, s
 
 def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
     urls = mlflow_ui_urls(experiment_id, run_id)
-    print("MLflow Tracking URL:", urls["tracking_url"])
-    print("MLflow Experiment URL:", urls["experiment_url"])
-    print("MLflow Experiment Models URL:", urls["experiment_models_url"])
-    print("MLflow Traces URL:", urls["traces_url"])
+    print("MLflow Tracking URI:", urls["tracking_uri"])
+    print("MLflow Experiment URI:", urls["experiment_url"])
+    print("MLflow Experiment Models URI:", urls["experiment_models_url"])
+    print("MLflow Traces URI:", urls["traces_url"])
     if "run_url" in urls:
-        print("MLflow Run URL:", urls["run_url"])
+        print("MLflow Run URI:", urls["run_url"])
     if "registered_model_url" in urls:
-        print("MLflow Registered Model URL:", urls["registered_model_url"])
+        print("MLflow Registered Model URI:", urls["registered_model_url"])
 
 
 def ensure_registered_model(model_info) -> str:
@@ -2412,14 +2412,14 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
     text = text.replace('mlflow_register_model_name = "pytorch_sample_model"', f"mlflow_register_model_name = {default_register_model_name!r}")
     text = text.replace("runtest.py에 직접 입력하세요.", "runtest_2.py에 직접 입력하세요.")
     text = text.replace(
-        "    export_mlflow_environment()\n    mlflow.set_tracking_uri(mlflow_tracking_url)",
+        "    export_mlflow_environment()\n    mlflow.set_tracking_uri(mlflow_tracking_uri)",
         "    try:\n"
         "        import mlflow\n"
         "    except Exception as exc:\n"
         "        print(f\"MLflow import failed. Install packages from requirements.txt first. reason={exc}\")\n"
         "        return\n\n"
         "    export_mlflow_environment()\n"
-        "    mlflow.set_tracking_uri(mlflow_tracking_url)",
+        "    mlflow.set_tracking_uri(mlflow_tracking_uri)",
     )
     text = re.sub(
         r"(?m)^    model\s*=\s*TinyTorchModel\(.*\)\n",
@@ -2591,7 +2591,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "model_load_hint": "ai_LOAD_HINT",
         "REQUIRED_PACKAGE": "ai_REQUIRED_PACKAGE",
         "required_package": "ai_REQUIRED_PACKAGE",
-        "mlflow_tracking_url": '""',
+        "mlflow_tracking_uri": '""',
         "mlflow_tracking_username": '""',
         "mlflow_tracking_password": '""',
         "mlflow_experiment_name": repr(default_experiment_name),
@@ -2600,7 +2600,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
     if preserve_code:
         replacements.update(
             {
-                "mlflow_tracking_url": '""',
+                "mlflow_tracking_uri": '""',
                 "mlflow_experiment_name": repr(default_experiment_name),
                 "mlflow_register_model_name": repr(default_register_model_name),
             }

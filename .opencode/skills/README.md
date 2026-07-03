@@ -46,8 +46,8 @@
 - `runtest_2.py`는 참조한 `runtest.py` 구조를 기반으로 변환한다.
 - 모델 경로/MODEL_KIND/로더는 선택 모델 실행/등록 연결부 기준으로 변환한다.
 - 선택된 모델 종류에 맞춰 `load_selected_model()`, `required_package`, `load_hint`를 생성한다.
-- 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
-- `mlflow_tracking_url`은 사용자가 직접 입력하되, 5번 실행에서는 원격 `http://` 또는 `https://` URL만 허용한다. `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
+- 사용자가 직접 입력할 값은 `mlflow_tracking_uri`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
+- `mlflow_tracking_uri`은 사용자가 직접 입력하되, 5번 실행에서는 원격 `http://` 또는 `https://` URI만 허용한다. `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
 - `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 확인한다.
 
@@ -208,6 +208,6 @@ tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 - JavaScript 패키지 설치가 필요하고 `package.json`이 있으면 `npm i`만 사용합니다.
 - 폐쇄망에서는 `requirements.txt` 기준으로 내부 `http://` PyPI/Nexus 미러를 사용합니다.
 - torch는 SSL/HTTPS 인덱스로 직접 설치하지 않습니다. 내부 `http://` PyPI/Nexus 미러만 사용합니다.
-- PyTorch CPU wheel의 Nexus proxy upstream 참고 URL은 `https://download.pytorch.org/whl/cpu`입니다.
+- PyTorch CPU wheel의 Nexus proxy upstream 참고 URI는 `https://download.pytorch.org/whl/cpu`입니다.
 - Windows에서는 `standaloneExecutable` 또는 native executable 흐름보다 Python script 흐름을 우선합니다.
 - 폐쇄망 응답이 느리면 `python .opencode/scripts/03-environment-check/response_speed_check.py --project .` 후 `python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .`를 실행합니다.

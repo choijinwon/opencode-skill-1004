@@ -101,7 +101,7 @@ ai_studio.env
 필수 키:
 
 ```env
-mlflow_tracking_url=""
+mlflow_tracking_uri=""
 mlflow_tracking_username=""
 mlflow_tracking_password=""
 mlflow_experiment_name=""
@@ -309,7 +309,7 @@ ai_studio.env 필수 키 상태
 아래 키를 확인한다.
 
 ```text
-mlflow_tracking_url
+mlflow_tracking_uri
 mlflow_tracking_username
 mlflow_tracking_password
 mlflow_experiment_name
