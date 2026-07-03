@@ -1,9 +1,10 @@
 import argparse
-import importlib.util
+import ast
 import json
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 def resolve_workspace_project(raw_project: str) -> Path:
@@ -25,13 +26,14 @@ def resolve_workspace_project(raw_project: str) -> Path:
 @dataclass
 class InferenceReport:
     project_path: str
-    model_path: str | None
     input_example_path: str | None
+    inferencetest_path: str | None
+    req_url: str | None
+    req_url_status: str
     result_path: str | None
-    mode: str
-    output_type: str | None
-    json_serializable: bool
     executed: bool
+    status_code: int | None = None
+    response_schema: str | None = None
     failures: list[str] = field(default_factory=list)
     output_preview: str | None = None
 
@@ -41,53 +43,43 @@ def load_json(path: Path):
 
 
 def find_input_example(project: Path) -> Path | None:
-    for name in [
-        "input_example.json",
-        "sample_input.json",
-        "example.json",
-    ]:
+    for name in ["input_example.json", "sample_input.json", "example.json"]:
         candidate = project / name
         if candidate.exists():
             return candidate
     return None
 
 
-def find_model_path_from_config(project: Path) -> tuple[Path | None, str | None]:
-    config_path = project / "config" / "config.json"
-    if not config_path.is_file():
-        return None, "selected_model_config_missing"
+def find_inferencetest(project: Path) -> Path | None:
+    candidate = project / "inferencetest.py"
+    return candidate if candidate.is_file() else None
+
+
+def literal_assignment(path: Path, name: str) -> str | None:
     try:
-        payload = json.loads(config_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return None, f"selected_model_config_parse_error:{exc.lineno}"
-    model = payload.get("model") if isinstance(payload, dict) else None
-    if not isinstance(model, dict):
-        return None, "selected_model_config_model_missing"
-    source_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
-    if not isinstance(source_path, str) or not source_path.strip():
-        return None, "selected_model_config_source_path_missing"
-    candidate = Path(source_path)
-    if not candidate.is_absolute():
-        candidate = project / candidate
-    candidate = candidate.resolve()
-    if not candidate.exists():
-        return None, f"selected_model_config_not_found:{source_path}"
-    return candidate, None
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+            continue
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return node.value.value
+    return None
 
 
-def find_model_path(project: Path) -> tuple[Path | None, str | None]:
-    selected_model, config_error = find_model_path_from_config(project)
-    if selected_model is not None:
-        return selected_model, None
-    return None, config_error
-
-
-def jsonable(value) -> bool:
-    try:
-        json.dumps(value, ensure_ascii=False, default=str)
-        return True
-    except TypeError:
-        return False
+def validate_predict_url(url: str | None) -> tuple[str | None, str, str | None]:
+    value = (url or "").strip()
+    if not value:
+        return None, "missing", "missing_req_url"
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return value, "invalid", "invalid_req_url_scheme"
+    if not value.rstrip("/").endswith(":predict"):
+        return value, "invalid", "req_url_must_end_with_predict"
+    return value, "set", None
 
 
 def preview(value) -> str:
@@ -95,60 +87,50 @@ def preview(value) -> str:
     return text[:1000]
 
 
-def inference_result_path(project: Path) -> Path:
-    return project / "inference_result.json"
+def response_schema(value) -> str:
+    if isinstance(value, dict):
+        return "object:" + ",".join(sorted(str(key) for key in value.keys())[:10])
+    if isinstance(value, list):
+        return f"array:{len(value)}"
+    return type(value).__name__
 
 
-def run_pyfunc(model_path: Path, payload):
-    import mlflow.pyfunc
+def post_remote_predict(req_url: str, payload):
+    import requests
 
-    model = mlflow.pyfunc.load_model(str(model_path))
-    return model.predict(payload)
-
-
-def run_aiu_custom(project: Path, payload):
-    wrapper_path = project / "aiu_custom" / "model_wrapper.py"
-    if not wrapper_path.exists():
-        wrapper_path = project / "aiu_custom" / "predict.py"
-    if not wrapper_path.exists():
-        raise FileNotFoundError("missing_inference_entrypoint: aiu_custom wrapper not found")
-
-    spec = importlib.util.spec_from_file_location("aiu_custom_model_wrapper", wrapper_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load wrapper module: {wrapper_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    wrapper = module.ModelWrapper()
-    return wrapper.predict(None, payload)
+    message = json.dumps(payload)
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(req_url, headers=headers, data=message)
+    try:
+        body = response.json()
+    except ValueError:
+        body = {"text": response.text}
+    return response.status_code, body
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test local model inference with input_example.json.")
-    parser.add_argument("--project", default=".", help="model project folder")
-    parser.add_argument("--model-path", help="explicit model path")
+    parser = argparse.ArgumentParser(description="Step 6: post input_example.json to a remote :predict URL.")
+    parser.add_argument("--project", default=".", help="selected model work folder")
+    parser.add_argument("--url", help="remote inference URL ending with :predict")
     parser.add_argument("--input-example", help="explicit input example JSON path")
-    parser.add_argument("--mode", choices=["auto", "pyfunc", "aiu-custom"], default="auto")
-    parser.add_argument("--execute", action="store_true", help="actually load model and run predict")
+    parser.add_argument("--execute", action="store_true", help="actually send HTTP POST to the remote :predict URL")
     parser.add_argument("--output", help="optional result JSON file path; no result file is written unless this is set")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
     project = resolve_workspace_project(args.project)
-    if args.model_path:
-        model_path = Path(args.model_path).expanduser().resolve()
-        model_path_error = None
-    else:
-        model_path, model_path_error = find_model_path(project)
     input_path = Path(args.input_example).expanduser().resolve() if args.input_example else find_input_example(project)
-    failures: list[str] = []
-    result = None
-    output_type = None
-    serializable = False
+    inferencetest_path = find_inferencetest(project)
+    req_url_from_file = literal_assignment(inferencetest_path, "req_url") if inferencetest_path else None
+    req_url, req_url_status, req_url_failure = validate_predict_url(args.url or req_url_from_file)
 
+    failures: list[str] = []
     if input_path is None:
         failures.append("missing_input_example")
-    if model_path is None and args.mode in {"auto", "pyfunc"}:
-        failures.append(model_path_error or "model_load_error:model path not found")
+    if inferencetest_path is None:
+        failures.append("missing_inferencetest_py")
+    if req_url_failure:
+        failures.append(req_url_failure)
 
     payload = None
     if input_path is not None:
@@ -157,37 +139,32 @@ def main():
         except Exception as exc:
             failures.append(f"schema_error:{exc}")
 
-    mode = args.mode
-    if args.execute and not failures:
+    status_code = None
+    output = None
+    schema = None
+    if args.execute and not failures and req_url is not None:
         try:
-            if mode == "auto":
-                mode = "pyfunc" if model_path and (model_path / "MLmodel").exists() else "aiu-custom"
-            if mode == "pyfunc":
-                if model_path is None:
-                    raise FileNotFoundError("model_load_error:model path not found")
-                result = run_pyfunc(model_path, payload)
-            else:
-                result = run_aiu_custom(project, payload)
-            output_type = type(result).__name__
-            serializable = jsonable(result)
-            if not serializable:
-                failures.append("serialization_error")
+            status_code, output = post_remote_predict(req_url, payload)
+            schema = response_schema(output)
+            if status_code >= 400:
+                failures.append(f"http_error:{status_code}")
         except Exception as exc:
-            failures.append(f"predict_error:{exc}")
+            failures.append(f"remote_predict_error:{exc}")
 
     output_path = Path(args.output).expanduser().resolve() if args.output else None
     result_path = str(output_path) if output_path else None
     report = InferenceReport(
         project_path=str(project),
-        model_path=str(model_path) if model_path else None,
         input_example_path=str(input_path) if input_path else None,
+        inferencetest_path=str(inferencetest_path) if inferencetest_path else None,
+        req_url=req_url,
+        req_url_status=req_url_status,
         result_path=result_path,
-        mode=mode,
-        output_type=output_type,
-        json_serializable=serializable,
         executed=args.execute,
+        status_code=status_code,
+        response_schema=schema,
         failures=failures,
-        output_preview=preview(result) if result is not None else None,
+        output_preview=preview(output) if output is not None else None,
     )
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -197,19 +174,21 @@ def main():
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
         print("Project: .")
-        print(f"Model path: {report.model_path or 'missing'}")
         print(f"Input example: {report.input_example_path or 'missing'}")
+        print(f"Inference entrypoint: {report.inferencetest_path or 'missing'}")
+        print(f"req_url status: {report.req_url_status}")
         print(f"Result path: {report.result_path or 'not written'}")
-        print(f"Mode: {report.mode}")
         print(f"Executed: {report.executed}")
-        print(f"Output type: {report.output_type or 'none'}")
-        print(f"JSON serializable: {report.json_serializable}")
+        print(f"Status code: {report.status_code if report.status_code is not None else 'none'}")
+        print(f"Response schema: {report.response_schema or 'none'}")
         if report.output_preview:
             print(f"Output preview: {report.output_preview}")
         if report.failures:
             print("Failures:")
             for failure in report.failures:
                 print(f"- {failure}")
+            if "missing_req_url" in report.failures or "req_url_must_end_with_predict" in report.failures:
+                print("조치: inferencetest.py의 req_url 또는 --url에 원격 :predict URL을 입력하세요.")
 
 
 if __name__ == "__main__":

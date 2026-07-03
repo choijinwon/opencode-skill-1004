@@ -18,7 +18,7 @@ metadata:
 현재 단계: 추론 테스트
 진행 조건: 사용자가 6번을 선택했을 때만 실행
 현재 대상: trained model project
-핵심 판단: input_example.json, req_url 입력 여부, HTTP request/response schema
+핵심 판단: input_example.json, 원격 :predict req_url 입력 여부, HTTP request/response schema
 다음 단계: 7. 오류 재실행
 ```
 
@@ -39,8 +39,8 @@ metadata:
 ```text
 1. input_example.json을 확인한다.
 2. inferencetest.py를 확인한다.
-3. inferencetest.py의 req_url 값이 비어 있으면 사용자가 직접 입력하도록 안내한다.
-4. inferencetest.py가 input_example.json을 읽고 requests.post(req_url, headers, data)를 호출하는지 확인한다.
+3. inferencetest.py의 req_url 값이 비어 있거나 :predict로 끝나지 않으면 사용자가 직접 입력하도록 안내한다.
+4. inferencetest.py가 input_example.json을 읽고 원격 requests.post(req_url, headers, data)를 호출하는지 확인한다.
 5. 응답 status_code와 JSON/text 출력이 가능한지 확인한다.
 6. 로컬 모델 로드는 수행하지 않는다.
 7. predict_2.py는 생성하지 않는다. 추론 테스트는 inferencetest.py를 사용한다.
@@ -54,7 +54,7 @@ metadata:
 - 판단 결과
 - 사용한 input example
 - 추론 entrypoint: inferencetest.py
-- req_url 상태
+- req_url 상태 (:predict URL 여부)
 - predict 결과 요약
 - response schema
 - result_path: not written, unless --output is set
@@ -79,7 +79,7 @@ next: 오류 재실행
 python inferencetest.py
 
 보조 스크립트:
-python .opencode/scripts/06-inference-test/test_inference.py --project . --execute
+python .opencode/scripts/06-inference-test/test_inference.py --project <선택모델작업폴더> --url http://server/v1/models/model:predict --execute
 ```
 
 <details>
@@ -89,6 +89,7 @@ python .opencode/scripts/06-inference-test/test_inference.py --project . --execu
 pass:
 - input example 있음
 - req_url 입력됨
+- req_url이 원격 http:// 또는 https:// URL이고 :predict로 끝남
 - HTTP 요청 성공
 - output schema 확인됨
 
@@ -102,6 +103,7 @@ needs_user_input:
 
 blocked:
 - req_url이 비어 있음
+- req_url이 :predict 경로가 아님
 - HTTP 요청 실패
 - 응답을 직렬화할 수 없음
 ```
@@ -114,7 +116,7 @@ blocked:
 ```text
 증상: req_url 값을 입력하라는 메시지가 나옴
 원인: inferencetest.py의 req_url이 빈 문자열
-조치: 배포된 추론 URL을 req_url에 직접 입력한 뒤 다시 실행
+조치: 배포된 원격 추론 URL을 req_url에 직접 입력한 뒤 다시 실행. URL은 :predict로 끝나야 함
 
 증상: input_example 없음
 원인: 테스트 입력 누락

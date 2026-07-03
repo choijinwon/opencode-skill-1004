@@ -2893,19 +2893,31 @@ def generated_inferencetest_text() -> str:
     return f'''#!/usr/bin/env python3
 import json
 import requests
+from urllib.parse import urlparse
 
 
 req_url = ""
 
 
-if not req_url.strip():
-    raise SystemExit("req_url 값을 입력한 뒤 다시 실행하세요.")
+def validate_predict_url(url):
+    value = url.strip()
+    if not value:
+        raise SystemExit("req_url에 원격 추론 :predict URL을 입력한 뒤 다시 실행하세요.")
+    parsed = urlparse(value)
+    if parsed.scheme not in {{"http", "https"}} or not parsed.netloc:
+        raise SystemExit("req_url은 원격 http:// 또는 https:// URL이어야 합니다.")
+    if not value.rstrip("/").endswith(":predict"):
+        raise SystemExit("req_url은 배포된 원격 추론 URL의 :predict 경로여야 합니다. 예: http://server/v1/models/model:predict")
+    return value
+
+
+req_url = validate_predict_url(req_url)
 
 with open("input_example.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 
 req_msg = json.dumps(data)
-headers = {{}}
+headers = {{"Content-Type": "application/json"}}
 
 resp = requests.post(req_url, headers=headers, data=req_msg)
 
