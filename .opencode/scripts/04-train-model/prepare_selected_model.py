@@ -78,6 +78,7 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "xgboost_ubj": ROOT / "samples" / "sklearn_sample" / "run_model.py",
     "tensorflow_keras": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
+    "tensorflow_saved_model": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "data", "metrics", "tracking"}
 ai_STUDIO_COPY_IGNORE_FILES = {"runtest.py", "runtest_2.py", "requirements.txt"}
@@ -355,6 +356,11 @@ MODEL_KIND_DETAILS = {
         "load_hint": "tf.keras.models.load_model(MODEL_PATH)",
         "loader": """def load_selected_model():\n    import tensorflow as tf\n\n    return tf.keras.models.load_model(MODEL_PATH)\n""",
     },
+    "tensorflow_saved_model": {
+        "required_package": "tensorflow",
+        "load_hint": "tf.keras.models.load_model(MODEL_PATH)",
+        "loader": """def load_selected_model():\n    import tensorflow as tf\n\n    return tf.keras.models.load_model(MODEL_PATH)\n""",
+    },
     "safetensors": {
         "required_package": "safetensors",
         "load_hint": "safetensors.torch.load_file(str(MODEL_PATH))",
@@ -419,7 +425,13 @@ def normalize_path_literal_text(value: str) -> str:
     return PATH_LIKE_STRING_PATTERN.sub(lambda match: normalize_path_text(match.group(0)), value)
 
 
+def is_saved_model_dir(path: Path) -> bool:
+    return path.is_dir() and (path / "saved_model.pb").is_file()
+
+
 def model_kind(path: Path) -> str | None:
+    if is_saved_model_dir(path):
+        return "tensorflow_saved_model"
     return SUPPORTED_MODEL_KINDS.get(path.suffix.lower())
 
 
@@ -453,7 +465,7 @@ def scan_model_artifacts(project: Path) -> list[Path]:
     # Search only the selected project root and its data/** tree. Do not scan
     # arbitrary sibling folders or the whole drive/workspace.
     for path in project.iterdir():
-        if path.is_file() and model_kind(path):
+        if (path.is_file() or path.is_dir()) and model_kind(path):
             found.append(path)
 
     data_root = project / "data"
@@ -467,7 +479,7 @@ def scan_model_artifacts(project: Path) -> list[Path]:
             continue
         if any(part in MODEL_SCAN_SKIP_DIRS for part in relative_parts):
             continue
-        if path.is_file() and model_kind(path):
+        if (path.is_file() or path.is_dir()) and model_kind(path):
             found.append(path)
     return sorted(set(found), key=lambda path: model_sort_key(path, project))
 
@@ -507,13 +519,13 @@ def find_python_entrypoints(project: Path) -> list[Path]:
 
 
 def artifacts_under(path: Path) -> list[Path]:
-    if path.is_file() and model_kind(path):
+    if (path.is_file() or path.is_dir()) and model_kind(path):
         return [path]
     if not path.is_dir():
         return []
     found = []
     for child in path.rglob("*"):
-        if child.is_file() and model_kind(child):
+        if (child.is_file() or child.is_dir()) and model_kind(child):
             found.append(child)
     project = path if path.is_dir() else path.parent
     return sorted(set(found), key=lambda item: model_sort_key(item, project))
@@ -571,7 +583,7 @@ def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, 
     if not candidate.is_absolute():
         candidate = project / candidate
     candidate = candidate.resolve()
-    if not candidate.is_file():
+    if not candidate.exists():
         return candidate, kind if isinstance(kind, str) else None, f"selected_model_config_not_found:{source_path}"
     return candidate, kind if isinstance(kind, str) else None, None
 
@@ -634,7 +646,7 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
         return None, selected_kind, "runtest_2_source_model_path_missing"
     if selected_kind is None:
         return selected_model, None, "runtest_2_model_kind_missing"
-    if not selected_model.is_file():
+    if not selected_model.exists():
         return selected_model, selected_kind, f"runtest_2_selected_model_not_found:{rel(selected_model, project)}"
     return selected_model, selected_kind, None
 
@@ -654,7 +666,7 @@ def is_selected_model_alias(value: str | None) -> bool:
 def resolve_model_selection(project: Path, models: list[Path], raw: str | None) -> tuple[Path | None, str | None]:
     current_selected = current_selected_model_path(project)
     if not raw:
-        if current_selected is not None and current_selected.is_file():
+        if current_selected is not None and current_selected.exists():
             return current_selected, None
         return None, "model_selection_required"
     value = normalize_path_text(raw.strip())
@@ -695,7 +707,7 @@ def requested_model_path_from_raw(project: Path, models: list[Path], raw: str | 
     if not candidate.is_absolute():
         candidate = project / candidate
     candidate = candidate.resolve()
-    if candidate.is_file():
+    if candidate.exists():
         return candidate
     resolved, _error = resolve_single_artifact(project, artifacts_under(candidate), value)
     if resolved is not None:
@@ -879,7 +891,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
         failures.append(f"workspace_target_not_directory:{target}")
         return copied, skipped, failures
     current_selected = current_selected_model_path(project)
-    selected_model_locked = current_selected is not None and current_selected.is_file()
+    selected_model_locked = current_selected is not None and current_selected.exists()
     if execute:
         for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
             relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
@@ -2155,9 +2167,9 @@ def relative_basename(path):
 def first_existing_file(label, candidates):
     normalized_candidates = [normalize_local_path(candidate) for candidate in candidates]
     for candidate in normalized_candidates:
-        if os.path.isfile(candidate):
+        if os.path.isfile(candidate) or os.path.isdir(candidate):
             return candidate
-    print(f"파일을 찾을 수 없습니다: {{label}}")
+    print(f"파일 또는 폴더를 찾을 수 없습니다: {{label}}")
     print("확인한 경로:")
     for candidate in normalized_candidates:
         print(f"- {{candidate}}")
@@ -2786,9 +2798,9 @@ REFERENCE_ENTRYPOINT = {reference_entrypoint!r}
 
 def first_existing_model_path():
     for candidate in MODEL_PATH_CANDIDATES:
-        if candidate.is_file():
+        if candidate.is_file() or candidate.is_dir():
             return candidate
-    print("선택 모델 파일을 찾을 수 없습니다.")
+    print("선택 모델 파일 또는 폴더를 찾을 수 없습니다.")
     print("확인한 경로:")
     for candidate in MODEL_PATH_CANDIDATES:
         print(f"- {{candidate}}")

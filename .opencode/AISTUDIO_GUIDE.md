@@ -6,6 +6,9 @@ AI Studio TODO Guide - 7단계
 1. 먼저 워크스페이스를 분석합니다.
    model_found: true | false
    .opencode/는 스킬 번들이므로 분석하지 않습니다.
+   case 1: 학습 코드 있음 -> 프레임워크 템플릿 변환 안내
+   case 2: Pre-trained 모델 파일만 있음 -> 모델 선택
+   case 3: 모델 없음 -> 샘플 선택
 
 2. 모델 있음
    루트/data 모델 목록을 번호로 보여줍니다.

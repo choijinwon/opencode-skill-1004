@@ -8,6 +8,13 @@ import torch
 from torch import nn
 
 
+def _normalize_path(path):
+    value = str(path).replace("\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+    while "//" in value and not value.startswith("//"):
+        value = value.replace("//", "/")
+    return value
+
+
 class TinyTorchModel(nn.Module):
     def __init__(self, input_dim: int = 4, output_dim: int = 2):
         super().__init__()
@@ -31,8 +38,8 @@ def _payload_to_tensor(payload) -> torch.Tensor:
 
 class ModelWrapper(mlflow.pyfunc.PythonModel):
     def load_context(self, context):
-        config_path = Path(str(context.artifacts["config"]).replace("\\", "/"))
-        model_path = Path(str(context.artifacts["model"]).replace("\\", "/"))
+        config_path = Path(_normalize_path(context.artifacts["config"]))
+        model_path = Path(_normalize_path(context.artifacts["model"]))
         config = json.loads(config_path.read_text(encoding="utf-8"))
 
         self.model = TinyTorchModel(

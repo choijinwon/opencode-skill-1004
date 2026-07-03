@@ -40,10 +40,13 @@ metadata:
 2. 프로젝트 루트 전체와 data/** 모델 원본 파일을 model_artifact_paths로 나열한다.
 3. `.csv`는 모델이 아니라 데이터 파일로 data_file_paths에 표시한다.
 4. `.opencode/` 전체는 스킬 번들이므로 분석 대상에서 제외한다.
-5. model_found 값을 먼저 결정한다.
-6. 모델 artifact가 없고 Python 실행파일이 있으면 CSV 유무와 관계없이 샘플 선택 대신 entrypoint 실행 흐름으로 안내한다.
-7. 모델이 있으면 model_artifact_paths를 프로젝트 상대경로 알파벳 순서로 번호 표시하고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
-8. 번호 선택은 표시된 model_artifact_paths 순서 그대로 처리하며, 프레임워크/확장자 기준으로 다시 정렬하지 않는다.
+5. 아래 3가지 케이스 중 하나로 먼저 분기한다.
+6. case 1: `.py`, `.ipynb`에서 `model.fit()`, `model.compile()`, `optimizer.step()` 등 학습 로직이 감지되면 학습 코드 있음으로 판단하고 해당 프레임워크 템플릿 변환을 안내한다.
+7. case 2: 학습 코드는 없고 `.pth`, `.pt`, `.pkl`, `.joblib`, `.h5`, `.keras`, `.onnx`, `SavedModel` 폴더 등 Pre-trained 모델 파일만 있으면 모델 선택 흐름으로 안내한다.
+8. case 3: 학습 코드와 모델 파일이 모두 없으면 샘플 선택 흐름으로 안내한다.
+9. model_found 값은 case 1 또는 case 2이면 true, case 3이면 false로 표시한다.
+10. 모델이 있으면 model_artifact_paths를 프로젝트 상대경로 알파벳 순서로 번호 표시하고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
+11. 번호 선택은 표시된 model_artifact_paths 순서 그대로 처리하며, 프레임워크/확장자 기준으로 다시 정렬하지 않는다.
 ```
 
 ## Output Contract
@@ -51,6 +54,7 @@ metadata:
 ```text
 반드시 보여줄 값:
 - model_found: true | false
+- analysis_case: case 1 training code | case 2 pre-trained model artifact | case 3 no model
 - selected_project_path
 - framework
 - train_entrypoint
@@ -59,6 +63,7 @@ metadata:
 - model_artifact_paths
 - data_file_paths
 - entrypoint_paths
+- training_code_paths
 - selected_data_model_path
 - MODEL_KIND
 - input_example_path

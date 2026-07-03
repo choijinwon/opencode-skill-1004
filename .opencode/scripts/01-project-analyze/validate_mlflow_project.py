@@ -79,6 +79,27 @@ ARTIFACT_KIND_BY_SUFFIX = {
     ".ubj": "xgboost_ubj",
 }
 
+TRAINING_CODE_PATTERN = re.compile(
+    r"("
+    r"\b(?:model|clf|classifier|regressor|estimator|net)\.fit\s*\(|"
+    r"\b(?:model|net)\.compile\s*\(|"
+    r"\b(?:model|net)\.train\s*\(|"
+    r"\boptimizer\.step\s*\(|"
+    r"\bloss\.backward\s*\("
+    r")",
+    re.IGNORECASE,
+)
+
+CODE_SCAN_SUFFIXES = {".py", ".ipynb"}
+CODE_SCAN_SKIP_FILES = {"runtest_2.py"}
+
+FRAMEWORK_CODE_RULES = [
+    ("tensorflow", ["tensorflow", "tf.keras", "keras", ".compile("]),
+    ("pytorch", ["torch", "torch.nn", "optimizer.step", "loss.backward", ".train("]),
+    ("sklearn", ["sklearn", "scikit", "train_test_split", ".fit("]),
+    ("xgboost", ["xgboost", "xgb.", "xgbclassifier", "xgbregressor"]),
+]
+
 ARTIFACT_DIR_HINTS = [
     "saved_model",
     "saved_model.pb",
@@ -145,6 +166,9 @@ class ValidationReport:
     checks: list[Check]
     next_steps: list[str]
     model_artifact_paths: list[str] = field(default_factory=list)
+    model_found: bool = False
+    analysis_case: str = ""
+    training_code_paths: list[str] = field(default_factory=list)
 
 
 def read_text(path: Path) -> str:
@@ -322,21 +346,128 @@ def iter_files(path: Path, max_depth: int = 4):
                 yield candidate
 
 
+def is_saved_model_dir(path: Path) -> bool:
+    return safe_is_dir(path) and safe_exists(path / "saved_model.pb")
+
+
+def iter_artifact_dirs(path: Path, max_depth: int = 4):
+    if is_opencode_sample_source(path):
+        return
+    for candidate in safe_iterdir(path):
+        if is_saved_model_dir(candidate):
+            yield candidate
+
+    data_root = path / "data"
+    if not safe_is_dir(data_root):
+        return
+
+    base_depth = len(data_root.parts)
+    for root, dirs, _files in os.walk(data_root, onerror=lambda _error: None):
+        root_path = Path(root)
+        depth = len(root_path.parts) - base_depth
+        if depth >= max_depth:
+            dirs[:] = []
+        dirs[:] = [d for d in dirs if d not in SCAN_SKIP_DIRS]
+        if is_saved_model_dir(root_path):
+            yield root_path
+
+
 def find_artifacts(path: Path, max_depth: int = 4) -> list[Path]:
     artifacts: list[Path] = []
+    artifacts.extend(iter_artifact_dirs(path, max_depth=max_depth))
     for file_path in iter_files(path, max_depth=max_depth):
         if file_path.suffix.lower() in ARTIFACT_SUFFIXES:
             artifacts.append(file_path)
-        if file_path.name in ARTIFACT_DIR_HINTS:
+        if file_path.name == "saved_model.pb":
+            artifacts.append(file_path.parent)
+        elif file_path.name in ARTIFACT_DIR_HINTS:
             artifacts.append(file_path)
     return sorted(set(artifacts), key=lambda item: model_sort_key(item, path))
 
 
-def detect_framework(project: Path, requirements_text: str, artifacts: list[Path]) -> tuple[str, list[str]]:
+def notebook_text(path: Path) -> str:
+    try:
+        payload = json.loads(read_text(path))
+    except json.JSONDecodeError:
+        return read_text(path)
+    cells = payload.get("cells") if isinstance(payload, dict) else None
+    if not isinstance(cells, list):
+        return read_text(path)
+    parts: list[str] = []
+    for cell in cells:
+        if not isinstance(cell, dict):
+            continue
+        source = cell.get("source", "")
+        if isinstance(source, list):
+            parts.append("".join(str(item) for item in source))
+        elif isinstance(source, str):
+            parts.append(source)
+    return "\n".join(parts)
+
+
+def read_code_text(path: Path) -> str:
+    if path.suffix.lower() == ".ipynb":
+        return notebook_text(path)
+    return read_text(path)
+
+
+def iter_code_files(project: Path, max_depth: int = 5):
+    if is_opencode_sample_source(project):
+        return
+    base_depth = len(project.parts)
+    seen: set[Path] = set()
+    for root, dirs, files in os.walk(project, onerror=lambda _error: None):
+        root_path = Path(root)
+        depth = len(root_path.parts) - base_depth
+        if depth >= max_depth:
+            dirs[:] = []
+        dirs[:] = [name for name in dirs if name not in SCAN_SKIP_DIRS]
+        for file_name in files:
+            candidate = root_path / file_name
+            if file_name in CODE_SCAN_SKIP_FILES:
+                continue
+            if candidate.suffix.lower() not in CODE_SCAN_SUFFIXES:
+                continue
+            try:
+                resolved = candidate.resolve()
+            except OSError:
+                continue
+            if resolved in seen or not safe_is_file(candidate):
+                continue
+            seen.add(resolved)
+            yield candidate
+
+
+def detect_training_code(project: Path) -> tuple[list[Path], list[str], list[str]]:
+    hits: list[Path] = []
+    evidence: list[str] = []
+    frameworks: list[str] = []
+    for path in iter_code_files(project):
+        text = read_code_text(path)
+        match = TRAINING_CODE_PATTERN.search(text)
+        if not match:
+            continue
+        hits.append(path)
+        evidence.append(f"{safe_relative(path, project)}: {match.group(0).strip()}")
+        lowered = text.lower()
+        for framework, hints in FRAMEWORK_CODE_RULES:
+            if framework in frameworks:
+                continue
+            if any(hint in lowered for hint in hints):
+                frameworks.append(framework)
+    return unique_paths(hits), evidence, frameworks
+
+
+def detect_framework(project: Path, requirements_text: str, artifacts: list[Path], training_frameworks: list[str]) -> tuple[str, list[str]]:
     # Framework detection is evidence-based and conservative. Unknown/custom is
     # valid when the project does not expose recognizable dependency or artifact
     # hints.
     evidence: list[str] = []
+    if training_frameworks:
+        framework = training_frameworks[0]
+        evidence.append(f"training_code: {framework}")
+        return framework, evidence
+
     lowered = requirements_text.lower()
     artifact_names = " ".join(path.name.lower() for path in artifacts)
 
@@ -716,17 +847,39 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
 
     requirements_path, requirements_text, packages = parse_requirements(project)
     artifacts = find_artifacts(project)
-    framework, framework_evidence = detect_framework(project, requirements_text, artifacts)
+    training_code_paths, training_code_evidence, training_frameworks = detect_training_code(project)
+    framework, framework_evidence = detect_framework(project, requirements_text, artifacts, training_frameworks)
     entrypoints = find_entrypoints(project)
     training_entrypoints = find_training_entrypoints(project)
     config_file = find_first_existing(project, CONFIG_NAMES)
     input_example_file = find_first_existing(project, INPUT_EXAMPLE_NAMES)
+    model_found = bool(training_code_paths or artifacts)
+    if training_code_paths:
+        analysis_case = "case 1: training code"
+        analysis_message = "학습 코드가 감지되었습니다. 해당 프레임워크 템플릿 변환 안내로 진행합니다."
+        analysis_evidence = training_code_evidence[:10]
+    elif artifacts:
+        analysis_case = "case 2: pre-trained model artifact"
+        analysis_message = "학습 코드 없이 모델 artifact가 감지되었습니다. 모델 선택 흐름으로 진행합니다."
+        analysis_evidence = [safe_relative(path, project) for path in artifacts[:10]]
+    else:
+        analysis_case = "case 3: no model"
+        analysis_message = "학습 코드와 모델 artifact가 없습니다. 샘플 선택 흐름으로 진행합니다."
+        analysis_evidence = ["sample choices: 1 sklearn / 2 pytorch / 3 tensorflow"]
 
     project_evidence = []
     if requirements_path:
         project_evidence.append(safe_relative(requirements_path, project))
     project_evidence.extend(safe_relative(path, project) for path in entrypoints[:5])
     project_evidence.extend(safe_relative(path, project) for path in artifacts[:5])
+    checks.append(
+        Check(
+            "workspace analysis case",
+            "pass" if model_found else "warn",
+            analysis_message,
+            [analysis_case] + analysis_evidence,
+        )
+    )
     checks.append(
         Check(
             "project scan",
@@ -830,14 +983,20 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         checks.append(write_permission_check(project))
 
     next_steps = []
-    if artifacts:
-        next_steps.append("Data/root model found. Select one model by number or path, then run step 3 environment check.")
+    if training_code_paths:
+        entrypoint = safe_relative(training_code_paths[0], project)
+        next_steps.append(f"Case 1: 학습 코드가 감지되었습니다. framework={framework}, entrypoint={entrypoint}")
+        next_steps.append("3번 환경변수/requirements 갱신 후 4번 템플릿 변환에서 해당 프레임워크 기준으로 연결부를 변환하세요.")
+    elif artifacts:
+        next_steps.append("Case 2: Pre-trained 모델 파일만 감지되었습니다. 모델을 번호 또는 경로로 선택한 뒤 3번 환경변수/requirements 갱신으로 진행하세요.")
         next_steps.append(f"Run: {PS_PREPARE_MODEL_COMMAND}")
+    else:
+        next_steps.append("Case 3: 모델이 없습니다. 샘플 선택 1 sklearn / 2 pytorch / 3 tensorflow 중 하나를 선택하세요.")
     if any(check.status == "block" for check in checks):
         next_steps.append("Resolve blocked checks before MLflow registration.")
     if not has_mlflow_dep:
         next_steps.append("Add or confirm mlflow dependency in the project environment.")
-    if not artifacts:
+    if not artifacts and not training_code_paths:
         next_steps.append("Run training or provide a model artifact path.")
     if not training_entrypoints:
         next_steps.append("실제 사용하는 Python 실행 파일명을 알려주세요.")
@@ -868,6 +1027,9 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         checks,
         next_steps,
         model_artifact_paths=[safe_relative(path, project) for path in artifacts],
+        model_found=model_found,
+        analysis_case=analysis_case,
+        training_code_paths=[safe_relative(path, project) for path in training_code_paths],
     )
 
 
@@ -876,6 +1038,13 @@ def print_text(report: ValidationReport):
     print(f"Selection reason: {report.selection_reason}")
     print(f"OS: {report.os}")
     print(f"Python: {report.python}")
+    print(f"model_found: {str(report.model_found).lower()}")
+    if report.analysis_case:
+        print(f"analysis_case: {report.analysis_case}")
+    if report.training_code_paths:
+        print("Training code paths:")
+        for index, path in enumerate(report.training_code_paths, start=1):
+            print(f"{index}. {path}")
     if report.model_artifact_paths:
         print("Model artifact paths:")
         for index, path in enumerate(report.model_artifact_paths, start=1):

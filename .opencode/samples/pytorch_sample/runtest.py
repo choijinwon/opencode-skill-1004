@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import io
+import inspect
 import json
 import logging
 import os
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 import mlflow
 import numpy as np
@@ -62,12 +64,16 @@ class TinyTorchModel(nn.Module):
         return self.linear(inputs)
 
 
+def is_local_tracking_uri() -> bool:
+    value = str(mlflow_tracking_uri).strip().lower()
+    return value.startswith(("http://127.0.0.1", "http://localhost", "http://0.0.0.0"))
+
+
 def missing_mlflow_settings() -> list[str]:
-    required = {
-        "mlflow_tracking_uri": mlflow_tracking_uri,
-        "mlflow_tracking_username": mlflow_tracking_username,
-        "mlflow_tracking_password": mlflow_tracking_password,
-    }
+    required = {"mlflow_tracking_uri": mlflow_tracking_uri}
+    if not is_local_tracking_uri():
+        required["mlflow_tracking_username"] = mlflow_tracking_username
+        required["mlflow_tracking_password"] = mlflow_tracking_password
     return [name for name, value in required.items() if not value]
 
 
@@ -82,6 +88,82 @@ def export_mlflow_environment() -> None:
     for name, value in exports.items():
         if value:
             os.environ[name] = value
+
+
+def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, str]:
+    base_url = str(mlflow_tracking_uri).strip().rstrip("/")
+    urls = {
+        "tracking_uri": base_url,
+        "experiment_url": f"{base_url}/#/experiments/{experiment_id}",
+        "experiment_models_url": f"{base_url}/#/experiments/{experiment_id}/models",
+        "traces_url": f"{base_url}/#/experiments/{experiment_id}/traces?startTime=ALL",
+    }
+    if run_id:
+        urls["run_url"] = f"{base_url}/#/experiments/{experiment_id}/runs/{run_id}"
+    if mlflow_register_model_name:
+        model_name = quote(mlflow_register_model_name, safe="")
+        urls["registered_model_url"] = f"{base_url}/#/models/{model_name}"
+    return urls
+
+
+def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
+    urls = mlflow_ui_urls(experiment_id, run_id)
+    print("MLflow Tracking URI:", urls["tracking_uri"])
+    print("MLflow Experiment URI:", urls["experiment_url"])
+    print("MLflow Experiment Models URI:", urls["experiment_models_url"])
+    print("MLflow Traces URI:", urls["traces_url"])
+    if "run_url" in urls:
+        print("MLflow Run URI:", urls["run_url"])
+    if "registered_model_url" in urls:
+        print("MLflow Registered Model URI:", urls["registered_model_url"])
+
+
+def ensure_registered_model(model_info) -> str:
+    model_name = str(mlflow_register_model_name).strip()
+    if not model_name:
+        return "skipped: mlflow_register_model_name empty"
+
+    try:
+        client = mlflow.tracking.MlflowClient()
+        client.get_registered_model(model_name)
+        return f"exists: {model_name}"
+    except Exception:
+        pass
+
+    model_uri = getattr(model_info, "model_uri", "")
+    if not model_uri:
+        return "failed: model_uri missing"
+
+    try:
+        registered = mlflow.register_model(model_uri=model_uri, name=model_name)
+        version = getattr(registered, "version", "unknown")
+        return f"registered: {model_name}, version={version}"
+    except Exception as exc:
+        return f"failed: {type(exc).__name__}: {exc}"
+
+
+def log_aiu_pyfunc_model(input_example):
+    log_model_params = inspect.signature(mlflow.pyfunc.log_model).parameters
+    log_model_args = {
+        "python_model": ModelWrapper(),
+        "artifacts": {
+            "model": MODEL_PATH.as_posix(),
+            "config": CONFIG_PATH.as_posix(),
+        },
+        "input_example": input_example,
+        "code_paths": [(Path(__file__).resolve().parent / "aiu_custom").as_posix()],
+        "pip_requirements": "requirements.txt",
+    }
+    if "name" in log_model_params:
+        log_model_args["name"] = "ai_studio"
+    else:
+        log_model_args["artifact_path"] = "ai_studio"
+    if "registered_model_name" in log_model_params and mlflow_register_model_name:
+        log_model_args["registered_model_name"] = mlflow_register_model_name
+
+    model_info = mlflow.pyfunc.log_model(**log_model_args)
+    registry_status = ensure_registered_model(model_info)
+    return model_info, registry_status
 
 
 def prepare_data():
@@ -162,27 +244,19 @@ def main() -> None:
     CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=4), encoding="utf-8")
     torch.save(model.state_dict(), MODEL_PATH)
 
-    with mlflow.start_run(run_name=mlflow_register_model_name):
+    with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         mlflow.set_tag("data.name", "synthetic_tensor(pytorch)")
         mlflow.log_params(config)
         mlflow.log_metrics(metrics)
-        mlflow.pyfunc.log_model(
-            artifact_path="ai_studio",
-            python_model=ModelWrapper(),
-            artifacts={
-                "model": MODEL_PATH.as_posix(),
-                "config": CONFIG_PATH.as_posix(),
-            },
-            input_example=input_example,
-            registered_model_name=mlflow_register_model_name,
-            code_paths=[(Path(__file__).resolve().parent / "aiu_custom").as_posix()],
-            pip_requirements="requirements.txt",
-        )
+        model_info, registry_status = log_aiu_pyfunc_model(input_example)
 
     print(f"input_example written: {INPUT_EXAMPLE_PATH}")
     print(f"config written: {CONFIG_PATH}")
     print(f"model written: {MODEL_PATH}")
     print("MLflow model logged with artifact_path='ai_studio'")
+    print("Model URI:", getattr(model_info, "model_uri", "unknown"))
+    print("MLflow Registry:", registry_status)
+    print_mlflow_ui_urls(run.info.experiment_id, run.info.run_id)
 
 
 if __name__ == "__main__":
