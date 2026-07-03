@@ -15,7 +15,7 @@
 | 단계 | 설명 | 실행 스크립트 | 주요 결과물 |
 |---|---|---|---|
 | 1 | 모델 목록 확인 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project .` | 현재 프로젝트 루트와 `data/**` 모델 목록 |
-| 2 | 모델 선택 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute` | 명시 선택 반영, 이후 단계에서 선택 모델 유지 |
+| 2 | 모델 선택 | `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>` | 명시 선택 반영, 이후 단계에서 선택 모델 유지 |
 | 3 | 환경 검증 | 사용자가 3번 선택 시 `python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py` | MLflow 입력값 확인, `requirements.txt` 갱신 |
 | 4 | 템플릿 변환 | 사용자가 4번 선택 시 `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute` | 템플릿 복사 후, 선택 모델 연결부 수정 및 `input_example.json` 생성 |
 | 5 | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute` | 선택 모델 기준 재검증/변환 후 원격 MLflow 서버에 기록/등록 |

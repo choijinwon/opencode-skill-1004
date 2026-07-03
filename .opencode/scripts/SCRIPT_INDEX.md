@@ -24,6 +24,15 @@ Primary scripts:
 
 - `02-sample-bootstrap/bootstrap_sample_project.py` - 모델 없음 상태에서 sklearn/pytorch/tensorflow 샘플 복사
 
+## 02 Model Select
+
+Skill folder:
+`04-agent-mlflow-skill-train-model`
+
+Primary scripts:
+
+- `02-model-select/select_model.py` - 2번 모델 선택 전용 wrapper. PowerShell의 `--model3`, `data\...`, `data￦...` 입력을 정규화한 뒤 선택 모델만 고정
+
 ## 03 Environment Check
 
 Skill folder:
@@ -73,7 +82,7 @@ Generated runtime entrypoint:
 
 ```text
 1. 모델 목록 확인                  -> 04-train-model/prepare_selected_model.py --project .
-2. 모델 선택                       -> 04-train-model/prepare_selected_model.py --model <번호|경로> --select-only --execute
+2. 모델 선택                       -> 02-model-select/select_model.py --model <번호|경로>
 3. 환경 검증      -> 03-environment-check/check_environment.py
 4. 템플릿 변환                     -> 04-train-model/prepare_selected_model.py --model selected --execute
 5. 원격 MLflow 등록 실행           -> 04-train-model/run_training.py --execute

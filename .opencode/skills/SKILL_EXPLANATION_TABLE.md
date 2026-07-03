@@ -25,7 +25,7 @@
 | 순서 | 사용하는 스킬 | 목적 | 대표 실행 |
 |---|---|---|---|
 | 1 | `01-agent-mlflow-skill-project-analyze` | 모델 목록 확인 | 모델 검색/분석 |
-| 2 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `prepare_selected_model.py --model ... --select-only --execute` |
+| 2 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `02-model-select/select_model.py --model ...` |
 | 3 | `03-agent-mlflow-skill-environment-check` | 환경 검증 | 사용자가 3번 선택 시 `check_environment.py --entrypoint runtest_2.py` |
 | 4 | `04-agent-mlflow-skill-train-model` | 템플릿 변환 | 사용자가 4번 선택 시 실행 |
 | 5 | `04-agent-mlflow-skill-train-model` | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `run_training.py --entrypoint runtest_2.py --execute` |

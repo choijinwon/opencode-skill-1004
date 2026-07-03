@@ -26,9 +26,12 @@
 
 전제:
 
+- 실행 기준은 Windows PowerShell이다. 사용자는 먼저 직접 선택한 워크스페이스 루트로 이동한 뒤 `python .opencode/scripts/...` 명령을 실행한다.
+- 예: `cd '<선택한 프로젝트 경로>'`
+- 모델 경로 입력은 선택한 워크스페이스 기준 상대경로를 사용한다. 예: `data\pytorch_cnn\cnn_model.pt`
 - 사용자가 가져온 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있다.
-- 모델 검색은 현재 `--project` 폴더 안에서만 수행한다. 검색 범위는 현재 프로젝트 루트 바로 아래 모델 파일과 현재 프로젝트 `data/**` 트리다.
-- 모델 연결은 선택한 현재 프로젝트 경로 기준 상대경로를 사용한다.
+- 모델 검색은 사용자가 선택한 `--project` 폴더 안에서만 수행한다. 검색 범위는 선택한 워크스페이스 루트 바로 아래 모델 파일과 그 안의 `data/**` 트리다.
+- 모델 연결은 선택한 워크스페이스 경로 기준 상대경로를 사용한다.
 - 상위 폴더, 홈 디렉터리, 드라이브 루트, 임의 하위 폴더, 번들 샘플 폴더를 자동 검색하지 않는다.
 - `data/sklearn/model.pkl`, `data/checkpoints/model.pt`처럼 `data/` 아래 폴더명이 달라도 모델로 인식한다.
 - 지원 확장자: `.pkl`, `.joblib`, `.pt`, `.pth`, `.onnx`, `.h5`, `.keras`, `.safetensors`, `.bst`, `.ubj`.
@@ -57,8 +60,9 @@
 Step 1. 모델 목록 확인
         현재 --project 루트 바로 아래와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 모델 선택
-        model_artifact_paths를 프로젝트 기준 상대경로 알파벳 순서로 번호 표시한다.
-        `--model <번호|경로> --select-only --execute`를 명시하면 그 모델을 새 선택값으로 반영한다.
+        model_artifact_paths를 선택한 워크스페이스 기준 상대경로 알파벳 순서로 번호 표시한다.
+        `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>`를 실행하면 그 모델을 새 선택값으로 반영한다.
+        PowerShell에서 `--model3`, `--model 3`, `data\...`, `data￦...` 입력을 모두 2번 선택값으로 정규화한다.
         같은 파일 목록이면 분석 화면과 준비 스크립트의 번호가 항상 같다.
         이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 계속 사용한다.
         이미 준비된 선택 모델은 --model selected로 재사용한다.
@@ -92,7 +96,7 @@ Step 7. 오류 재실행
 
 ```text
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
+python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model 1
 ```
 
 ## Folder Order
@@ -120,6 +124,9 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project <mod
 
 02 Sample Bootstrap
    02-sample-bootstrap/bootstrap_sample_project.py
+
+02 Model Select
+   02-model-select/select_model.py
 
 03 Environment Check
    03-environment-check/check_environment.py

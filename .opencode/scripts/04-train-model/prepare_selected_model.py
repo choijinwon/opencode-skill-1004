@@ -78,7 +78,7 @@ PYTORCH_REFERENCE_DIR = TEMPLATE_SAMPLE_DIR
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
 PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
 PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
-PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -3546,7 +3546,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                r"2번 모델 선택 실행: python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
+                r"2번 모델 선택 실행: python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model <번호|경로>"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -3769,10 +3769,12 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
 
     print(f"Project: {report.project_path}")
     print(f"Data root: {report.data_root}")
+    print("Scope: 선택한 워크스페이스 루트 기준")
 
     if report.model_artifact_paths or report.training_code_paths:
         data_model_count = sum(1 for path in report.model_artifact_paths if path == "data" or path.startswith("data/"))
         total_model_count = len(report.model_artifact_paths)
+        selected_model_path = normalize_path_text(report.selected_model_path or "")
         print("\n모델 선택 화면")
         if report.selected_model_path:
             print(f"- 선택 모델: {report.selected_model_path}")
@@ -3789,15 +3791,17 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                     print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
                 else:
                     print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
-            print("- 목록은 프로젝트 기준 상대경로 알파벳 순서입니다.")
+        if report.model_artifact_paths:
+            print("- 목록은 선택한 워크스페이스 기준 상대경로 알파벳 순서입니다.")
+            print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
+            print("  모델 artifact 후보:")
+            for index, path in enumerate(report.model_artifact_paths, start=1):
+                marker = " <선택됨>" if normalize_path_text(path) == selected_model_path else ""
+                print(f"  {index}. {path}{marker}")
+        else:
+            print("- 학습 코드는 아래 번호로 확인하고, 실행 시 --entrypoint 경로를 사용합니다.")
+        if not report.selected_model_path:
             if report.model_artifact_paths:
-                print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
-            else:
-                print("- 학습 코드는 아래 번호로 확인하고, 실행 시 --entrypoint 경로를 사용합니다.")
-            if report.model_artifact_paths:
-                print("  모델 artifact 후보:")
-                for index, path in enumerate(report.model_artifact_paths, start=1):
-                    print(f"  {index}. {path}")
                 print(f"- 모델 artifact 선택 실행 예: {PS_PREPARE_MODEL_COMMAND}")
             if report.training_code_paths:
                 print("  학습 코드 후보:")

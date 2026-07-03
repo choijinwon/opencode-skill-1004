@@ -1263,7 +1263,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
         tod_guide = [
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
-            f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> --select-only --execute 로 사용할 모델을 선택한다.",
+            f"2. {AI_STUDIO_PROCESS_STEPS[1]}: Windows PowerShell에서 현재 워크스페이스 루트로 이동한 뒤 select_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
             f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 Python/MLflow 버전 기준 requirements.txt 필수/추가 패키지를 확인한다.",
             f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/scripts/04-train-model/templates/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",

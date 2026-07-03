@@ -20,6 +20,7 @@ from pathlib import Path
 OPENCODE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_ROOT = OPENCODE_ROOT / "scripts"
 LAUNCH_SUMMARY_SCRIPT = SCRIPTS_ROOT / "launch_workspace_summary.py"
+SELECT_MODEL_SCRIPT = SCRIPTS_ROOT / "02-model-select" / "select_model.py"
 PREPARE_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "prepare_selected_model.py"
 ENV_SCRIPT = SCRIPTS_ROOT / "03-environment-check" / "check_environment.py"
 RUN_TRAINING_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "run_training.py"
@@ -54,7 +55,7 @@ def ps_path(path: str) -> str:
 
 
 def normalized_windows_path(path: str) -> str:
-    return path.replace("/", "\\")
+    return path.replace("＼", "\\").replace("￦", "\\").replace("₩", "\\").replace("/", "\\")
 
 
 def model_selection_args(raw_model: str) -> list[str]:
@@ -62,7 +63,7 @@ def model_selection_args(raw_model: str) -> list[str]:
     if model.isdigit():
         # Keep compatibility with users typing "--model3" in PowerShell.
         return [f"--model{model}"]
-    return ["--model", ps_path(model)]
+    return ["--model", ps_path(model).replace("\\", "￦")]
 
 
 def selected_model_from_prepare_output(output: str) -> str:
@@ -226,7 +227,7 @@ def main() -> int:
 
     # 2. 모델 선택
     step2 = run_command(
-        [sys.executable, str(PREPARE_SCRIPT), "--project", str(project), *model_selection_args(args.model), "--select-only", "--execute"],
+        [sys.executable, str(SELECT_MODEL_SCRIPT), "--project", str(project), *model_selection_args(args.model)],
         project,
     )
     assert_contains(step2.stdout, "선택 결과:", "step 2 selection result")

@@ -18,6 +18,19 @@
     ],
     "purpose": "copy sklearn, pytorch, or tensorflow sample when no model exists"
   },
+  "02-model-select": {
+    "skill_folder": "04-agent-mlflow-skill-train-model",
+    "process_steps": [
+      "2. 모델 선택"
+    ],
+    "primary_scripts": [
+      "02-model-select/select_model.py"
+    ],
+    "delegates_to": [
+      "04-train-model/prepare_selected_model.py"
+    ],
+    "purpose": "PowerShell-safe step 2 wrapper that locks the selected model only"
+  },
   "03-environment-check": {
     "skill_folder": "03-agent-mlflow-skill-environment-check",
     "process_steps": [
@@ -38,7 +51,6 @@
   "04-train-model": {
     "skill_folder": "04-agent-mlflow-skill-train-model",
     "process_steps": [
-      "2. 모델 선택",
       "4. 템플릿 변환",
       "5. 원격 MLflow 등록 실행"
     ],

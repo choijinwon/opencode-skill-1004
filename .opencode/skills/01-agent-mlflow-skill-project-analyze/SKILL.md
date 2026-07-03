@@ -24,6 +24,11 @@ metadata:
 ## Workflow
 
 ```text
+실행 기준: Windows PowerShell
+   - 사용자가 직접 선택한 워크스페이스 루트에서 실행한다.
+   - 예: cd '<선택한 프로젝트 경로>'
+   - 모델 경로는 선택한 워크스페이스 기준 상대경로를 사용한다.
+
 1. 모델 목록 확인
 2. 모델 선택
 3. 환경 검증
@@ -162,7 +167,7 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 
 ```text
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
+python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model 1
 python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
 ```
 

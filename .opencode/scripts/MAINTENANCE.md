@@ -34,13 +34,16 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 02 Sample Bootstrap
   02-sample-bootstrap/bootstrap_sample_project.py    sklearn/pytorch/tensorflow 샘플 복사
 
+02 Model Select
+  02-model-select/select_model.py                    2번 모델 선택 전용 PowerShell 안전 wrapper
+
 03 Environment Check
   03-environment-check/check_environment.py          Python, requirements.txt, MLflow 설정 확인
   03-environment-check/response_speed_check.py       폐쇄망 속도 진단
   03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-  04-train-model/prepare_selected_model.py           2번 모델 선택 고정 + 4번 템플릿 변환
+  04-train-model/prepare_selected_model.py           1번 모델 목록 확인 + 4번 템플릿 변환
   04-train-model/run_training.py                     5번 원격 MLflow 등록 실행
   04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
@@ -57,7 +60,7 @@ QA / Maintenance
 
 ```text
 1 모델 목록 확인                  -> prepare_selected_model.py --project .
-2 모델 선택                       -> prepare_selected_model.py --model <번호|경로> --select-only --execute
+2 모델 선택                       -> 02-model-select/select_model.py --model <번호|경로>
 3 환경 검증      -> check_environment.py
 4 템플릿 변환                     -> prepare_selected_model.py --model selected --execute
 5 원격 MLflow 등록 실행           -> run_training.py --execute

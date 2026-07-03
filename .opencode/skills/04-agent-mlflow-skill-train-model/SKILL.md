@@ -24,9 +24,15 @@ metadata:
 ## Workflow
 
 ```text
+실행 기준: Windows PowerShell
+   - 사용자가 직접 선택한 워크스페이스 루트에서 실행한다.
+   - 예: cd '<선택한 프로젝트 경로>'
+   - 모델 경로는 선택한 워크스페이스 기준 상대경로를 사용한다.
+
 1. 모델 목록 확인
 2. 모델 선택
-   - `--model <번호|경로>`를 명시하면 그 모델을 새 선택값으로 반영한다.
+   - `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>`를 실행하면 그 모델을 새 선택값으로 반영한다.
+   - PowerShell에서 `--model3`, `--model 3`, `data\...`, `data￦...` 입력을 모두 2번 선택으로 처리한다.
    - 번호 선택은 화면에 표시된 프로젝트 상대경로 알파벳 정렬 목록을 그대로 사용한다.
    - 번호 선택 후 프레임워크/확장자 기준으로 다시 정렬하거나 다른 모델로 해석하지 않는다.
    - 스크립트가 출력한 `선택 모델`과 `MODEL_KIND`를 최종 결과로 신뢰한다.
@@ -97,8 +103,8 @@ python .opencode/scripts/04-train-model/run_training.py --project <project> --en
 
 선택 모델 준비:
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project>
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project> --model 1 --select-only --execute
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project> --model data/torch/model.pt --select-only --execute
+python .opencode/scripts/02-model-select/select_model.py --project <project> --model 1
+python .opencode/scripts/02-model-select/select_model.py --project <project> --model 'data\torch\model.pt'
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project> --model selected --execute
 
 AI Studio/MLflow 연결부 보강 dry-run:
