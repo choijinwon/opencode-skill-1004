@@ -226,6 +226,13 @@ def project_relative_path(path: Path, project: Path) -> str:
         return path.name
 
 
+def find_workspace_root(project: Path) -> Path | None:
+    for candidate in [project, *project.parents]:
+        if (candidate / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT).is_file():
+            return candidate
+    return None
+
+
 def build_command(python_bin: str, entrypoint: Path, prepare_only: bool, project: Path) -> list[str]:
     cmd = ["python", project_relative_path(entrypoint, project)]
     if prepare_only and entrypoint.name in {"run_model.py", "register_model.py"}:
@@ -433,11 +440,11 @@ def is_runtest_2_entrypoint(entrypoint: Path | None, project: Path) -> bool:
 
 
 def sync_selected_model_runtime_before_registration(project: Path, python_bin: str) -> tuple[list[str], list[str]]:
-    if not (project / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT).is_file():
+    workspace_root = find_workspace_root(project)
+    if workspace_root is None:
         return [], [f"preflight_script_missing:{PROJECT_PREPARE_SELECTED_MODEL_SCRIPT.as_posix()}"]
-
     cmd = [
-        "python",
+        python_bin,
         PROJECT_PREPARE_SELECTED_MODEL_SCRIPT.as_posix(),
         "--project",
         ".",
@@ -446,7 +453,7 @@ def sync_selected_model_runtime_before_registration(project: Path, python_bin: s
     ]
     result = subprocess.run(
         cmd,
-        cwd=project,
+        cwd=workspace_root,
         check=False,
         capture_output=True,
         text=True,

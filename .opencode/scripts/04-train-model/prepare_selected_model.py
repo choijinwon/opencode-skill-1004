@@ -412,6 +412,7 @@ class PreparedModelReport:
     generated_entrypoint: str
     generated_inference_test: str
     execute: bool
+    work_project_path: str | None = None
     requested_model_path: str | None = None
     model_selection_locked: bool = False
     locked_model_path: str | None = None
@@ -428,7 +429,10 @@ def rel(path: Path, base: Path) -> str:
     try:
         return normalize_path_text(path.relative_to(base).as_posix())
     except ValueError:
-        return normalize_path_text(path.as_posix())
+        try:
+            return normalize_path_text(os.path.relpath(path, base))
+        except ValueError:
+            return normalize_path_text(path.as_posix())
 
 
 def windows_relative_path(path: Path, base: Path) -> str:
@@ -895,6 +899,17 @@ def selected_model_display_name(project: Path, selected_model: Path) -> str:
     return stem
 
 
+def safe_folder_name(value: str, fallback: str = "selected_model") -> str:
+    normalized = re.sub(r"[^A-Za-z0-9가-힣_.-]+", "_", value.strip())
+    normalized = normalized.strip("._-")
+    return normalized or fallback
+
+
+def selected_model_work_dir(project: Path, selected_model: Path) -> Path:
+    folder_name = safe_folder_name(selected_model_display_name(project, selected_model), selected_model.stem or selected_model.name)
+    return project / folder_name
+
+
 def default_mlflow_names(project: Path, selected_model: Path) -> tuple[str, str]:
     experiment_name = safe_mlflow_name(selected_model_display_name(project, selected_model), "ai_studio")
     return experiment_name, f"{experiment_name}_model"
@@ -958,9 +973,9 @@ def conversion_reference_step(kind: str, reference: Path) -> str:
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        "2. samples/pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
+        f"2. samples/pytorch_sample/ 템플릿을 모델 작업 폴더로 복사: {rel(selected_model_work_dir(project, selected_model), project)}",
         f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
-        "4. runtest.py 참조해서 runtest_2.py 생성",
+        "4. runtest.py 참조해서 runtest_2.py 변환",
         "5. 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
         "6. 변환 결과 검증",
     ]
@@ -1011,7 +1026,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
                     "runtest.py_selected_model_constants_forbidden:"
                     + ",".join(forbidden_markers)
                 )
-    copied.append(".opencode/samples/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
+    copied.append(".opencode/samples/pytorch_sample/* -> model work folder (data/, requirements.txt 제외)")
     return copied, skipped, failures
 
 
@@ -1104,6 +1119,22 @@ def ensure_runtime_directories(project: Path, execute: bool) -> tuple[list[str],
             failures.append(f"runtime_dir_create_failed:{name}:{exc}")
             continue
         changed.append(f"{name}/")
+    return changed, skipped, failures
+
+
+def ensure_model_work_dir(project: Path, work_project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    if not execute:
+        skipped.append(f"{rel(work_project, project)}/:dry_run")
+        return changed, skipped, failures
+    try:
+        work_project.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        failures.append(f"model_work_dir_create_failed:{rel(work_project, project)}:{exc}")
+        return changed, skipped, failures
+    changed.append(f"{rel(work_project, project)}/ model work folder")
     return changed, skipped, failures
 
 
@@ -1669,7 +1700,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
 
 # --- Ai Studio selected model conversion ---
 # 선택된 모델을 먼저 판별하고, 원본 모델 경로를 직접 읽도록 변환합니다.
-# MODEL_KIND에 맞는 load_selected_model()을 생성해 워크스페이스 템플릿 코드를 선택 모델 기준으로 갱신합니다.
+# MODEL_KIND에 맞는 load_selected_model()으로 워크스페이스 템플릿 코드를 선택 모델 기준으로 변환합니다.
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
 import os
 import atexit as _aiu_atexit
@@ -1831,9 +1862,9 @@ def aiu_data_prep_payload(kind: str) -> str:
 def aiu_data_prep_block(kind: str) -> str:
     payload = aiu_data_prep_payload(kind)
     return f'''# 데이터 준비
-# 선택 모델 종류에 맞는 최소 input_example을 생성합니다.
+# 선택 모델 종류에 맞는 최소 input_example으로 변환합니다.
 # 외부 데이터셋(FashionMNIST 등)을 다운로드하지 않고 원격 배포/검증용 synthetic 입력만 만듭니다.
-# MODEL_KIND={kind} 기준으로 생성된 데이터 준비 코드입니다.
+# MODEL_KIND={kind} 기준으로 변환된 데이터 준비 코드입니다.
 import json as _aiu_json
 
 try:
@@ -3397,9 +3428,9 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
     changed.append(
-        "runtest_2.py generated from selected model (refreshed)"
+        "runtest_2.py transformed for selected model"
         if existed_before
-        else "runtest_2.py generated from selected model"
+        else "runtest_2.py transformed for selected model"
     )
     if generation_reference.resolve() != reference.resolve():
         changed.append(f"runtest_2.py reference scope: {reference_scope_display_path(kind, generation_reference)}")
@@ -3414,11 +3445,7 @@ def write_requirements(project: Path, kind: str, execute: bool) -> tuple[list[st
     existed_before = target.exists()
     if execute:
         target.write_text(generated_requirements_text(kind), encoding="utf-8")
-    changed.append(
-        "requirements.txt (generated/refreshed by environment requirements)"
-        if existed_before
-        else "requirements.txt (generated by environment requirements)"
-    )
+    changed.append("requirements.txt transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3433,7 +3460,7 @@ def write_input_example(project: Path, selected_model: Path, kind: str, execute:
             json.dumps(selected_model_input_example_data(project, selected_model, kind), ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-    changed.append("input_example.json (refreshed)" if existed_before else "input_example.json")
+    changed.append("input_example.json transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3449,7 +3476,7 @@ def write_config_json(project: Path, selected_model: Path, kind: str, execute: b
             json.dumps(selected_model_config_data(project, selected_model, kind), ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-    changed.append("config/config.json (refreshed)" if existed_before else "config/config.json")
+    changed.append("config/config.json transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3466,7 +3493,7 @@ def write_inferencetest(project: Path, selected_model: Path, kind: str, referenc
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("inferencetest.py remote inference request template (refreshed)" if existed_before else "inferencetest.py remote inference request template")
+    changed.append("inferencetest.py transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3479,7 +3506,7 @@ def write_aiu_model(project: Path, selected_model: Path, kind: str, execute: boo
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(generated_model_text(project, selected_model, kind), encoding="utf-8")
-    changed.append("aiu_custom/model.py (refreshed)" if existed_before else "aiu_custom/model.py")
+    changed.append("aiu_custom/model.py transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3499,7 +3526,7 @@ def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: b
         template_path = TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py"
         template_text = template_path.read_text(encoding="utf-8", errors="ignore") if template_path.is_file() else ""
     target.write_text(generated_predict_text(template_text, kind), encoding="utf-8")
-    changed.append("aiu_custom/predict.py deployment entrypoint (refreshed)" if existed_before else "aiu_custom/predict.py deployment entrypoint")
+    changed.append("aiu_custom/predict.py transformed for selected model")
     return changed, skipped, failures
 
 
@@ -3689,12 +3716,14 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     locked_model = current_selected_model_path(project)
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
+    work_project = selected_model_work_dir(project, selected_model) if selected_model else project
     if args.sync_runtime:
         selected_model, selected_kind, selection_error = selected_model_from_config(project)
         if selected_model is not None and selected_kind is None:
             selected_kind = model_kind(selected_model)
         requested_model = selected_model
         locked_model = selected_model
+        work_project = selected_model_work_dir(project, selected_model) if selected_model else project
     model_selection_locked = False
 
     report = PreparedModelReport(
@@ -3710,6 +3739,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         generated_entrypoint="runtest_2.py",
         generated_inference_test="inferencetest.py",
         execute=args.execute,
+        work_project_path=rel(work_project, project) if selected_model else None,
         requested_model_path=rel(requested_model, project) if requested_model else None,
         model_selection_locked=model_selection_locked,
         locked_model_path=rel(locked_model, project) if locked_model else None,
@@ -3803,13 +3833,18 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.prepared_paths.extend(["selected_model locked"] + changed)
         report.skipped.extend(skipped)
         report.failures.extend(failures)
+        work_changed, work_skipped, work_failures = ensure_model_work_dir(project, work_project, args.execute)
+        report.prepared_paths.extend(work_changed)
+        report.skipped.extend(work_skipped)
+        report.failures.extend(work_failures)
         if args.execute and not report.failures:
             report.next_steps.extend(
                 [
                     "2번 모델 선택 완료: 선택 모델을 고정했습니다.",
+                    f"작업 폴더: {rel(work_project, project)}",
                     "3번 환경 검증을 실행하세요.",
                     "4번 템플릿 변환은 사용자가 선택했을 때만 실행합니다.",
-                    PS_CHECK_ENV_COMMAND,
+                    f"python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
                 ]
             )
         elif not report.failures:
@@ -3817,15 +3852,15 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         return report
 
     if args.sync_runtime:
-        runtime_reference = project / "runtest_2.py"
-        reference = find_reference_entrypoint(project, selected_kind)
+        runtime_reference = work_project / "runtest_2.py"
+        reference = find_reference_entrypoint(work_project, selected_kind)
         report.reference_entrypoint = rel(reference, project) if reference else None
         if reference is None:
             report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
-            report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
+            report.next_steps.append(f"모델 작업 폴더에 기존 runtest.py 또는 run_test.py를 넣어주세요: {rel(work_project, project)}")
             return report
 
-        changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
+        changed, write_skipped, write_failures = write_runtest_2(work_project, selected_model, selected_kind, reference, args.execute, args.force)
         report.prepared_paths.extend(changed)
         report.skipped.extend(write_skipped)
         report.failures.extend(write_failures)
@@ -3834,11 +3869,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
 
         if not runtime_reference.is_file():
             report.failures.append("runtest_2_missing")
-            report.next_steps.append("먼저 모델 선택으로 runtest_2.py를 생성하세요.")
+            report.next_steps.append("먼저 모델 선택 후 runtest_2.py 변환을 실행하세요.")
             return report
 
         runtime_changed, runtime_skipped, runtime_failures = sync_selected_model_runtime(
-            project,
+            work_project,
             selected_model,
             selected_kind,
             runtime_reference,
@@ -3854,44 +3889,44 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 경로와 모델 형식 연결부를 수정했습니다.",
                     "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
                     "다음은 3번 환경 검증입니다.",
-                    PS_CHECK_ENV_COMMAND,
+                    f"python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
                 ]
             )
         elif not report.failures:
             report.next_steps.append("검토 후 --execute를 붙여 선택 모델 기준으로 런타임 폴더/파일을 변환하세요.")
         return report
 
-    template_changed, template_skipped, template_failures = copy_template_sample_folder(project, args.execute)
+    template_changed, template_skipped, template_failures = copy_template_sample_folder(work_project, args.execute)
     report.prepared_paths.extend(template_changed)
     report.skipped.extend(template_skipped)
     report.failures.extend(template_failures)
     if report.failures:
         return report
 
-    read_changed, read_skipped, read_failures = read_copied_template_files(project, args.execute)
+    read_changed, read_skipped, read_failures = read_copied_template_files(work_project, args.execute)
     report.prepared_paths.extend(read_changed)
     report.skipped.extend(read_skipped)
     report.failures.extend(read_failures)
     if report.failures:
         return report
 
-    reference = find_reference_entrypoint(project, selected_kind)
+    reference = find_reference_entrypoint(work_project, selected_kind)
     report.reference_entrypoint = rel(reference, project) if reference else None
     if reference is None:
         report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
-        report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
+        report.next_steps.append(f"모델 작업 폴더에 기존 runtest.py 또는 run_test.py를 넣어주세요: {rel(work_project, project)}")
         return report
 
-    changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
+    changed, write_skipped, write_failures = write_runtest_2(work_project, selected_model, selected_kind, reference, args.execute, args.force)
     report.prepared_paths.extend(changed)
     report.skipped.extend(write_skipped)
     report.failures.extend(write_failures)
     if report.failures:
         return report
 
-    runtime_reference = project / "runtest_2.py"
+    runtime_reference = work_project / "runtest_2.py"
     runtime_changed, runtime_skipped, runtime_failures = sync_selected_model_runtime(
-        project,
+        work_project,
         selected_model,
         selected_kind,
         runtime_reference,
@@ -3904,7 +3939,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if report.failures:
         return report
 
-    verify_changed, verify_skipped, verify_failures = verify_selected_model_conversion(project, selected_model, selected_kind, models, args.execute)
+    verify_changed, verify_skipped, verify_failures = verify_selected_model_conversion(work_project, selected_model, selected_kind, models, args.execute)
     report.prepared_paths.extend(verify_changed)
     report.skipped.extend(verify_skipped)
     report.failures.extend(verify_failures)
@@ -3914,31 +3949,34 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             [
                 "모델 선택 완료: 모델 목록 확인 -> 모델 선택",
                 f"선택 모델 유지: {rel(selected_model, project)}",
+                f"작업 폴더: {rel(work_project, project)}",
                 "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
-                f"3번은 사용자가 선택해 실행합니다: {PS_CHECK_ENV_COMMAND}",
+                f"3번은 사용자가 선택해 실행합니다: python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
                 "4번 템플릿 변환은 사용자가 선택했을 때만 진행합니다.",
                 "5번 원격 MLflow 등록 실행은 사용자가 선택했을 때만 진행합니다.",
                 "6번 추론 테스트와 7번 오류 재실행도 사용자가 선택했을 때만 진행합니다.",
             ]
         )
     elif not report.failures:
-        report.next_steps.append("검토 후 --execute를 붙여 기존 runtest.py를 참조한 runtest_2.py만 생성하세요.")
+        report.next_steps.append("검토 후 --execute를 붙여 기존 runtest.py를 참조한 runtest_2.py를 변환하세요.")
     return report
 
 
 def todo_statuses(report: PreparedModelReport) -> list[str]:
     model_selected = bool(report.selected_model_path)
+    project_path = Path(report.project_path)
+    work_path = project_path / report.work_project_path if report.work_project_path else project_path
     auto_ready = all(
         path in report.prepared_paths
         or f"{path} (refreshed)" in report.prepared_paths
         or any(item.startswith(f"{path} ") for item in report.prepared_paths)
-        or (Path(report.project_path) / path).is_file()
+        or (work_path / path).is_file()
         for path in [
             "runtest_2.py",
         ]
     )
     runtime_ready = all(
-        (Path(report.project_path) / path).exists()
+        (work_path / path).exists()
         for path in [
             "aiu_custom/model.py",
             "aiu_custom/predict.py",
@@ -3974,6 +4012,10 @@ def print_todo_guide(report: PreparedModelReport) -> None:
 
 
 def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
+    work_project = report.work_project_path or "."
+    check_env_command = f"python .opencode/scripts/03-environment-check/check_environment.py --project {work_project} --entrypoint runtest_2.py"
+    prepare_command = f"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute"
+    run_training_command = f"python .opencode/scripts/04-train-model/run_training.py --project {work_project} --entrypoint runtest_2.py --execute"
     if (
         not verbose
         and report.execute
@@ -3984,16 +4026,18 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print("선택 결과:")
         print(f"- 선택 모델: {report.selected_model_path}")
         print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+        print(f"- 작업 폴더: {work_project}")
         print_todo_guide(report)
         print("- 완료: 선택 모델 고정")
         print("- 다음: 3번 환경 검증")
-        print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
+        print("- 4번 템플릿 변환은 사용자가 선택했을 때만 실행")
         return
 
     if not verbose and report.execute and report.selected_model_path and not report.failures:
         print("준비 결과:")
         print(f"- 선택 모델: {report.selected_model_path}")
         print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+        print(f"- 작업 폴더: {work_project}")
         print_todo_guide(report)
         print("- 완료: 템플릿 복사 후 선택 모델 형식에 맞게 변환")
         print("- 변환: runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py")
@@ -4012,6 +4056,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         if report.selected_model_path:
             print(f"- 선택 모델: {report.selected_model_path}")
             print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+            print(f"- 작업 폴더: {work_project}")
             print("- 이후 단계는 이 선택 모델 기준으로 계속 진행합니다.")
         else:
             print(format_model_selection_hint())
@@ -4045,7 +4090,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                     print(f"  {index}. {path}")
                 print(f"- 학습 코드 실행 안내: {training_code_run_hint(Path(report.project_path), report.training_code_paths)}")
             print("- 선택 후 진행: 3번 환경 검증")
-            print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
+            print("- 4번 템플릿 변환은 사용자가 선택했을 때만 실행")
 
     print_todo_guide(report)
 
@@ -4058,9 +4103,9 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             if report.failures:
                 print("- 실패")
             elif report.execute:
-                print("- 완료: 템플릿 복사, runtest_2.py 생성, requirements/input/config 갱신, 런타임 연결부 변환")
+                print("- 완료: 템플릿 복사, runtest_2.py, requirements/input/config, 런타임 연결부 변환")
             else:
-                print("- dry-run: --execute를 붙이면 실제 파일을 갱신합니다.")
+                print("- dry-run: --execute를 붙이면 실제 파일을 변환합니다.")
         if report.warnings:
             print("\nWarnings:")
             for warning in report.warnings:
@@ -4077,9 +4122,9 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             else:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
-            print(f"- 3번 환경 검증은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
-            print(r"- 4번 템플릿 변환은 사용자가 선택: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute")
-            print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {PS_RUN_TRAINING_COMMAND}")
+            print(f"- 3번 환경 검증은 사용자가 선택: {check_env_command}")
+            print(f"- 4번 템플릿 변환은 사용자가 선택: {prepare_command}")
+            print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {run_training_command}")
             print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")
         elif report.next_steps:
             for step in report.next_steps[:3]:
@@ -4112,11 +4157,12 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print("- none")
     print(f"Selected model: {report.selected_model_path or 'missing'}")
     print(f"MODEL_KIND: {report.model_kind or 'missing'}")
+    print(f"Work folder: {work_project}")
     print(f"Reference entrypoint: {report.reference_entrypoint or 'missing'}")
     print(f"Transformed entrypoint: {report.generated_entrypoint}")
     print(f"Execute: {report.execute}")
     if report.required_requirements or report.additional_requirements:
-        print("requirements.txt update:")
+        print("requirements.txt transform:")
         if report.required_requirements:
             print("- required:")
             for item in report.required_requirements:
@@ -4182,7 +4228,7 @@ def main() -> int:
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
     parser.add_argument("--execute", action="store_true", help="write the selected-model runtest_2.py or sync runtime files when --sync-runtime is used")
-    parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
+    parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is transformed for the selected model")
     parser.add_argument("--select-only", action="store_true", help="step 2 only: lock the selected model; do not copy or transform templates")
     parser.add_argument("--sync-runtime", action="store_true", help="reuse the selected model and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")

@@ -84,7 +84,7 @@ Secrets: mlflow_tracking_password=set, value hidden
 
 ```text
 패키지 불일치/미설치가 있어도 로컬 dependency 설치는 자동 실행하지 않는다.
-requirements.txt 생성/갱신과 상태 표시만 수행한다.
+requirements.txt 변환과 상태 표시만 수행한다.
 
 처리해야 할 항목:
 - 직접 확인 대상: 패키지 불일치/미설치

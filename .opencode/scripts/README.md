@@ -6,11 +6,11 @@
 사용자 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있으며, 자동 준비 시 모델 파일을 템플릿 폴더로 복사하지 않고 선택한 원본 경로에 연결하도록 코드를 변환한다.
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
-모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
-모델 선택 단계는 사용할 모델만 확정한다. 4번 템플릿 변환을 사용자가 선택하면 `.opencode/samples/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, 복사된 모든 템플릿 파일을 다시 읽고 선택 모델 기준으로 필요한 연결부만 최소 변환한다. 템플릿의 `data/`와 `requirements.txt`는 복사하지 않고, 환경검증 단계에서 워크스페이스 루트 `requirements.txt`를 생성/갱신한다.
-모델 선택 명령은 1~2번에서 선택 모델을 확정한다. 3번 환경검증은 환경변수/requirements만 처리하고 템플릿을 복사하지 않는다. 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
+모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`를 변환한다.
+모델 선택 단계는 사용할 모델만 확정한다. 4번 템플릿 변환을 사용자가 선택하면 워크스페이스 루트 아래에 선택 모델명 작업 폴더를 만들고, `.opencode/samples/pytorch_sample/` 내부 템플릿을 그 폴더로 복사한다. 이후 복사된 모든 템플릿 파일을 다시 읽고 선택 모델 기준으로 필요한 연결부만 최소 변환한다. 템플릿의 `data/`와 `requirements.txt`는 복사하지 않고, 환경검증 단계에서 모델명 작업 폴더의 `requirements.txt`를 변환한다.
+모델 선택 명령은 1~2번에서 선택 모델을 확정한다. 3번 환경검증은 환경변수/requirements만 처리하고 템플릿을 복사하지 않는다. 4번 템플릿 변환은 사용자가 선택했을 때만 실행한다. `--sync-runtime`은 이미 변환된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
-선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
+선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환한다.
 Windows에서 MLflow에 업로드할 모델 원본 `path`는 Windows native 상대경로를 유지한다. 예: `saved_model\cnn_model.pt`. 모델 `url`과 config artifact `uri`는 KServe/서버 해석 기준과 맞추기 위해 `saved_model/cnn_model.pt`, `config/config.json` 형식으로 기록한다.
 KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 만든 `path: artifacts/...`이며, `aiu_custom/model.py`는 `context.artifacts`를 통해 이 Linux 경로를 읽는다.
 
@@ -42,13 +42,13 @@ KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 
    03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-   04-train-model/prepare_selected_model.py           runtest.py 참조 + runtest_2.py 변환 생성
+   04-train-model/prepare_selected_model.py           runtest.py 참조 + runtest_2.py 변환
    04-train-model/run_training.py                     확정 entrypoint 실행
    04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
 05 Inference Test
    06-inference-test/test_inference.py                수동 추론 계약 점검
-   generated: inferencetest.py
+   transformed: inferencetest.py
 
 QA / Maintenance
    qa-maintenance/doctor.py                           전체 상태 1페이지 점검
@@ -111,16 +111,16 @@ python .opencode/scripts/launch_workspace_summary.py .
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
 ```
 
-`1~2`는 모델 목록 확인 -> 모델 선택 흐름이다. `3`은 환경 검증이며, 템플릿을 복사하지 않는다. `4` 템플릿 생성/변환은 사용자가 선택했을 때 실행되며, `input_example.json`, `config/config.json`도 선택 모델 기준으로 준비한다. 템플릿 복사에서는 `data/`와 `requirements.txt`를 복사하지 않는다.
+`1~2`는 모델 목록 확인 -> 모델 선택 흐름이다. `3`은 환경 검증이며, 템플릿을 복사하지 않는다. `4` 템플릿 변환은 사용자가 선택했을 때 실행되며, `input_example.json`, `config/config.json`도 선택 모델 기준으로 변환한다. 템플릿 복사에서는 `data/`와 `requirements.txt`를 복사하지 않는다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
-`3`은 모델 환경변수와 패키지 상태 체크다. 워크스페이스 루트에 `requirements.txt`가 없으면 필수 5개 기준으로 생성하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. 워크스페이스 루트에 `.env`가 없으면 MLflow 5개 키만 `""` 값으로 생성하고, 이미 있으면 복사하거나 덮어쓰지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
+`3`은 모델 환경변수와 패키지 상태 체크다. 선택 모델명 작업 폴더에 `requirements.txt`가 없으면 필수 5개 기준으로 변환하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 변환한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. 선택 모델명 작업 폴더에 `.env`가 없으면 MLflow 5개 키만 `""` 값으로 생성하고, 이미 있으면 복사하거나 덮어쓰지 않는다. MLflow 설정은 선택 모델명 작업 폴더의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
 
 패키지 설치 기준:
 
 ```text
 JavaScript 프로젝트(package.json 있음) -> npm i
-Python 샘플/모델(requirements.txt 있음) -> 로컬 자동 설치 안 함, requirements.txt 생성/갱신과 상태 확인만 수행
+Python 샘플/모델(requirements.txt 있음) -> 로컬 자동 설치 안 함, requirements.txt 변환과 상태 확인만 수행
 폐쇄망 PC -> 필요 시 사용자가 내부 http:// PyPI/Nexus 미러로 직접 설치
 PyTorch CPU wheel Nexus upstream -> https://download.pytorch.org/whl/cpu
 torch SSL 설치 금지 -> https://download.pytorch.org, https://pypi.org 인덱스를 직접 쓰지 않고 http:// 내부 미러만 사용
@@ -172,12 +172,12 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project . --js
 
 ### prepare_selected_model.py
 
-현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 기존 `runtest.py`를 참조해 `runtest_2.py`만 생성/갱신한다.
-`runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
+현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 기존 `runtest.py`를 참조해 `runtest_2.py`만 변환한다.
+`runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`으로 변환한다.
 기존 `runtest.py`는 수정하지 않고 참조만 한다.
 PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다. 샘플 `requirements.txt`는 참조하지 않는다.
 선택 모델 경로와 `MODEL_KIND`를 반영한다.
-`runtest_2.py` 생성 시퀀스는 `모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND를 반영한 연결부 변환 -> 변환 결과 검증` 순서로 수행한다.
+`runtest_2.py` 변환 시퀀스는 `모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND를 반영한 연결부 변환 -> 변환 결과 검증` 순서로 수행한다.
 
 ```text
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
@@ -199,7 +199,7 @@ model_artifact_paths
 selected_model_path
 MODEL_KIND
 reference_entrypoint: runtest.py, run_test.py 중 하나
-generated_entrypoint: runtest_2.py
+transformed_entrypoint: runtest_2.py
 ```
 
 지원 모델 형식:
@@ -361,7 +361,7 @@ mlflow_tracking_username=
 mlflow_tracking_password=
 ```
 
-사용자는 현재 워크스페이스 루트의 `.env`에 MLflow 5개 값을 직접 입력한다.
+사용자는 선택 모델명 작업 폴더의 `.env`에 MLflow 5개 값을 직접 입력한다.
 `mlflow_tracking_uri`은 원격 MLflow/리포트 URI만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
 tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트 실행을 중단한다. 사용자가 값을 직접 입력한 뒤 다시 실행한다.
 환경 변수 입력 후 `run_model.py`는 설정 블록 값을 아래 환경 변수로 export한다.
@@ -430,7 +430,7 @@ python .opencode/scripts/qa-maintenance/test_7_step_flow.py --project . --model 
 
 ### inferencetest.py
 
-`prepare_selected_model.py --execute`가 생성하는 원격 추론 테스트 파일이다. 사용자가 `req_url`에 배포된 추론 URL을 직접 입력하고, `input_example.json`을 HTTP POST로 전송한다.
+`prepare_selected_model.py --execute`가 선택 모델 기준으로 변환하는 원격 추론 테스트 파일이다. 사용자가 `req_url`에 배포된 추론 URL을 직접 입력하고, `input_example.json`을 HTTP POST로 전송한다.
 
 기본 실행은 화면 출력만 수행하며 원격 추론 URL은 사용자가 직접 입력한다.
 

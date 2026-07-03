@@ -54,9 +54,9 @@ metadata:
 1. 기존 모델이면 프로젝트 루트 전체와 data/** 모델 목록을 먼저 보여준다.
 2. 사용할 모델을 번호 또는 경로로 선택한다.
 3. MODEL_KIND를 확장자 기준으로 판별한다.
-4. `.opencode/samples/pytorch_sample/` 템플릿을 워크스페이스 루트로 복사한 뒤, 복사된 모든 템플릿 파일을 다시 읽고 선택 모델 기준 연결부만 최소 변환한다. 단, 템플릿 `requirements.txt`는 복사하지 않는다.
+4. 워크스페이스 루트 아래에 선택 모델명 작업 폴더를 만들고, `.opencode/samples/pytorch_sample/` 템플릿을 그 폴더로 복사한 뒤, 복사된 모든 템플릿 파일을 다시 읽고 선택 모델 기준 연결부만 최소 변환한다. 단, 템플릿 `requirements.txt`는 복사하지 않는다.
 5. 워크스페이스 루트의 runtest.py를 우선 읽기 전용으로 참조하고, 복사된 템플릿 파일을 선택 모델 연결부만 안전하게 변환한다.
-6. 기존 runtest.py 또는 run_test.py는 절대 수정하지 않고 runtest_2.py만 선택 모델 기준으로 변환 생성한다.
+6. 기존 runtest.py 또는 run_test.py는 절대 수정하지 않고 runtest_2.py만 선택 모델 기준으로 변환한다.
 7. 모델 파일은 템플릿 폴더로 복사하지 않는다.
 8. 실행 전 MLflow/AI Studio 설정 블록을 확인한다.
 ```
