@@ -254,9 +254,9 @@ REMOTE_MLFLOW_VERSION_ENDPOINTS = [
     "api/2.0/mlflow/version",
 ]
 REMOTE_MLFLOW_TIMEOUT_SECONDS = 3
-PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_environment.py --project . --entrypoint runtest_2.py"
-PS_PREPARE_SELECTED_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute"
-PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
+PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
+PS_PREPARE_SELECTED_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute"
+PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
 PS_INFERENCE_COMMAND = r"python .\local_serving\localservingtest.py"
 
 

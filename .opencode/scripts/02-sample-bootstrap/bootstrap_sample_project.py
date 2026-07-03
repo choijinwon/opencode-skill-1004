@@ -338,7 +338,7 @@ def build_tod_guide(target_project_path: Path, runtest_path: Path | None) -> lis
     else:
         entrypoint = "run_model.py"
     return [
-        f"1. 환경 검증: python .opencode\\scripts\\03-environment-check\\check_environment.py --project {target_project_path}",
+        f"1. 환경 검증: python .opencode/scripts/03-environment-check/check_environment.py --project {target_project_path}",
         f"2. 샘플 규격 확인/보충: {target_project_path}에 복사된 템플릿 폴더 내부 파일들을 확인한다. 대표 예시: aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json",
         f"3. 환경 변수 입력/export: {entrypoint}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
         "4. 패키지 설치: requirements.txt 기준으로 내부 http:// PyPI/Nexus 미러를 사용해 설치한다. SSL/HTTPS 인덱스 직접 설치는 사용하지 않는다.",

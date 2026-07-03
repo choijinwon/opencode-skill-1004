@@ -67,7 +67,7 @@ Step 2. 모델 선택
 Step 3. 환경변수/requirements 갱신
         사용자가 3번을 선택했을 때만 실행한다.
         현재 워크스페이스 루트의 .env 파일에서 MLflow 5개 값 상태를 확인한다.
-        requirements.txt 필수 5개 패키지는 .opencode\scripts\03-environment-check\requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
+        requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
         Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 4. 템플릿 변환
@@ -91,8 +91,8 @@ Step 7. 오류 재실행
 ```
 
 ```text
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder>
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model 1 --select-only --execute
 ```
 
 ## Folder Order
@@ -110,8 +110,8 @@ python .opencode\scripts\04-train-model\prepare_selected_model.py --project <mod
 ## Script Map
 
 스킬별 대표 스크립트는 아래만 먼저 봅니다. 실제 구현 파일은 스킬 목록 기준 폴더에 있습니다.
-같은 매핑은 `.opencode\scripts\skill_script_map.json`에도 있습니다.
-상세 정리표는 `.opencode\scripts\SCRIPT_INDEX.md`에 있습니다.
+같은 매핑은 `.opencode/scripts/skill_script_map.json`에도 있습니다.
+상세 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`에 있습니다.
 
 ```text
 01 Project Analyze
@@ -147,8 +147,8 @@ QA / Maintenance
 전체 흐름을 한 번에 점검할 때는 doctor를 먼저 실행합니다.
 
 ```text
-python .opencode\scripts\qa-maintenance\doctor.py --workspace . --project .
-python .opencode\scripts\qa-maintenance\doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .
+python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
 ```
 
 doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물 상태를 한 화면에 보여줍니다.
@@ -159,8 +159,8 @@ doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물
 AI Studio/MLflow 연결부를 실제로 보강해야 하면 먼저 dry-run을 실행합니다.
 
 ```text
-python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <model-project-folder> --entrypoint <file>
-python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <model-project-folder> --entrypoint <file> --execute
+python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <model-project-folder> --entrypoint <file>
+python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <model-project-folder> --entrypoint <file> --execute
 ```
 
 ## Common UI Pattern
@@ -216,4 +216,4 @@ tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 - torch는 SSL/HTTPS 인덱스로 직접 설치하지 않습니다. 내부 `http://` PyPI/Nexus 미러만 사용합니다.
 - PyTorch CPU wheel의 Nexus proxy upstream 참고 URI는 `https://download.pytorch.org/whl/cpu`입니다.
 - Windows에서는 `standaloneExecutable` 또는 native executable 흐름보다 Python script 흐름을 우선합니다.
-- 폐쇄망 응답이 느리면 `python .opencode\scripts\03-environment-check\response_speed_check.py --project .` 후 `python .opencode\scripts\03-environment-check\apply_index_ignore.py --project .`를 실행합니다.
+- 폐쇄망 응답이 느리면 `python .opencode/scripts/03-environment-check/response_speed_check.py --project .` 후 `python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .`를 실행합니다.

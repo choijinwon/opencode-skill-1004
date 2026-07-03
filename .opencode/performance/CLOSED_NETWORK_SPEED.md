@@ -5,8 +5,8 @@
 ## Quick Fix
 
 ```text
-python .opencode\scripts\03-environment-check\response_speed_check.py --project .
-python .opencode\scripts\03-environment-check\apply_index_ignore.py --project .
+python .opencode/scripts/03-environment-check/response_speed_check.py --project .
+python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .
 ```
 
 그 다음 OpenCode 세션을 다시 열거나 워크스페이스를 다시 로드합니다.
@@ -45,15 +45,15 @@ datasets/
 
 ```text
 Windows PowerShell:
-  python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
-  python .opencode\scripts\response_speed_check.py --project .
-  python .opencode\scripts\apply_index_ignore.py --project .
+  python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
+  python .opencode/scripts/response_speed_check.py --project .
+  python .opencode/scripts/apply_index_ignore.py --project .
 ```
 
 PowerShell에서 실패 메시지가 필요하면 `||` 대신 아래처럼 확인합니다.
 
 ```powershell
-python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
 if ($LASTEXITCODE -ne 0) { "script_not_found" }
 ```
 

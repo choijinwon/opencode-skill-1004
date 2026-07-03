@@ -10,8 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
-PS_BOOTSTRAP_COMMAND = r"python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
+PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py"
 
 # The skill pack does not require a fixed file name. These common names are
 # used only as hints when detecting a registration or inference entrypoint.

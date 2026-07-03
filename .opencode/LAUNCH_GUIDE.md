@@ -20,7 +20,7 @@ AI Studio TODO Guide - 7단계
    "첫 번째 모델", "파이토치 모델", "data/... 사용"
 
    숫자 1번 선택 시 실행:
-   python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model 1 --select-only --execute
+   python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model 1 --select-only --execute
 
    Windows PowerShell에서 현재 워크스페이스 루트 기준 상대경로로 실행합니다.
 

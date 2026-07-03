@@ -565,11 +565,11 @@ def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorChec
 
     if missing:
         copy_command = (
-            f"python .opencode\\scripts\\02-sample-bootstrap\\bootstrap_sample_project.py --project {project} "
+            f"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project {project} "
             f"--sample {sample} --scaffold-existing --execute"
         )
         if project == workspace:
-            copy_command = f"python .opencode\\scripts\\02-sample-bootstrap\\bootstrap_sample_project.py --project . --sample {sample} --scaffold-existing --execute"
+            copy_command = f"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample {sample} --scaffold-existing --execute"
         return DoctorCheck(
             "샘플 규격 확인/보충",
             "warn",
@@ -723,7 +723,7 @@ def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck
         evidence,
         [
             "실행 파일 후보가 여러 개입니다. 사용자가 실제 사용하는 파일명을 직접 지정해야 합니다.",
-            "예: python .opencode\\scripts\\qa-maintenance\\doctor.py --workspace . --project <project> --entrypoint run.py",
+            "예: python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <project> --entrypoint run.py",
         ],
     )
 

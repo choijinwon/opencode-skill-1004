@@ -65,9 +65,9 @@ PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_s
 RUN_TRAINING_SCRIPT = ROOT / "scripts" / "04-train-model" / "run_training.py"
 PYTORCH_REFERENCE_DIR = ROOT / "samples" / "pytorch_sample"
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
-PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_environment.py --project . --entrypoint runtest_2.py"
-PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
-PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
+PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
+PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -3605,7 +3605,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터로 판단합니다. Python 실행파일을 모델 생성/등록 entrypoint로 사용하세요.")
             report.next_steps.append(f"감지된 CSV 데이터: {', '.join(data_paths[:5])}")
             report.next_steps.append(f"감지된 Python 실행파일: {', '.join(entrypoint_paths[:5])}")
-            report.next_steps.append(f"실행 예: python .opencode\\scripts\\04-train-model\\run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         elif data_files:
             report.failures.append("csv_data_without_model_entrypoint")
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터입니다. 모델을 생성/로드/등록하는 Python 실행파일을 프로젝트 루트에 넣어주세요.")
@@ -3613,7 +3613,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         elif entrypoints:
             report.failures.append("entrypoint_without_model_artifact")
             report.next_steps.append("모델 artifact는 없지만 Python 실행파일이 있습니다. 해당 파일이 모델 생성/등록 entrypoint인지 확인해 실행하세요.")
-            report.next_steps.append(f"실행 예: python .opencode\\scripts\\04-train-model\\run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         else:
             report.failures.append("model_artifact_paths_empty")
             report.next_steps.append("현재 프로젝트 루트 바로 아래 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
@@ -3622,7 +3622,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                r"2번 모델 선택 실행: python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
+                r"2번 모델 선택 실행: python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --select-only --execute"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -3897,7 +3897,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
             print(f"- 3번 환경변수/requirements 갱신은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
-            print(r"- 4번 템플릿 변환은 사용자가 선택: python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute")
+            print(r"- 4번 템플릿 변환은 사용자가 선택: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute")
             print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {PS_RUN_TRAINING_COMMAND}")
             print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")
         elif report.next_steps:

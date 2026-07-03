@@ -18,8 +18,8 @@ from ai_studio_process import AI_STUDIO_PROCESS_STEPS
 
 SAMPLES_DIR = ROOT / "samples"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
-PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute"
-PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
+PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --select-only --execute"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = [
