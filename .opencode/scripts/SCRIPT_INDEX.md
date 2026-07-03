@@ -74,7 +74,7 @@ Generated runtime entrypoint:
 ```text
 1. 모델 목록 확인                  -> 04-train-model/prepare_selected_model.py --project .
 2. 모델 선택                       -> 04-train-model/prepare_selected_model.py --model <번호|경로> --select-only --execute
-3. 환경변수/requirements 갱신      -> 03-environment-check/check_environment.py
+3. 환경 검증      -> 03-environment-check/check_environment.py
 4. 템플릿 변환                     -> 04-train-model/prepare_selected_model.py --model selected --execute
 5. 원격 MLflow 등록 실행           -> 04-train-model/run_training.py --execute
 6. 추론 테스트                     -> inferencetest.py

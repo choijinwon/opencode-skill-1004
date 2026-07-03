@@ -64,7 +64,7 @@ Step 2. 모델 선택
         이미 준비된 선택 모델은 --model selected로 재사용한다.
         runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
-Step 3. 환경변수/requirements 갱신
+Step 3. 환경 검증
         사용자가 3번을 선택했을 때만 실행한다.
         현재 워크스페이스 루트의 .env 파일에서 MLflow 5개 값 상태를 확인한다.
         requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.

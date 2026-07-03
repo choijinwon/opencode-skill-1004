@@ -135,7 +135,7 @@ def verify_process_contract() -> None:
     expected = (
         "모델 목록 확인",
         "모델 선택",
-        "환경변수/requirements 갱신",
+        "환경 검증",
         "템플릿 변환",
         "원격 MLflow 등록 실행",
         "추론 테스트",
@@ -235,20 +235,20 @@ def main() -> int:
     verify_selected_model_is_preserved(project, selected_source_path)
     results.append(StepResult(2, "모델 선택", "PASS", f"모델 {args.model} 선택 고정 성공"))
 
-    # 3. 환경변수/requirements 갱신
+    # 3. 환경 검증
     step3 = run_command(
         [sys.executable, str(ENV_SCRIPT), "--project", str(project), "--entrypoint", "runtest_2.py", "--no-fix-packages"],
         project,
         allow_failure=True,
     )
     assert_contains(step3.stdout, "AI Studio TODO Guide - 7단계", "step 3 TODO guide")
-    assert_contains(step3.stdout, "[3] 환경변수/requirements 갱신", "step 3 status")
+    assert_contains(step3.stdout, "[3] 환경 검증", "step 3 status")
     assert_contains(step3.stdout, "4번 템플릿 변환은 사용자가 선택", "step 4 manual template execution")
     assert_contains(step3.stdout, f"path: {selected_source_path}", "step 3 selected model preservation")
     verify_selected_model_is_preserved(project, selected_source_path)
     if (project / "runtest_2.py").exists():
         raise AssertionError("step 3 must not create runtest_2.py; template conversion belongs to step 4")
-    results.append(StepResult(3, "환경변수/requirements 갱신", "PASS", "처음 선택 모델 유지 및 requirements 점검 출력 확인"))
+    results.append(StepResult(3, "환경 검증", "PASS", "처음 선택 모델 유지 및 requirements 점검 출력 확인"))
 
     # 4. 템플릿 변환
     step4 = run_command(

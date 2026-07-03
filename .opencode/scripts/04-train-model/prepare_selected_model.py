@@ -3504,7 +3504,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.extend(
                 [
                     "2번 모델 선택 완료: 선택 모델을 고정했습니다.",
-                    "3번 환경변수/requirements 갱신을 실행하세요.",
+                    "3번 환경 검증을 실행하세요.",
                     "4번 템플릿 변환은 사용자가 선택했을 때만 실행합니다.",
                     PS_CHECK_ENV_COMMAND,
                 ]
@@ -3550,7 +3550,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 [
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 경로와 모델 형식 연결부를 수정했습니다.",
                     "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
-                    "다음은 3번 환경변수/requirements 갱신입니다.",
+                    "다음은 3번 환경 검증입니다.",
                     PS_CHECK_ENV_COMMAND,
                 ]
             )
@@ -3674,7 +3674,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
         print_todo_guide(report)
         print("- 완료: 선택 모델 고정")
-        print("- 다음: 3번 환경변수/requirements 갱신")
+        print("- 다음: 3번 환경 검증")
         print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
         return
 
@@ -3712,7 +3712,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             for index, path in enumerate(report.model_artifact_paths, start=1):
                 print(f"  {index}. {path}")
             print(f"- 실행 예: {PS_PREPARE_MODEL_COMMAND}")
-            print("- 선택 후 진행: 3번 환경변수/requirements 갱신")
+            print("- 선택 후 진행: 3번 환경 검증")
             print("- 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행")
 
     print_todo_guide(report)
@@ -3745,7 +3745,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             else:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
-            print(f"- 3번 환경변수/requirements 갱신은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
+            print(f"- 3번 환경 검증은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
             print(r"- 4번 템플릿 변환은 사용자가 선택: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute")
             print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {PS_RUN_TRAINING_COMMAND}")
             print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")

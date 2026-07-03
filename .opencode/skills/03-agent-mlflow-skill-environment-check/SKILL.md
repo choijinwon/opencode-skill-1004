@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 3. 환경변수/requirements 갱신
+현재 단계: 3. 환경 검증
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
 다음 단계: 사용자가 4. 템플릿 변환 선택 후, 사용자가 5. 원격 MLflow 등록 실행 선택
@@ -26,7 +26,7 @@ metadata:
 ```text
 1. 모델 목록 확인
 2. 모델 선택
-3. 환경변수/requirements 갱신
+3. 환경 검증
 4. 템플릿 변환 (사용자 선택)
 5. 원격 MLflow 등록 실행 (사용자 선택)
 6. 추론 테스트 (사용자 선택)

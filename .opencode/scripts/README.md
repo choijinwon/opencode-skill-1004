@@ -62,7 +62,7 @@ QA / Maintenance
 ```text
 1. 모델 목록 확인                  -> prepare_selected_model.py
 2. 모델 선택                       -> prepare_selected_model.py --model <번호|경로> --select-only --execute
-3. 환경변수/requirements 갱신      -> 사용자가 3번 선택 시 check_environment.py --entrypoint runtest_2.py
+3. 환경 검증      -> 사용자가 3번 선택 시 check_environment.py --entrypoint runtest_2.py
 4. 템플릿 변환                     -> 사용자가 4번 선택 시 prepare_selected_model.py --model selected --execute
 5. 원격 MLflow 등록 실행           -> 사용자가 5번 선택 시 run_training.py --entrypoint runtest_2.py --execute
 6. 추론 테스트                     -> 사용자가 6번 선택 시 python inferencetest.py
@@ -107,7 +107,7 @@ python .opencode/scripts/launch_workspace_summary.py .
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
 ```
 
-`1~2`는 모델 목록 확인 -> 모델 선택 흐름이다. `3`은 환경변수/requirements 갱신이며, 템플릿을 복사하지 않는다. `4` 템플릿 생성/변환은 사용자가 선택했을 때 실행되며, `input_example.json`, `config/config.json`도 선택 모델 기준으로 준비한다. 템플릿 복사에서는 `data/`와 `requirements.txt`를 복사하지 않는다.
+`1~2`는 모델 목록 확인 -> 모델 선택 흐름이다. `3`은 환경 검증이며, 템플릿을 복사하지 않는다. `4` 템플릿 생성/변환은 사용자가 선택했을 때 실행되며, `input_example.json`, `config/config.json`도 선택 모델 기준으로 준비한다. 템플릿 복사에서는 `data/`와 `requirements.txt`를 복사하지 않는다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
 `3`은 모델 환경변수와 패키지 상태 체크다. 워크스페이스 루트에 `requirements.txt`가 없으면 필수 5개 기준으로 생성하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.

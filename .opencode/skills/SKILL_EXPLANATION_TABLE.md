@@ -26,7 +26,7 @@
 |---|---|---|---|
 | 1 | `01-agent-mlflow-skill-project-analyze` | 모델 목록 확인 | 모델 검색/분석 |
 | 2 | `04-agent-mlflow-skill-train-model` | 모델 선택 | `prepare_selected_model.py --model ... --select-only --execute` |
-| 3 | `03-agent-mlflow-skill-environment-check` | 환경변수/requirements 갱신 | 사용자가 3번 선택 시 `check_environment.py --entrypoint runtest_2.py` |
+| 3 | `03-agent-mlflow-skill-environment-check` | 환경 검증 | 사용자가 3번 선택 시 `check_environment.py --entrypoint runtest_2.py` |
 | 4 | `04-agent-mlflow-skill-train-model` | 템플릿 변환 | 사용자가 4번 선택 시 실행 |
 | 5 | `04-agent-mlflow-skill-train-model` | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `run_training.py --entrypoint runtest_2.py --execute` |
 | 6 | `06-agent-mlflow-skill-inference-test` | 추론 테스트 | 사용자가 6번 선택 시 `python inferencetest.py` |
@@ -38,7 +38,7 @@
 |---|---|
 | 1 | 모델 목록을 확인 |
 | 2 | 사용할 모델을 선택 |
-| 3 | 환경변수와 requirements 갱신 |
+| 3 | 환경 검증 |
 | 4 | 템플릿 복사와 연결부 수정 |
 | 5 | 원격 MLflow 등록 실행 |
 | 6 | 추론 테스트 |

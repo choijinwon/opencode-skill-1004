@@ -172,6 +172,13 @@ MODEL_KIND_REQUIRED_PACKAGE = {
 
 EXPECTED_PYTHON_VERSION = "3.11.9"
 REQUIRED_REQUIREMENTS_FILE = Path(__file__).resolve().parent / "requirements.required.txt"
+MANDATORY_REQUIREMENT_VERSIONS = {
+    "mlflow": "==3.10.0",
+    "torch": "==2.12.1",
+    "numpy": "==1.26.4",
+    "kserve": "==0.15.0",
+    "pandas": "==2.2.3",
+}
 
 
 def resolve_workspace_project(raw_project: str) -> Path:
@@ -191,13 +198,7 @@ def resolve_workspace_project(raw_project: str) -> Path:
 
 
 def load_required_requirement_versions() -> dict[str, str]:
-    fallback = {
-        "mlflow": "==3.10.0",
-        "torch": "==2.12.1",
-        "numpy": "==1.26.4",
-        "kserve": "==0.15.0",
-        "pandas": "==2.2.3",
-    }
+    fallback = dict(MANDATORY_REQUIREMENT_VERSIONS)
     if not REQUIRED_REQUIREMENTS_FILE.exists():
         return fallback
     versions: dict[str, str] = {}
@@ -212,7 +213,9 @@ def load_required_requirement_versions() -> dict[str, str]:
                 if name:
                     versions[name] = f"{operator}{version.strip()}"
                 break
-    return versions or fallback
+    merged = dict(fallback)
+    merged.update(versions)
+    return merged
 
 
 EXPECTED_PACKAGE_VERSIONS = load_required_requirement_versions()
@@ -549,7 +552,8 @@ def requirement_package_name(requirement: str) -> str | None:
     return parsed[0]
 
 
-def pin_requirement(requirement: str) -> str:
+def pin_requirement(requirement: str, expected_package_versions: dict[str, str] | None = None) -> str:
+    expected_package_versions = expected_package_versions or EXPECTED_PACKAGE_VERSIONS
     requirement = normalize_requirement_file_line(requirement)
     parsed = parse_requirement_line(requirement)
     if parsed is None:
@@ -557,7 +561,7 @@ def pin_requirement(requirement: str) -> str:
     name, spec = parsed
     if spec:
         return requirement
-    expected = EXPECTED_PACKAGE_VERSIONS.get(name)
+    expected = expected_package_versions.get(name)
     if expected:
         return f"{name}{expected}"
     installed = package_version(name)
@@ -587,7 +591,8 @@ def import_roots_from_file(path: Path) -> set[str]:
     return roots
 
 
-def inferred_requirements_from_imports(project: Path) -> list[str]:
+def inferred_requirements_from_imports(project: Path, expected_package_versions: dict[str, str] | None = None) -> list[str]:
+    expected_package_versions = expected_package_versions or EXPECTED_PACKAGE_VERSIONS
     requirements: list[str] = []
     seen: set[str] = set()
     for relative in REQUIREMENT_SCAN_FILES:
@@ -598,7 +603,7 @@ def inferred_requirements_from_imports(project: Path) -> list[str]:
             raw_requirement = IMPORT_REQUIREMENT_MAP.get(root)
             if raw_requirement is None:
                 continue
-            requirement = pin_requirement(raw_requirement)
+            requirement = pin_requirement(raw_requirement, expected_package_versions)
             package_name = requirement_package_name(requirement)
             key = package_name or normalize_package_name(requirement)
             if key in seen:
@@ -608,20 +613,22 @@ def inferred_requirements_from_imports(project: Path) -> list[str]:
     return requirements
 
 
-def required_requirement_lines() -> list[str]:
+def required_requirement_lines(expected_package_versions: dict[str, str] | None = None) -> list[str]:
+    expected_package_versions = expected_package_versions or EXPECTED_PACKAGE_VERSIONS
     lines: list[str] = []
-    for name, specifier in EXPECTED_PACKAGE_VERSIONS.items():
+    for name, specifier in expected_package_versions.items():
         lines.append(f"{name}{specifier}")
     return lines
 
 
-def update_requirements_from_imports(project: Path) -> list[str]:
-    inferred = inferred_requirements_from_imports(project)
+def update_requirements_from_imports(project: Path, expected_package_versions: dict[str, str] | None = None) -> list[str]:
+    expected_package_versions = expected_package_versions or EXPECTED_PACKAGE_VERSIONS
+    inferred = inferred_requirements_from_imports(project, expected_package_versions)
     requirements_path = project / "requirements.txt"
     existing_lines: list[str] = []
     if requirements_path.exists():
         existing_lines = requirements_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    required_lines = required_requirement_lines()
+    required_lines = required_requirement_lines(expected_package_versions)
     required_by_name = {
         package_name: requirement
         for requirement in required_lines
@@ -1219,8 +1226,6 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         )
     python_version = platform.python_version()
     selected_path, selected_kind, selected_required_package, selected_package_status = selected_model_status(project)
-    requirements_updated = update_requirements_from_imports(project)
-    deps = dependency_files(project)
     env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
     ai_env = ai_studio_env_status(project)
     model_settings = model_settings_status(project, entrypoint_name)
@@ -1230,6 +1235,8 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     effective_expected_package_versions = dict(EXPECTED_PACKAGE_VERSIONS)
     if remote_mlflow.server_version:
         effective_expected_package_versions["mlflow"] = f"=={remote_mlflow.server_version}"
+    requirements_updated = update_requirements_from_imports(project, effective_expected_package_versions)
+    deps = dependency_files(project)
     packages = []
     package_names = list(CORE_PACKAGES)
     if selected_required_package and selected_required_package not in {normalize_package_name(name) for name in package_names}:
@@ -1257,7 +1264,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
             f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> --select-only --execute 로 사용할 모델을 선택한다.",
-            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 Python/MLflow 버전 기준 requirements.txt 필수/추가 패키지를 확인한다.",
             f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/samples/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
             f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 inferencetest.py 로 원격 추론 URL을 호출한다.",

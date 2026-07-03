@@ -21,7 +21,7 @@
   "03-environment-check": {
     "skill_folder": "03-agent-mlflow-skill-environment-check",
     "process_steps": [
-      "3. 환경변수/requirements 갱신"
+      "3. 환경 검증"
     ],
     "primary_scripts": [
       "03-environment-check/check_environment.py"

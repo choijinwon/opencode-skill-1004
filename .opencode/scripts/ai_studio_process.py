@@ -7,7 +7,7 @@ official process image and all user-facing documentation.
 AI_STUDIO_PROCESS_STEPS = (
     "모델 목록 확인",
     "모델 선택",
-    "환경변수/requirements 갱신",
+    "환경 검증",
     "템플릿 변환",
     "원격 MLflow 등록 실행",
     "추론 테스트",
