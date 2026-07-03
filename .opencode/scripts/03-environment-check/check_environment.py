@@ -670,7 +670,7 @@ def selected_model_status(project: Path) -> tuple[str | None, str | None, str | 
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
         return None, None, None, None
-    selected_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
+    selected_path = model.get("source_path") or model.get("original_path") or model.get("relative_path") or model.get("model_relative_path") or model.get("runtime_model_path")
     model_kind = model.get("model_kind") or model.get("kind")
     required_package = model.get("required_package")
     if isinstance(required_package, str) and required_package == "unknown":

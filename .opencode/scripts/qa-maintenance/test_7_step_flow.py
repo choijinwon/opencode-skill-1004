@@ -47,12 +47,26 @@ def ps_path(path: str) -> str:
     return path.replace("/", "\\")
 
 
+def normalized_windows_path(path: str) -> str:
+    return path.replace("/", "\\")
+
+
 def model_selection_args(raw_model: str) -> list[str]:
     model = raw_model.strip()
     if model.isdigit():
         # Keep compatibility with users typing "--model3" in PowerShell.
         return [f"--model{model}"]
     return ["--model", ps_path(model)]
+
+
+def selected_model_from_prepare_output(output: str) -> str:
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- 선택 모델:"):
+            return normalized_windows_path(stripped.split(":", 1)[1].strip())
+        if stripped.startswith("Selected model:"):
+            return normalized_windows_path(stripped.split(":", 1)[1].strip())
+    raise AssertionError("selected model line not found in prepare output")
 
 
 def run_command(cmd: list[str], cwd: Path, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
@@ -159,6 +173,15 @@ def verify_generated_files(project: Path) -> None:
     assert_contains(runtest_text, "saved_model", "runtime model path")
 
 
+def verify_selected_model_is_preserved(project: Path, expected_source_path: str) -> None:
+    expected = normalized_windows_path(expected_source_path)
+    config = json.loads((project / "config" / "config.json").read_text(encoding="utf-8"))
+    model_config = config.get("model", {})
+    source_path = normalized_windows_path(str(model_config.get("source_path") or ""))
+    if source_path != expected:
+        raise AssertionError(f"selected source model changed: {source_path} != {expected}")
+
+
 def print_summary(results: list[StepResult]) -> None:
     print("")
     print("AI Studio 7단계 테스트 결과")
@@ -193,6 +216,8 @@ def main() -> int:
     )
     assert_contains(step2.stdout, "준비 결과:", "step 2 prepare result")
     assert_contains(step2.stdout, "완료: 템플릿 복사 후 선택 모델 형식에 맞게 변환", "step 2 conversion")
+    selected_source_path = selected_model_from_prepare_output(step2.stdout)
+    verify_selected_model_is_preserved(project, selected_source_path)
     results.append(StepResult(2, "모델 선택", "PASS", f"모델 {args.model} 선택 및 자동 준비 성공"))
 
     # 3. 환경변수/requirements 갱신
@@ -203,10 +228,13 @@ def main() -> int:
     )
     assert_contains(step3.stdout, "AI Studio TODO Guide - 7단계", "step 3 TODO guide")
     assert_contains(step3.stdout, "[3] 환경변수/requirements 갱신", "step 3 status")
-    results.append(StepResult(3, "환경변수/requirements 갱신", "PASS", "TODO 상태 및 requirements 점검 출력 확인"))
+    assert_contains(step3.stdout, f"path: {selected_source_path}", "step 3 selected model preservation")
+    verify_selected_model_is_preserved(project, selected_source_path)
+    results.append(StepResult(3, "환경변수/requirements 갱신", "PASS", "처음 선택 모델 유지 및 requirements 점검 출력 확인"))
 
     # 4. 템플릿 변환
     verify_generated_files(project)
+    verify_selected_model_is_preserved(project, selected_source_path)
     results.append(StepResult(4, "템플릿 변환", "PASS", "runtest_2.py/config/input/local_serving/saved_model 검증"))
 
     # 5. 원격 MLflow 등록 실행
@@ -240,7 +268,9 @@ def main() -> int:
     # 7. 오류 재실행
     step7 = run_command([sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", "selected", "--execute"], project)
     assert_contains(step7.stdout, "준비 결과:", "step 7 rerun result")
+    assert_contains(step7.stdout, selected_source_path.replace("\\", "/"), "step 7 selected model output")
     verify_generated_files(project)
+    verify_selected_model_is_preserved(project, selected_source_path)
     results.append(StepResult(7, "오류 재실행", "PASS", "selected 모델 재사용 및 재검증 성공"))
 
     print_summary(results)
