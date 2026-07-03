@@ -208,7 +208,8 @@ def main() -> int:
     parser.add_argument("--project", default=".", help="workspace/model project root")
     parser.add_argument("--model", default="3", help="model number or project-relative path")
     parser.add_argument("--run-remote", action="store_true", help="execute real remote MLflow registration")
-    parser.add_argument("--skip-inference", action="store_true", help="skip step 6 local inference execution")
+    parser.add_argument("--run-inference", action="store_true", help="execute step 6 local inference test")
+    parser.add_argument("--skip-inference", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     project = Path(args.project).expanduser().resolve()
@@ -279,13 +280,13 @@ def main() -> int:
             results.append(StepResult(5, "원격 MLflow 등록 실행", "PASS", ".env 미입력 시 실행 차단 확인"))
 
     # 6. 추론 테스트
-    if args.skip_inference:
-        results.append(StepResult(6, "추론 테스트", "SKIP", "--skip-inference 지정"))
-    else:
+    if args.run_inference and not args.skip_inference:
         step6 = run_command([sys.executable, str(project / "local_serving" / "localservingtest.py")], project)
         assert_contains(step6.stdout, '"status": "completed"', "step 6 inference status")
         assert_contains(step6.stdout, "saved_model", "step 6 saved_model runtime")
         results.append(StepResult(6, "추론 테스트", "PASS", "saved_model 기준 로컬 추론 성공"))
+    else:
+        results.append(StepResult(6, "추론 테스트", "SKIP", "사용자가 6번 또는 --run-inference를 선택하지 않아 실행하지 않음"))
 
     # 7. 오류 재실행
     step7 = run_command([sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", "selected", "--execute"], project)

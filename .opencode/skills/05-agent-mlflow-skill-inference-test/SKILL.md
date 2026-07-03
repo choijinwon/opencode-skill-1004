@@ -44,6 +44,7 @@ metadata:
 5. Windows native load는 보조 확인으로만 둔다.
 6. 결과가 JSON serializable인지 확인한다.
 7. predict_2.py는 생성하지 않는다. 추론 테스트는 local_serving/localservingtest.py를 사용한다.
+8. 자동 실행하지 않는다. 사용자가 6번을 선택하거나 명시적으로 추론 테스트를 요청한 경우에만 실행한다.
 ```
 
 ## Output Contract

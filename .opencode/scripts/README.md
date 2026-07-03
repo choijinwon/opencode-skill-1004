@@ -89,6 +89,8 @@ QA / Maintenance
 7 -> Failures와 오류 메시지 기준으로 수정 후 실패한 단계부터 재실행
 ```
 
+6번 추론 테스트는 자동 실행하지 않는다. 사용자가 6번을 선택하거나 QA에서 `--run-inference`를 명시한 경우에만 실행한다.
+
 Windows PowerShell에서는 선택 프로젝트의 실행 폴더로 이동한 뒤 실행한다.
 
 ```powershell
