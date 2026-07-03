@@ -36,12 +36,28 @@ def normalize_model_selector(value: str) -> str:
 
 def normalize_argv(argv: list[str]) -> list[str]:
     normalized: list[str] = []
-    for arg in argv:
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
+        if arg == "--" and index + 1 < len(argv):
+            next_arg = argv[index + 1]
+            if next_arg in {"model", "project"}:
+                normalized.append(f"--{next_arg}")
+                index += 2
+                continue
+        if arg in {"model", "project"}:
+            normalized.append(f"--{arg}")
+            index += 1
+            continue
+        if arg in {"execute", "실행"}:
+            index += 1
+            continue
         match = re.fullmatch(r"--model(.+)", arg)
         if match and match.group(1) and not match.group(1).startswith(("=", "-")):
             normalized.extend(["--model", match.group(1)])
         else:
             normalized.append(arg)
+        index += 1
     return normalized
 
 
