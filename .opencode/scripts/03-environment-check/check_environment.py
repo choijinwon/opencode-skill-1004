@@ -22,6 +22,7 @@ from ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "04-train-model" / "prepare_selected_model.py"
 
 ENV_KEYS = [
     "MLFLOW_TRACKING_URI",
@@ -257,6 +258,33 @@ PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_env
 PS_PREPARE_SELECTED_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute"
 PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
 PS_INFERENCE_COMMAND = r"python .\local_serving\localservingtest.py"
+
+
+def windows_path_text(path: str | Path) -> str:
+    return str(path).replace("/", "\\")
+
+
+def powershell_quote_text(value: str | Path) -> str:
+    return "'" + windows_path_text(value).replace("'", "''") + "'"
+
+
+def prepare_selected_model_script_for_project(project: Path) -> Path:
+    project_local_script = project / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT
+    if project_local_script.is_file():
+        return project_local_script
+    return PREPARE_SELECTED_MODEL_SCRIPT
+
+
+def powershell_prepare_selected_command(project: Path) -> str:
+    script = prepare_selected_model_script_for_project(project)
+    try:
+        script_display = script.resolve().relative_to(project.resolve())
+    except ValueError:
+        script_display = script
+    return (
+        f"python {powershell_quote_text(script_display)} "
+        "--project . --model selected --execute"
+    )
 
 
 @dataclass
@@ -1212,7 +1240,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         entrypoint_display = entrypoint or "사용자가 실제 사용하는 파일명"
         tod_guide = [
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
-            f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
+            f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> --select-only --execute 로 사용할 모델을 선택한다.",
             f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 requirements.txt 필수/추가 패키지를 확인한다.",
             f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/samples/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
@@ -1464,17 +1492,19 @@ def run_package_auto_fix(project: Path) -> int:
 def should_auto_run_template_conversion(report: EnvironmentReport) -> bool:
     if not report.selected_model_path:
         return False
-    if not PREPARE_SELECTED_MODEL_SCRIPT.is_file():
+    project = Path(report.project_path)
+    if not prepare_selected_model_script_for_project(project).is_file():
         return False
     return True
 
 
 def run_template_auto_conversion(project: Path) -> tuple[int, list[str]]:
+    prepare_script = prepare_selected_model_script_for_project(project)
     command = [
         sys.executable,
-        str(PREPARE_SELECTED_MODEL_SCRIPT),
+        str(prepare_script),
         "--project",
-        str(project),
+        ".",
         "--model",
         "selected",
         "--execute",
@@ -1585,7 +1615,7 @@ def main():
             print("패키지 자동 처리: 불일치/미설치 항목이 없습니다.")
     if not args.json and should_auto_run_template_conversion(report):
         print("\n4번 템플릿 변환 자동실행:")
-        print(PS_PREPARE_SELECTED_COMMAND)
+        print(powershell_prepare_selected_command(project))
         template_return_code, template_output = run_template_auto_conversion(project)
         report = build_report(project, args.entrypoint)
         report.template_auto_run_attempted = True
