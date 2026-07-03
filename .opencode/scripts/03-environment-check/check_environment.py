@@ -1346,7 +1346,7 @@ def print_text(report: EnvironmentReport):
     install_file = "requirements.txt" if "requirements.txt" in report.dependency_files else "missing"
     print(f"설치 기준 파일: {install_file}")
     if report.requirements_updated:
-        print("\nrequirements.txt updated from imports:")
+        print("\nrequirements.txt generated/updated:")
         for item in report.requirements_updated:
             print(f"- {item}")
         print("- install command: python -m pip install -r requirements.txt")

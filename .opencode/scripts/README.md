@@ -7,7 +7,7 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
-모델 선택 단계에서 `.opencode/samples/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
+모델 선택 단계에서 `.opencode/samples/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `input_example.json`을 선택 모델 기준으로 준비한다. 템플릿의 `requirements.txt`는 복사하지 않고, 환경검증 단계에서 워크스페이스 루트 `requirements.txt`를 생성/갱신한다.
 모델 선택 명령은 1~3번 흐름을 한 번에 수행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
@@ -104,10 +104,10 @@ python .opencode\scripts\launch_workspace_summary.py .
 python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
 ```
 
-`1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `input_example.json`, `config/config.json`, `requirements.txt`도 선택 모델 기준으로 준비한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
+`1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `input_example.json`, `config/config.json`도 선택 모델 기준으로 준비한다. 템플릿 복사에서는 `requirements.txt`를 복사하지 않는다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
-`9`는 모델 환경변수와 패키지 상태 체크다. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트하고, 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
+`9`는 모델 환경변수와 패키지 상태 체크다. 워크스페이스 루트에 `requirements.txt`가 없으면 필수 5개 기준으로 생성하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
 
 패키지 설치 기준:
 
