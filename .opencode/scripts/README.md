@@ -7,12 +7,12 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
-모델 선택 단계에서 `.opencode/samples/aiu_studio/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
+모델 선택 단계에서 `.opencode/samples/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `requirements.txt`, `input_example.json`을 선택 모델 기준으로 준비한다.
 모델 선택 명령은 1~3번 흐름을 한 번에 수행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
-Linux 경로에 Windows 구분자(`\`, `＼`, `￦`, `₩`)가 섞이면 생성 파일에서 `/`로 자동 정규화한다.
-원격 MLflow/KServe 업로드 전에 `runtest_2.py`는 모델, config, `aiu_custom/` 경로가 실제 존재하는지 먼저 확인하고, 업로드 경로를 `/` 기준 절대경로로 변환한다.
+Windows에서 MLflow에 업로드할 원본 `uri`는 Windows native 경로를 유지한다. 예: `saved_model\cnn_model.pt`, `config\config.json`.
+KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 만든 `path: artifacts/...`이며, `aiu_custom/model.py`는 `context.artifacts`를 통해 이 Linux 경로를 읽는다.
 
 스킬 목록 기준 스크립트 정리는 `.opencode/scripts/SCRIPT_INDEX.md`를 먼저 본다.
 유지보수자는 `.opencode/scripts/MAINTENANCE.md`에서 각 스크립트의 책임, 주요 함수, 수정 포인트, 주의사항을 확인한다.
@@ -61,16 +61,19 @@ QA / Maintenance
 ```text
 1. 모델 목록 확인                  -> prepare_selected_model.py
 2. 모델 선택                       -> prepare_selected_model.py --model <번호|경로>
-3. 템플릿 변환                     -> 템플릿 복사 + 복사된 템플릿 기준 연결부 수정
-4. 환경변수/requirements 갱신      -> check_environment.py --entrypoint runtest_2.py
-5. 학습 실행 및 원격 MLflow 등록   -> python runtest_2.py
+3. 환경변수/requirements 갱신      -> check_environment.py --entrypoint runtest_2.py
+4. 템플릿 변환                     -> 템플릿 복사 + 복사된 템플릿 기준 연결부 수정
+5. 학습 실행 및 원격 MLflow 등록   -> run_training.py --entrypoint runtest_2.py --execute
 6. 추론 테스트                     -> 사용자가 6번 선택 시 python local_serving/localservingtest.py
 7. 오류 수정 및 재실행             -> Failures 기준으로 실패한 단계부터 재실행
 ```
 
 화면에 표시된 모델 번호나 TODO 단계 번호는 숫자 키로 입력하면 바로 선택/실행한다.
-모델은 처음 선택한 값으로 유지된다. 이후 다른 숫자를 눌러도 기존 선택 모델을 유지하고, 나머지 단계도 같은 모델 기준으로 진행한다.
-여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 최초 선택 모델 하나만 기준으로 수행한다.
+모델 목록이 표시되면 맨 처음에 `사용자는 숫자 예시 1번부터 선택합니다`를 강조해서 보여준다.
+자연어로도 선택할 수 있다. 예: `첫 번째 모델`, `파이토치 모델`, `data/... 사용`.
+모델 선택 명령에서 `--model <번호|경로>`를 명시하면 그 모델을 새 선택값으로 반영한다.
+이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 재사용하고, 나머지 단계도 같은 모델 기준으로 진행한다.
+여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 현재 선택 모델 하나만 기준으로 수행한다.
 `runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
 
 기존 모델 흐름에서 `runtest_2.py`가 있으면 AIU Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
@@ -78,7 +81,7 @@ QA / Maintenance
 ```text
 1~3 -> python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호|경로> --execute
 4 -> python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py
-5 -> python runtest_2.py
+5 -> python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
 6 -> 사용자가 선택하면 python local_serving/localservingtest.py
 7 -> Failures와 오류 메시지 기준으로 수정 후 실패한 단계부터 재실행
 ```
@@ -86,11 +89,24 @@ QA / Maintenance
 Windows PowerShell에서는 선택 프로젝트의 실행 폴더로 이동한 뒤 실행한다.
 
 ```powershell
-cd '<selected-project-path>\aiu_studio'
-python runtest_2.py
+cd '<selected-project-path>'
+python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute
 
 cd '<selected-project-path>\local_serving'
 python localservingtest.py
+```
+
+워크스페이스 첫 분석은 PowerShell에서 `||` 없이 실행한다.
+
+```powershell
+python .\.opencode\scripts\launch_workspace_summary.py .
+if ($LASTEXITCODE -ne 0) { "script_not_found" }
+```
+
+또는 PowerShell wrapper를 사용한다.
+
+```powershell
+.\.opencode\scripts\launch_workspace_summary.ps1 .
 ```
 
 `1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `input_example.json`, `config/config.json`, `requirements.txt`도 선택 모델 기준으로 준비한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.
@@ -103,18 +119,15 @@ python localservingtest.py
 ```text
 JavaScript 프로젝트(package.json 있음) -> npm i
 Python 샘플/모델(requirements.txt 있음) -> python -m pip install -r requirements.txt
-폐쇄망 WSL(wheelhouse 있음) -> bash .opencode/wsl/install_offline.sh
-온라인 WSL(wheelhouse 준비) -> 내부 http:// PyPI 미러 설정 후 bash .opencode/wsl/download_wheels.sh
+폐쇄망 PC -> 내부 http:// PyPI/Nexus 미러 설정 후 python -m pip install -r requirements.txt
 PyTorch CPU wheel Nexus upstream -> https://download.pytorch.org/whl/cpu
-torch SSL 설치 금지 -> https://download.pytorch.org, https://pypi.org 인덱스를 쓰지 않고 wheelhouse 또는 http:// 내부 미러만 사용
+torch SSL 설치 금지 -> https://download.pytorch.org, https://pypi.org 인덱스를 직접 쓰지 않고 http:// 내부 미러만 사용
 Bun 사용 금지 -> opencode Bun 런타임이 파일 트리 오류 처리 중 세그멘테이션 폴트를 낼 수 있으므로 bun, bunx, bun install, bun run 실행하지 않음
 ```
 
-폐쇄망 WSL 설치 파일은 `.opencode/wsl/`에 있다.
-
 ## Closed-Network Response Speed
 
-OpenCode가 폐쇄망 WSL/Windows에서 응답하거나 파일 트리를 인덱싱하는 속도가 느리면 먼저 진단을 실행한다.
+OpenCode가 폐쇄망 Windows에서 응답하거나 파일 트리를 인덱싱하는 속도가 느리면 먼저 진단을 실행한다.
 
 ```text
 python .opencode/scripts/03-environment-check/response_speed_check.py --project .
@@ -160,7 +173,7 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model
 현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 기존 `runtest.py`를 참조해 `runtest_2.py`만 생성/갱신한다.
 `runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
 기존 `runtest.py`는 수정하지 않고 참조만 한다.
-PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환해줘.
+PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다. 샘플 `requirements.txt`는 참조하지 않는다.
 선택 모델 경로와 `MODEL_KIND`를 반영한다.
 `runtest_2.py` 생성 시퀀스는 `모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND를 반영한 연결부 변환 -> 변환 결과 검증` 순서로 수행한다.
 
@@ -175,7 +188,7 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project <mod
 python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --sync-runtime --execute
 ```
 
-숫자 선택은 현재 출력된 `model_artifact_paths` 순서에 의존한다. 목록이 바뀔 수 있으므로 자동 준비/재실행에는 실제 모델 경로 또는 `--model selected`를 우선 사용한다.
+숫자 선택은 프로젝트 기준 상대경로 알파벳 정렬의 `model_artifact_paths` 순서를 사용한다. 같은 파일 목록이면 분석 화면과 준비 스크립트의 번호가 항상 같다. 자동 재실행에는 실제 모델 경로 또는 `--model selected`도 사용할 수 있다.
 
 출력 항목:
 
@@ -359,7 +372,7 @@ mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
 원격 배포 기본값은 `mlflow_tracking_url = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URL을 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
-서버 업로드 경로는 `server_upload_path()`로 변환된 값을 사용한다. 경로가 없으면 MLflow 등록을 시작하지 않고 누락된 모델/config/code 경로를 먼저 출력한다.
+Windows 워크스페이스 기준으로 준비/등록을 실행하며, MLflow에 전달하는 `code_paths`는 `aiu_custom`, artifact uri는 `saved_model\...`, `config\config.json` 같은 Windows 상대경로를 사용한다. KServe에 올라간 뒤에는 MLflow가 넘겨주는 Linux 컨테이너 내부 `context.artifacts["model"]`, `context.artifacts["config"]` 경로를 최우선으로 사용한다. Windows 로컬 절대경로는 KServe 런타임 경로로 사용하지 않는다.
 
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.

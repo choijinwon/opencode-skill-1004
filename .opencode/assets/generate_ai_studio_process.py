@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parent
 PROCESS_IMAGE = ROOT / "ai-studio-process.png"
 WORKFLOW_IMAGE = ROOT / "ai-studio-workflow.png"
 FONT_PATH = Path("/System/Library/Fonts/AppleSDGothicNeo.ttc")
+CANVAS_W = 2400
+CANVAS_H = 1350
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -55,8 +57,8 @@ def draw_text_block(
 
 
 def arrow(draw: ImageDraw.ImageDraw, x: int, y: int, color: str = "#0b4ea2") -> None:
-    draw.rectangle((x, y - 9, x + 18, y + 9), fill=color)
-    draw.polygon([(x + 18, y - 20), (x + 42, y), (x + 18, y + 20)], fill=color)
+    draw.line((x, y, x + 42, y), fill=color, width=6)
+    draw.polygon([(x + 42, y - 14), (x + 62, y), (x + 42, y + 14)], fill=color)
 
 
 def icon_model_search(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str) -> None:
@@ -138,14 +140,16 @@ def draw_card(
     footer: str,
     accent: str,
 ) -> None:
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=13, fill="#ffffff", outline=accent, width=2)
-    draw.ellipse((x + w // 2 - 27, y + 18, x + w // 2 + 27, y + 72), fill=accent)
-    centered(draw, (x + w // 2, y + 45), number, font(34, True), "#ffffff")
-    centered(draw, (x + w // 2, y + 128), title, font(22, True), "#111827")
-    dash_y = y + 178
-    for dx in range(x + 24, x + w - 24, 10):
-        draw.line((dx, dash_y, dx + 4, dash_y), fill=accent, width=2)
-    icon_cx, icon_cy = x + w // 2, y + 325
+    shadow = "#d8e2f1" if accent != "#258326" else "#d9ecd9"
+    draw.rounded_rectangle((x + 10, y + 12, x + w + 10, y + h + 12), radius=22, fill=shadow)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=22, fill="#fbfdff", outline=accent, width=3)
+    draw.ellipse((x + w // 2 - 36, y + 28, x + w // 2 + 36, y + 100), fill=accent)
+    centered(draw, (x + w // 2, y + 64), number, font(42, True), "#ffffff")
+    centered(draw, (x + w // 2, y + 166), title, font(30, True), "#111827")
+    dash_y = y + 238
+    for dx in range(x + 32, x + w - 32, 16):
+        draw.line((dx, dash_y, dx + 7, dash_y), fill=accent, width=3)
+    icon_cx, icon_cy = x + w // 2, y + 420
     {
         "search": icon_model_search,
         "select": icon_select,
@@ -155,51 +159,53 @@ def draw_card(
         "inference": icon_inference,
         "retry": icon_retry,
     }[icon_name](draw, icon_cx, icon_cy, accent)
-    draw_text_block(draw, x + w // 2, y + h - 105, footer, font(23), "#111827", w - 32, spacing=5)
+    draw_text_block(draw, x + w // 2, y + h - 135, footer, font(28), "#111827", w - 42, spacing=7)
 
 
 def draw_process(path: Path, bottom_text: str) -> None:
-    image = Image.new("RGB", (1672, 941), "#ffffff")
+    image = Image.new("RGB", (CANVAS_W, CANVAS_H), "#f7f9fc")
     draw = ImageDraw.Draw(image)
 
     blue = "#0b4ea2"
     green = "#258326"
+    navy = "#06172f"
 
-    centered(draw, (836, 74), "AI Studio 프로세스", font(76, True), "#06172f")
-    draw.line((32, 156, 778, 156), fill=blue, width=3)
-    draw.line((886, 156, 1640, 156), fill=blue, width=3)
-    draw.rectangle((780, 151, 892, 162), fill=blue)
+    centered(draw, (CANVAS_W // 2, 106), "AI Studio 프로세스", font(96, True), navy)
+    centered(draw, (CANVAS_W // 2, 190), "모델 선택부터 원격 등록, 추론 테스트까지 7단계 흐름", font(34), "#43536a")
+    draw.line((120, 250, 1070, 250), fill=blue, width=4)
+    draw.line((1330, 250, CANVAS_W - 120, 250), fill=blue, width=4)
+    draw.rounded_rectangle((1085, 239, 1315, 261), radius=10, fill=blue)
 
     cards = [
         ("1", "모델 목록 확인", "search", "프로젝트 루트\n+ data/** 검색", blue),
         ("2", "모델 선택", "select", "번호 또는\n경로 선택", blue),
-        ("3", "템플릿 변환", "template", "템플릿 복사,\n연결부 수정", blue),
-        ("4", "환경변수\nrequirements 갱신", "requirements", "MLflow 입력값,\n패키지 갱신", blue),
+        ("3", "환경변수\nrequirements 갱신", "requirements", "MLflow 입력값,\n패키지 갱신", blue),
+        ("4", "템플릿 변환", "template", "템플릿 복사,\n연결부 수정", blue),
         ("5", "원격 MLflow\n등록 실행", "mlflow", "runtest_2.py\n실행", blue),
         ("6", "추론 테스트", "inference", "추론 테스트\n실행", green),
         ("7", "오류 수정 및\n재실행", "retry", "실패 단계부터\n다시 실행", green),
     ]
 
-    card_w, card_h = 200, 520
-    gap = 18
+    card_w, card_h = 282, 720
+    gap = 28
     total_w = card_w * len(cards) + gap * (len(cards) - 1)
-    x = (1672 - total_w) // 2
-    y = 216
+    x = (CANVAS_W - total_w) // 2
+    y = 330
     for idx, card in enumerate(cards):
         draw_card(draw, x, y, card_w, card_h, *card)
         if idx < len(cards) - 1:
             arrow(draw, x + card_w + 8, y + card_h // 2)
         x += card_w + gap
 
-    draw.rounded_rectangle((56, 794, 1616, 886), radius=10, fill="#ffffff", outline=blue, width=2)
-    centered(draw, (836, 840), bottom_text, font(34, True), blue)
+    draw.rounded_rectangle((120, 1168, CANVAS_W - 120, 1268), radius=22, fill="#ffffff", outline=blue, width=3)
+    centered(draw, (CANVAS_W // 2, 1218), bottom_text, font(42, True), blue)
 
     image.save(path)
 
 
 def main() -> None:
-    draw_process(PROCESS_IMAGE, "모델 검색  →  선택  →  변환  →  갱신  →  등록  →  테스트  →  재실행")
-    draw_process(WORKFLOW_IMAGE, "모델 선택  →  템플릿 변환  →  환경 갱신  →  등록 실행  →  추론 테스트")
+    draw_process(PROCESS_IMAGE, "모델 검색  →  선택  →  갱신  →  변환  →  등록  →  테스트  →  재실행")
+    draw_process(WORKFLOW_IMAGE, "모델 선택  →  환경 갱신  →  템플릿 변환  →  등록 실행  →  추론 테스트")
     print(PROCESS_IMAGE)
     print(WORKFLOW_IMAGE)
 

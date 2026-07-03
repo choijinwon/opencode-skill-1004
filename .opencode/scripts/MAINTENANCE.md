@@ -14,7 +14,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 
 - secret 값은 출력하지 않습니다. password/token은 `set`, `missing`, `empty` 상태만 보여줍니다.
 - 사용자가 만든 모델 파일은 덮어쓰지 않습니다. 덮어쓰기는 `--force`처럼 명시된 경우만 허용합니다.
-- Windows/WSL 폐쇄망을 우선 고려합니다.
+- Windows 폐쇄망을 우선 고려합니다.
 - Bun은 사용하지 않습니다.
 - Python 기준 버전은 `3.11.9`입니다.
 
@@ -339,7 +339,7 @@ test_sample()              샘플별 테스트 순서
 
 - 폐쇄망 QA에서는 `--skip-install`을 사용합니다.
 - Python 버전이 `3.11.9`가 아니면 실패하도록 유지합니다.
-- 네트워크 설치가 필요한 상황에서는 WSL wheelhouse 흐름을 우선 안내합니다.
+- 네트워크 설치가 필요한 상황에서는 내부 http:// PyPI/Nexus 미러와 requirements.txt 고정 버전을 우선 안내합니다.
 
 ## Change Checklist
 

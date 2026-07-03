@@ -6,10 +6,12 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[2]
 SAMPLES_DIR = ROOT / "samples"
+PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = [
@@ -135,6 +137,7 @@ class TrainingReport:
     executed: bool
     return_code: int | None
     artifacts: list[str] = field(default_factory=list)
+    preflight: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
     process_checklist: list[EnvVarStatus] = field(default_factory=list)
@@ -340,6 +343,25 @@ def missing_ai_studio_env(project: Path, entrypoint: Path | None = None) -> list
     return missing
 
 
+def remote_tracking_url_failure(project: Path, entrypoint: Path | None = None) -> str | None:
+    values = find_model_settings(project, entrypoint) or parse_env_file(project / "ai_studio.env")
+    tracking_url = str(values.get("mlflow_tracking_url") or "").strip()
+    if not tracking_url:
+        return None
+
+    lowered = tracking_url.lower()
+    if lowered.startswith(("sqlite:", "file:")):
+        return "invalid_remote_tracking_url:sqlite_or_file"
+    if not lowered.startswith(("http://", "https://")):
+        return "invalid_remote_tracking_url:scheme"
+
+    parsed = urlparse(tracking_url)
+    hostname = (parsed.hostname or "").lower()
+    if hostname in {"localhost", "0.0.0.0", "::1"} or hostname.startswith("127."):
+        return "invalid_remote_tracking_url:local_address"
+    return None
+
+
 def checklist_status(condition: bool) -> str:
     return "done" if condition else "pending"
 
@@ -363,6 +385,45 @@ def run_command(cmd: list[str], cwd: Path) -> int:
     return result.returncode
 
 
+def is_runtest_2_entrypoint(entrypoint: Path | None, project: Path) -> bool:
+    if entrypoint is None:
+        return False
+    try:
+        return entrypoint.resolve().relative_to(project.resolve()).as_posix() == "runtest_2.py"
+    except ValueError:
+        return entrypoint.name == "runtest_2.py"
+
+
+def sync_selected_model_runtime_before_registration(project: Path, python_bin: str) -> tuple[list[str], list[str]]:
+    if not PREPARE_SELECTED_MODEL_SCRIPT.is_file():
+        return [], [f"preflight_script_missing:{PREPARE_SELECTED_MODEL_SCRIPT}"]
+
+    cmd = [
+        python_bin,
+        str(PREPARE_SELECTED_MODEL_SCRIPT),
+        "--project",
+        str(project),
+        "--sync-runtime",
+        "--execute",
+    ]
+    result = subprocess.run(
+        cmd,
+        cwd=project,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        detail_lines = (result.stderr or result.stdout or "").strip().splitlines()
+        detail = detail_lines[-1] if detail_lines else "unknown"
+        return [], [f"selected_model_runtime_sync_failed:{detail}"]
+    return [
+        "5번 실행 전 선택 모델 기준 런타임 재검증/변환 완료",
+        "runtest_2.py, aiu_custom/, local_serving/, config/, input_example.json, requirements.txt 동기화",
+    ], []
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run local training for an existing project after ai_studio.env checks.")
     parser.add_argument("--project", default=".", help="user-specified model project folder")
@@ -384,6 +445,7 @@ def main():
 
     failures: list[str] = []
     next_steps: list[str] = []
+    preflight: list[str] = []
     selected_sample = None
     model_found = has_model_project(project)
     work_path = project
@@ -414,10 +476,26 @@ def main():
         else:
             cmd = build_command(args.python, entrypoint, args.prepare_only)
 
+    if args.execute and model_found and entrypoint is not None and is_runtest_2_entrypoint(entrypoint, work_path):
+        sync_messages, sync_failures = sync_selected_model_runtime_before_registration(work_path, args.python)
+        preflight.extend(sync_messages)
+        if sync_failures:
+            failures.extend(sync_failures)
+            next_steps.append("먼저 모델 선택 단계로 돌아가 선택 모델을 다시 준비하세요.")
+            next_steps.append("python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
+
     missing_env = missing_ai_studio_env(work_path, entrypoint)
+    remote_url_failure = remote_tracking_url_failure(work_path, entrypoint)
 
     return_code = None
-    if args.execute and cmd and missing_env:
+    if args.execute and cmd and any(failure.startswith("selected_model_runtime_sync_failed") for failure in failures):
+        next_steps.append("런타임 변환 실패로 원격 MLflow 등록 실행을 중단했습니다.")
+    elif args.execute and cmd and remote_url_failure:
+        failures.append(remote_url_failure)
+        next_steps.append("5번 원격 MLflow 등록 실행에는 원격 MLflow URL이 필요합니다.")
+        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_url에 원격 http:// 또는 https:// URL을 직접 입력하세요.")
+        next_steps.append("localhost, 127.0.0.1, 0.0.0.0, file://, sqlite: tracking URL은 5번에서 사용할 수 없습니다.")
+    elif args.execute and cmd and missing_env:
         failures.append("execution_blocked_missing_env")
         next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
         next_steps.append(
@@ -441,18 +519,18 @@ def main():
 
     existing_model_flow = model_found and not is_sample_project(work_path)
     if existing_model_flow:
-        mlflow_run_status = "blocked" if missing_env else ("done" if args.execute and return_code == 0 else "pending")
+        mlflow_run_status = "blocked" if (missing_env or remote_url_failure) else ("done" if args.execute and return_code == 0 else "pending")
         process_checklist = [
             EnvVarStatus("1. 모델 목록 확인", "done" if artifacts else "needs_input"),
             EnvVarStatus("2. 모델 경로로 선택", "done" if artifacts else "needs_input"),
             EnvVarStatus("3. 선택 모델 환경 변환 + requirements.txt 재정의/확인", "done" if (work_path / "runtest_2.py").exists() and (work_path / "requirements.txt").exists() else "pending"),
-            EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not missing_env else "needs_input"),
+            EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not (missing_env or remote_url_failure) else "needs_input"),
             EnvVarStatus("5. 학습 실행 및 원격 MLflow 등록", mlflow_run_status),
             EnvVarStatus("6. 추론 테스트", "selectable"),
             EnvVarStatus("7. 오류 수정 및 재실행", "needed" if failures else "pending"),
         ]
     else:
-        mlflow_run_status = "blocked" if missing_env else ("done" if args.execute and return_code == 0 else "pending")
+        mlflow_run_status = "blocked" if (missing_env or remote_url_failure) else ("done" if args.execute and return_code == 0 else "pending")
         process_checklist = [
             EnvVarStatus("1. 환경 검증", "done" if not missing_env else "needs_input"),
             EnvVarStatus("2. 샘플 규격 확인/보충", "done" if not missing_dirs else "needs_scaffold"),
@@ -472,6 +550,7 @@ def main():
         executed=args.execute,
         return_code=return_code,
         artifacts=artifacts,
+        preflight=preflight,
         failures=failures,
         next_steps=next_steps,
         process_checklist=process_checklist,
@@ -488,6 +567,10 @@ def main():
         print(f"Command: {' '.join(report.command) if report.command else 'none'}")
         print(f"Executed: {report.executed}")
         print(f"Return code: {report.return_code}")
+        if report.preflight:
+            print("Preflight:")
+            for item in report.preflight:
+                print(f"- {item}")
         print("Process checklist:")
         for item in report.process_checklist:
             print(f"- {item.name}: {item.status}")

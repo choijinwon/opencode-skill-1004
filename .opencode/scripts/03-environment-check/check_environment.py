@@ -6,8 +6,10 @@ import json
 import os
 import platform
 import re
+import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -16,7 +18,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
 
 
 ENV_KEYS = [
@@ -192,7 +194,7 @@ def load_required_requirement_versions() -> dict[str, str]:
         "torch": "==2.12.1",
         "numpy": "==1.26.4",
         "kserve": "==0.15.0",
-        "pandas": "==2.23",
+        "pandas": "==2.2.3",
     }
     if not REQUIRED_REQUIREMENTS_FILE.exists():
         return fallback
@@ -222,7 +224,7 @@ IMPORT_REQUIREMENT_MAP = {
     "mlflow": "mlflow==3.10.0",
     "numpy": "numpy==1.26.4",
     "onnxruntime": "onnxruntime",
-    "pandas": "pandas==2.23",
+    "pandas": "pandas==2.2.3",
     "PIL": "pillow",
     "requests": "requests",
     "requests_oauthlib": "requests-oauthlib",
@@ -321,6 +323,8 @@ class EnvironmentReport:
     selected_package_status: str | None = None
     remote_mlflow: RemoteMlflowStatus | None = None
     requirements_updated: list[str] = field(default_factory=list)
+    package_auto_fix_attempted: bool = False
+    package_auto_fix_return_code: int | None = None
 
 
 def package_version(name: str) -> str | None:
@@ -365,18 +369,18 @@ def server_deploy_error_items(failures: list[str], blocked_summary: list[str]) -
             items.append("실행 파일 경로 오류 → 선택한 프로젝트 폴더 밖의 파일은 사용할 수 없습니다.")
         elif failure == "selected_model_outside_project":
             items.append("모델 경로 오류 → 선택 모델은 현재 프로젝트 폴더 안에 있어야 합니다.")
-        elif failure == "selected_model_mapping_missing":
-            items.append("선택 모델 고정 정보 없음 → aiu_custom/mapping.json 기준으로 2~3번을 다시 실행하세요.")
+        elif failure == "selected_model_config_missing":
+            items.append("선택 모델 고정 정보 없음 → config/config.json 기준으로 2~3번을 다시 실행하세요.")
         elif failure.startswith("selected_model_path_missing:"):
-            items.append("모델 경로 누락 → aiu_custom/mapping.json의 선택 모델 경로를 확인하세요.")
-        elif failure.startswith("selected_model_mapping_path_mismatch:"):
-            items.append("모델 경로 불일치 → mapping.json의 모델 경로가 선택 모델과 다릅니다.")
+            items.append("모델 경로 누락 → config/config.json의 선택 모델 경로를 확인하세요.")
+        elif failure.startswith("selected_model_config_path_mismatch:"):
+            items.append("모델 경로 불일치 → config/config.json의 모델 경로가 선택 모델과 다릅니다.")
         elif failure.startswith("selected_model_conversion_missing:"):
             items.append("생성 파일 경로를 찾을 수 없음 → " + failure.split(":", 1)[1])
         elif failure.startswith("reference_entrypoint_missing:"):
             items.append("참조 실행 파일 경로를 찾을 수 없음 → runtest.py 또는 run_test.py를 확인하세요.")
         elif failure.startswith("model_py_mapping_loader_missing:"):
-            items.append("모델 로더 경로 설정 누락 → aiu_custom/model.py와 mapping.json을 다시 생성하세요.")
+            items.append("모델 로더 경로 설정 누락 → aiu_custom/model.py와 config/config.json을 다시 생성하세요.")
         elif failure == "missing_dependency_file":
             items.append("의존성 파일 없음 → requirements.txt, pyproject.toml, environment.yml 중 하나를 확인하세요.")
         elif failure.startswith("missing_model_settings_file:"):
@@ -648,18 +652,18 @@ def parse_python_literal_assignments(path: Path) -> dict[str, object]:
 
 
 def selected_model_status(project: Path) -> tuple[str | None, str | None, str | None, str | None]:
-    mapping_path = project / "aiu_custom" / "mapping.json"
-    if not mapping_path.is_file():
+    config_path = project / "config" / "config.json"
+    if not config_path.is_file():
         return None, None, None, None
     try:
-        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None, None, None, None
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
         return None, None, None, None
-    selected_path = model.get("source_path") or model.get("relative_path")
-    model_kind = model.get("kind")
+    selected_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
+    model_kind = model.get("model_kind") or model.get("kind")
     required_package = model.get("required_package")
     if isinstance(required_package, str) and required_package == "unknown":
         required_package = None
@@ -936,6 +940,15 @@ def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = Non
             local_version=local_version,
             detail="tracking URI must start with http:// or https:// for remote version check",
         )
+    parsed = urllib.parse.urlparse(tracking_uri)
+    hostname = (parsed.hostname or "").lower()
+    if hostname in {"localhost", "0.0.0.0", "::1"} or hostname.startswith("127."):
+        return RemoteMlflowStatus(
+            tracking_uri_status="unsupported",
+            status="skipped",
+            local_version=local_version,
+            detail="localhost/127.0.0.1/0.0.0.0 tracking URI is not allowed for Step 5; use remote MLflow/report URL",
+        )
 
     username = settings.get("mlflow_tracking_username")
     password = settings.get("mlflow_tracking_password")
@@ -1178,8 +1191,8 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
             f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
-            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .opencode/samples/aiu_studio/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
-            f"4. {AI_STUDIO_PROCESS_STEPS[3]}: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/samples/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
             f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
             f"7. {AI_STUDIO_PROCESS_STEPS[6]}: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
@@ -1190,15 +1203,15 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             next_steps.append("실행 파일을 찾지 못했습니다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 --entrypoint <file>로 지정하세요.")
             source_input_required = []
         if selected_path is None:
-            failures.append("selected_model_mapping_missing")
-            next_steps.append("4번 환경검증은 aiu_custom/mapping.json의 선택 모델 기준으로만 진행합니다. 먼저 2~3번 모델 선택/템플릿 변환을 다시 실행하세요.")
+            failures.append("selected_model_config_missing")
+            next_steps.append("3번 환경검증은 config/config.json의 선택 모델 기준으로만 진행합니다. 먼저 2번 모델 선택과 4번 템플릿 변환을 다시 실행하세요.")
     else:
         entrypoint_display = setting_file or "run_model.py, runtest.py 또는 run_test.py"
         tod_guide = [
             "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
             f"2. 샘플 규격 확인/보충: {project}에 복사된 템플릿 폴더 내부 파일들을 확인한다. 대표 예시: aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json",
             f"3. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-            "4. 패키지 설치: 폐쇄망 WSL은 bash .opencode/wsl/install_offline.sh를 우선 사용하고, wheelhouse가 없으면 온라인 WSL에서 bash .opencode/wsl/download_wheels.sh로 먼저 준비한다.",
+            "4. 패키지 설치: requirements.txt 기준으로 내부 http:// PyPI/Nexus 미러를 사용해 설치한다. SSL/HTTPS 인덱스 직접 설치는 사용하지 않는다.",
             f"5. 모델 실행 및 원격 MLflow 기록: python {entrypoint_display}",
             "6. 산출물 확인: MLflow artifact_path='ai_studio' 아래 ai_studio/code 또는 로컬 ai_studio/metrics, ai_studio/code 생성 여부를 확인한다.",
         ]
@@ -1337,6 +1350,13 @@ def print_text(report: EnvironmentReport):
             print(f"- version endpoint: {report.remote_mlflow.endpoint}")
         if report.remote_mlflow.detail:
             print(f"- detail: {report.remote_mlflow.detail}")
+    if report.package_auto_fix_attempted:
+        status = "success" if report.package_auto_fix_return_code == 0 else "failed"
+        print("\nPackage auto fix:")
+        print(f"- status: {status}")
+        print(f"- command: python -m pip install -r requirements.txt")
+        if report.package_auto_fix_return_code not in {None, 0}:
+            print(f"- return_code: {report.package_auto_fix_return_code}")
     if report.requirements:
         print("\nDependency check from requirements.txt:")
         for item in report.requirements:
@@ -1371,9 +1391,10 @@ def print_text(report: EnvironmentReport):
         for item in report.export_ready:
             print(f"- {item.name}: {item.status}")
     if report.tod_guide:
-        print("\nTODO Guide:")
-        for step in report.tod_guide:
-            print(f"- {step}")
+        settings_ready = not report.source_input_required
+        step3_status = "완료" if settings_ready else "입력 필요"
+        step5_status = "다음" if settings_ready else "3번 완료 후"
+        print(format_todo_guide(("완료", "완료", step3_status, "완료", step5_status, "선택 시", "오류 시")))
     if report.blocked_summary:
         print("\n차단 항목 요약:")
         for index, item in enumerate(report.blocked_summary, start=1):
@@ -1386,16 +1407,113 @@ def print_text(report: EnvironmentReport):
         print("\nFailures:")
         for failure in report.failures:
             print(f"- {failure}")
-    if report.next_steps:
-        print("\nNext steps:")
-        for step in report.next_steps:
-            print(f"- {step}")
+    print_action_items(report)
+
+
+def package_action_items(report: EnvironmentReport) -> list[RequirementStatus]:
+    return [
+        item
+        for item in report.requirements
+        if item.status in {"missing", "version_mismatch"}
+        and not is_unselected_framework_requirement(item, report.selected_required_package)
+    ]
+
+
+def run_package_auto_fix(project: Path) -> int:
+    requirements_path = project / "requirements.txt"
+    if not requirements_path.is_file():
+        print("패키지 자동 처리 실패: requirements.txt 파일을 찾을 수 없습니다.")
+        return 1
+
+    command = [sys.executable, "-m", "pip", "install", "-r", str(requirements_path)]
+    print("\n패키지 자동 처리 실행:")
+    print("python -m pip install -r requirements.txt")
+    proc = subprocess.run(command, cwd=str(project), text=True, capture_output=True)
+    output = (proc.stdout + "\n" + proc.stderr).strip()
+    if output:
+        lines = output.splitlines()
+        print("\n패키지 설치 출력:")
+        for line in lines[-30:]:
+            print(line)
+    if proc.returncode == 0:
+        print("\n패키지 자동 처리 완료")
+    else:
+        print(f"\n패키지 자동 처리 실패: return_code={proc.returncode}")
+    return proc.returncode
+
+
+def print_action_items(report: EnvironmentReport) -> None:
+    package_issues = package_action_items(report)
+    python_issue = report.python_version_status == "version_mismatch"
+    actionable_count = len(package_issues) + (1 if python_issue else 0)
+    package_issue = bool(package_issues)
+    input_names = {item.name for item in report.source_input_required}
+    needs_mlflow_input = any(
+        name in input_names
+        for name in {
+            "mlflow_tracking_url",
+            "mlflow_tracking_username",
+            "mlflow_tracking_password",
+        }
+    )
+    if needs_mlflow_input:
+        actionable_count += 1
+
+    if actionable_count == 0:
+        print("\n처리해야 할 항목: 없음")
+        print("\n처리 완료 후 실행:")
+        print("- 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
+        print("- 추론 테스트는 사용자가 선택할 때만 실행: python local_serving/localservingtest.py")
+        return
+
+    print("\n처리해야 할 항목:")
+    if python_issue:
+        print("- 직접 확인 필요: Python 버전")
+        print(f"  요구 버전: {report.expected_python_version}")
+        print(f"  현재 버전: {report.python_version}")
+        print("  조치: Python 3.11.9 환경에서 다시 실행하세요.")
+    if package_issues:
+        title = "자동 처리 후 남은 항목" if report.package_auto_fix_attempted else "자동 처리 대상"
+        print(f"- {title}: 패키지 불일치/미설치")
+        if report.package_auto_fix_attempted:
+            if report.package_auto_fix_return_code == 0:
+                print("  자동 처리 실행됨: python -m pip install -r requirements.txt")
+                print("  조치: 아래 항목은 설치 후에도 남아 있으므로 내부 Nexus/버전 고정값을 확인하세요.")
+            else:
+                print("  자동 처리 실패: python -m pip install -r requirements.txt")
+                print("  조치: 내부 Nexus/네트워크/패키지 버전을 확인한 뒤 같은 명령을 다시 실행하세요.")
+        else:
+            print("  자동 처리: 기본 실행에서 python -m pip install -r requirements.txt 를 실행합니다.")
+            print("  직접 수정 명령: python -m pip install -r requirements.txt")
+        for item in package_issues:
+            label = "미설치" if item.status == "missing" else "버전 불일치"
+            installed = item.installed_version or "missing"
+            print(f"  - {item.name}: {label}")
+            print(f"    요구 버전: {item.required_version}")
+            print(f"    설치 버전: {installed}")
+    if needs_mlflow_input:
+        source_path = "runtest_2.py"
+        if report.model_settings:
+            try:
+                source_path = str(Path(report.model_settings.path).resolve().relative_to(Path(report.project_path).resolve()))
+            except ValueError:
+                source_path = Path(report.model_settings.path).name
+        print(f"- 직접 입력 필요: {source_path} 설정 블록")
+        print("  mlflow_tracking_url — 원격 MLflow 서버 URL (http://... 또는 https://...)")
+        print("  mlflow_tracking_username")
+        print("  mlflow_tracking_password (secret — 출력하지 않음)")
+
+    print("\n처리 완료 후 실행:")
+    print("- 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
+    print("- 추론 테스트는 사용자가 선택할 때만 실행: python local_serving/localservingtest.py")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Check local ML project execution environment and ai_studio.env settings.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--entrypoint", help="actual local training/model creation file, such as run.py")
+    parser.add_argument("--fix-packages", action="store_true", help="install requirements.txt automatically when packages are missing or mismatched")
+    parser.add_argument("--no-fix-packages", action="store_true", help="skip automatic package installation even when packages are missing or mismatched")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
@@ -1404,6 +1522,15 @@ def main():
         raise FileNotFoundError(f"project folder not found: {project}")
 
     report = build_report(project, args.entrypoint)
+    should_fix_packages = args.fix_packages or (not args.no_fix_packages and not args.json)
+    if should_fix_packages:
+        if package_action_items(report):
+            package_fix_return_code = run_package_auto_fix(project)
+            report = build_report(project, args.entrypoint)
+            report.package_auto_fix_attempted = True
+            report.package_auto_fix_return_code = package_fix_return_code
+        elif args.fix_packages and not args.json:
+            print("패키지 자동 처리: 불일치/미설치 항목이 없습니다.")
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

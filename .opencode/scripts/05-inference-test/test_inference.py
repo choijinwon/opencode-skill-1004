@@ -52,34 +52,34 @@ def find_input_example(project: Path) -> Path | None:
     return None
 
 
-def find_model_path_from_mapping(project: Path) -> tuple[Path | None, str | None]:
-    mapping_path = project / "aiu_custom" / "mapping.json"
-    if not mapping_path.is_file():
-        return None, "selected_model_mapping_missing"
+def find_model_path_from_config(project: Path) -> tuple[Path | None, str | None]:
+    config_path = project / "config" / "config.json"
+    if not config_path.is_file():
+        return None, "selected_model_config_missing"
     try:
-        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        return None, f"selected_model_mapping_parse_error:{exc.lineno}"
+        return None, f"selected_model_config_parse_error:{exc.lineno}"
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
-        return None, "selected_model_mapping_model_missing"
-    source_path = model.get("source_path") or model.get("relative_path")
+        return None, "selected_model_config_model_missing"
+    source_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
     if not isinstance(source_path, str) or not source_path.strip():
-        return None, "selected_model_mapping_source_path_missing"
+        return None, "selected_model_config_source_path_missing"
     candidate = Path(source_path)
     if not candidate.is_absolute():
         candidate = project / candidate
     candidate = candidate.resolve()
     if not candidate.exists():
-        return None, f"selected_model_mapping_not_found:{source_path}"
+        return None, f"selected_model_config_not_found:{source_path}"
     return candidate, None
 
 
 def find_model_path(project: Path) -> tuple[Path | None, str | None]:
-    selected_model, mapping_error = find_model_path_from_mapping(project)
+    selected_model, config_error = find_model_path_from_config(project)
     if selected_model is not None:
         return selected_model, None
-    return None, mapping_error
+    return None, config_error
 
 
 def jsonable(value) -> bool:

@@ -9,6 +9,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_ROOT = ROOT / "scripts"
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from ai_studio_process import format_todo_guide
+
 SAMPLES_DIR = ROOT / "samples"
 
 SAMPLES = {
@@ -81,10 +87,10 @@ SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
     "runtest_2.py",
     "requirements.txt",
     "input_example.json",
-    "aiu_custom/mapping.json",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
     "local_serving/localservingtest.py",
+    "config/config.json",
 }
 SAMPLE_COPY_IGNORE_FILES = {
     "runtest_2.py",
@@ -214,14 +220,15 @@ def reference_runtest_path(project: Path) -> Path | None:
 def selected_model_locked(project: Path) -> bool:
     if (project / "runtest_2.py").is_file():
         return True
-    mapping_path = project / "aiu_custom" / "mapping.json"
-    if not mapping_path.is_file():
+    config_path = project / "config" / "config.json"
+    if not config_path.is_file():
         return False
     try:
-        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return False
-    source_path = payload.get("model", {}).get("source_path") if isinstance(payload, dict) else None
+    model = payload.get("model", {}) if isinstance(payload, dict) else {}
+    source_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path")
     return isinstance(source_path, str) and bool(source_path.strip())
 
 
@@ -333,7 +340,7 @@ def build_tod_guide(target_project_path: Path, runtest_path: Path | None) -> lis
         f"1. 환경 검증: python .opencode/scripts/03-environment-check/check_environment.py --project {target_project_path}",
         f"2. 샘플 규격 확인/보충: {target_project_path}에 복사된 템플릿 폴더 내부 파일들을 확인한다. 대표 예시: aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json",
         f"3. 환경 변수 입력/export: {entrypoint}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
-        "4. 패키지 설치: 폐쇄망 WSL은 bash .opencode/wsl/install_offline.sh를 우선 사용하고, wheelhouse가 없으면 온라인 WSL에서 bash .opencode/wsl/download_wheels.sh로 먼저 준비한다.",
+        "4. 패키지 설치: requirements.txt 기준으로 내부 http:// PyPI/Nexus 미러를 사용해 설치한다. SSL/HTTPS 인덱스 직접 설치는 사용하지 않는다.",
         f"5. 모델 실행 및 원격 MLflow 기록: python {entrypoint}",
         "6. 산출물 확인: MLflow artifact_path='ai_studio' 아래 ai_studio/code 또는 로컬 ai_studio/metrics, ai_studio/code 생성 여부를 확인한다.",
     ]
@@ -484,9 +491,7 @@ def main():
             for failure in report.failures:
                 print(f"- {failure}")
         if report.tod_guide:
-            print("TODO Guide:")
-            for step in report.tod_guide:
-                print(f"- {step}")
+            print(format_todo_guide(("샘플 흐름", "샘플 선택 완료", "템플릿 생성 완료", "다음", "4번 완료 후", "선택 시", "오류 시")))
         if report.next_steps:
             print("Next steps:")
             for step in report.next_steps:

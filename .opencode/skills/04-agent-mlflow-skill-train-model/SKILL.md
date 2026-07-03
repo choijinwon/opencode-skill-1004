@@ -26,12 +26,15 @@ metadata:
 ```text
 1. 모델 목록 확인
 2. 모델 선택
-   - 처음 선택한 모델은 이후 단계에서 계속 유지한다.
-   - 이미 선택 모델이 있으면 다른 숫자를 눌러도 기존 선택 모델을 유지한다.
-   - 여러 모델이 있어도 스킬 변환 대상은 최초 선택 모델 하나로 유지한다.
+   - `--model <번호|경로>`를 명시하면 그 모델을 새 선택값으로 반영한다.
+   - 번호 선택은 화면에 표시된 프로젝트 상대경로 알파벳 정렬 목록을 그대로 사용한다.
+   - 번호 선택 후 프레임워크/확장자 기준으로 다시 정렬하거나 다른 모델로 해석하지 않는다.
+   - 스크립트가 출력한 `선택 모델`과 `MODEL_KIND`를 최종 결과로 신뢰한다.
+   - 이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 계속 사용한다.
+   - 여러 모델이 있어도 스킬 변환 대상은 현재 선택 모델 하나로 유지한다.
    - `runtest_2.py` 안의 모델 경로를 다시 선택 기준으로 삼지 않는다.
-3. 템플릿 변환
-4. 환경변수/requirements 갱신
+3. 환경변수/requirements 갱신
+4. 템플릿 변환
 5. 원격 MLflow 등록 실행
 6. 추론 테스트
 7. 오류 수정 및 재실행
@@ -43,7 +46,7 @@ metadata:
 1. 기존 모델이면 프로젝트 루트 전체와 data/** 모델 목록을 먼저 보여준다.
 2. 사용할 모델을 번호 또는 경로로 선택한다.
 3. MODEL_KIND를 확장자 기준으로 판별한다.
-4. 워크스페이스 루트의 runtest.py를 우선 읽기 전용으로 참조하고 없으면 run_test.py, 모델 형식별 샘플을 참조한다.
+4. 워크스페이스 루트의 runtest.py를 우선 읽기 전용으로 참조하고, PyTorch 계열은 `.opencode/samples/pytorch_sample/` 폴더를 참조 영역으로 사용한다. 단, 샘플 `requirements.txt`는 참조하지 않는다.
 5. 기존 runtest.py 또는 run_test.py는 절대 수정하지 않고 runtest_2.py만 선택 모델 기준으로 변환 생성한다.
 6. 모델 파일은 aiu_studio/로 복사하지 않는다.
 7. 실행 전 MLflow/AI Studio 설정 블록을 확인한다.
@@ -73,6 +76,8 @@ local outputs:
 - ai_studio/code/
 MLflow artifact:
 - artifact_path="ai_studio" 아래 code/
+- uri는 Windows 워크스페이스 상대경로 기준으로 업로드
+- path는 MLflow 모델 패키지 내부 Linux 경로 artifacts/... 기준
 ```
 
 ## Commands
@@ -83,6 +88,7 @@ python .opencode/scripts/04-train-model/run_training.py --project <project>
 
 원격 MLflow 등록 실행:
 python .opencode/scripts/04-train-model/run_training.py --project <project> --execute
+python .opencode/scripts/04-train-model/run_training.py --project <project> --entrypoint runtest_2.py --execute
 
 명시적 entrypoint 실행:
 python .opencode/scripts/04-train-model/run_training.py --project <project> --entrypoint <file> --execute
@@ -108,6 +114,10 @@ local code      -> ai_studio/code/
 MLflow artifact -> artifact_path="ai_studio" 아래 code/
 tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 reference model -> saved_model/, model/, framework native model file
+artifact uri    -> Windows 상대경로 사용, 예: saved_model\model.pt, config\config.json
+artifact path   -> Linux 패키지 내부 경로 사용, 예: artifacts/model.pt, artifacts/config.json
+kserve path     -> Linux 컨테이너의 context.artifacts 경로 사용
+forbidden       -> Windows 로컬 절대경로를 KServe 런타임 경로로 사용 금지
 ```
 
 <details>
@@ -134,6 +144,7 @@ entrypoint를 찾지 못한 경우:
 - 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣게 안내한다.
 - 파일을 넣은 뒤 --entrypoint <file>로 다시 실행한다.
 - tracking URL, username, password는 사용자가 직접 입력해야 함
+- 5번 원격 MLflow 등록 실행의 tracking URL은 원격 `http://` 또는 `https://` URL이어야 하며 `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
 - mlflow_experiment_name, mlflow_register_model_name은 자동 생성 가능
 - tracking URL, username, password 중 하나라도 비어 있으면 학습 테스트를 실행하지 않고 사용자가 직접 입력 후 다시 실행하도록 안내한다.
 
@@ -173,10 +184,10 @@ blocked:
 ```text
 1. 모델 목록 확인
 2. 모델 선택
-3. 템플릿 변환
-   템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
-4. 환경변수/requirements 갱신
+3. 환경변수/requirements 갱신
    필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
+4. 템플릿 변환
+   템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
 5. runtest_2.py 원격 MLflow 등록 실행
 6. 선택 모델 환경으로 변환된 local serving 입력/출력 확인
 7. 오류가 있으면 수정 후 실패한 단계부터 재실행

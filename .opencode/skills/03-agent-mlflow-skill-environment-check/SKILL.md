@@ -15,7 +15,7 @@ metadata:
 
 ```text
 판단 결과: pass | warn | needs_user_input | blocked
-현재 단계: 4. 환경변수/requirements 갱신
+현재 단계: 3. 환경변수/requirements 갱신
 현재 대상: selected_project_path
 핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
 다음 단계: 5. 원격 MLflow 등록 실행
@@ -26,8 +26,8 @@ metadata:
 ```text
 1. 모델 목록 확인
 2. 모델 선택
-3. 템플릿 변환
-4. 환경변수/requirements 갱신
+3. 환경변수/requirements 갱신
+4. 템플릿 변환
 5. 원격 MLflow 등록 실행
 6. 추론 테스트
 7. 오류 수정 및 재실행
@@ -36,12 +36,13 @@ metadata:
 ## What To Do Now
 
 ```text
-1. 선택 모델 정보가 aiu_custom/mapping.json 기준으로 유지되는지 확인한다.
+1. 선택 모델 정보가 config/config.json 기준으로 유지되는지 확인한다.
 2. Python 실행 파일과 버전을 확인한다.
 3. dependency 파일과 핵심 패키지를 확인한다.
 4. MLflow 3.13.0 설치/version을 확인한다.
 5. mlflow_tracking_url이 있으면 원격 MLflow 서버 version을 확인한다.
 6. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트한다. 이때 필수 패키지 5개는 항상 유지한다.
+7. Python 3.13 등에서 kserve 설치 호환성 문제가 보여도 `kserve==0.15.0`을 requirements.txt에서 제거하지 않는다. Python 버전 차단/전환 대상으로 안내한다.
 7. runtest_2.py 설정 블록의 비어 있는 값은 사용자가 직접 소스에 입력하도록 안내한다.
 ```
 
@@ -63,6 +64,7 @@ metadata:
 - password는 값 없이 set/empty/missing
 - TODO Guide
 - 차단 항목 요약
+- 처리해야 할 항목
 ```
 
 상태 출력 UI:
@@ -76,26 +78,46 @@ Secrets: mlflow_tracking_password=set, value hidden
 입력이 필요한 값: mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password
 ```
 
+환경 검증 결과를 설명할 때는 `다음단계 진행하시겠습니까?`처럼 질문하지 않는다.
+사용자가 해야 할 일은 아래 고정 형식으로만 안내한다.
+
+```text
+패키지 불일치/미설치가 있으면 환경 검증 기본 실행에서 자동으로 처리한다.
+자동 실행 명령: python -m pip install -r requirements.txt
+
+처리해야 할 항목:
+- 자동 처리 후 남은 항목: 패키지 불일치/미설치
+  조치: 내부 Nexus/네트워크/패키지 버전을 확인한 뒤 같은 명령을 다시 실행하세요.
+  - pandas: 버전 불일치
+    요구 버전: ==2.2.3
+    설치 버전: 2.3.3
+- 직접 입력 필요: runtest_2.py 설정 블록
+  mlflow_tracking_url — 원격 MLflow 서버 URL (http://... 또는 https://...)
+  mlflow_tracking_username
+  mlflow_tracking_password (secret — 출력하지 않음)
+
+처리 완료 후 실행:
+- 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
+- 추론 테스트는 사용자가 선택할 때만 실행: python local_serving/localservingtest.py
+```
+
 ## Commands
 
 ```text
 환경 검증:
 python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path>
 python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file>
+python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file> --no-fix-packages
 
-폐쇄망 WSL 패키지 설치:
-bash .opencode/wsl/install_offline.sh
-
-wheelhouse 준비:
-export PIP_INDEX_URL=http://<internal-pypi>/simple
-bash .opencode/wsl/download_wheels.sh
+폐쇄망 패키지 설치:
+python -m pip install -r requirements.txt --index-url http://<internal-pypi>/simple --trusted-host <internal-pypi-host>
 
 PyTorch CPU wheel Nexus upstream 참고:
 https://download.pytorch.org/whl/cpu
 
 torch SSL 설치 금지:
 https://download.pytorch.org, https://pypi.org 인덱스를 사용하지 않는다.
-wheelhouse 오프라인 설치 또는 내부 http:// PyPI 미러만 사용한다.
+내부 http:// PyPI/Nexus 미러만 사용한다.
 
 인덱싱 제외 적용:
 python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .
@@ -108,6 +130,10 @@ local metrics   -> ai_studio/metrics/
 local code      -> ai_studio/code/
 MLflow artifact -> artifact_path="ai_studio" 아래 code/
 tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
+artifact uri    -> Windows 상대경로 사용, 예: saved_model\model.pt, config\config.json
+artifact path   -> Linux 패키지 내부 경로 사용, 예: artifacts/model.pt, artifacts/config.json
+kserve path     -> Linux 컨테이너의 context.artifacts 경로 사용
+forbidden       -> Windows 로컬 절대경로를 KServe 런타임 경로로 사용 금지
 ```
 
 <details>
@@ -154,7 +180,7 @@ mlflow_experiment_name
 mlflow_register_model_name
 ```
 
-`mlflow_tracking_url`은 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `file://` 로컬 tracking은 사용하지 않는다.
+`mlflow_tracking_url`은 사용자가 직접 입력한다. 단, 5번 원격 MLflow 등록 실행에서는 원격 MLflow/리포트 URL만 사용한다. `http://` 또는 `https://`를 입력하고, `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:` 로컬 tracking은 사용하지 않는다.
 
 </details>
 
@@ -167,16 +193,16 @@ mlflow_register_model_name
 조치: 호환성 경고로 표시하고 필요 시 3.11.9 환경 사용
 
 증상: 환경변수를 입력했는데 체크가 안 됨
-원인: run_model.py/runtest.py/aiu_studio/runtest.py 설정 블록 또는 export mapping 누락
+원인: run_model.py/runtest.py/aiu_studio/runtest.py 설정 블록 또는 export 설정 누락
 조치: 소스 설정 블록 값을 확인하고 MLFLOW_* export 상태를 표시
 
 증상: 폐쇄망 설치가 느림
 원인: PyPI 다운로드/resolver 지연
-조치: .opencode/wsl/wheelhouse 기반 install_offline.sh 우선
+조치: 내부 http:// PyPI/Nexus 미러와 requirements.txt 고정 버전 우선
 
 증상: torch가 SSL 문제로 설치 불가
 원인: pip가 https:// PyPI 또는 https://download.pytorch.org 인덱스를 사용함
-조치: SSL 설치 금지. 내부 http:// PyPI 미러로 wheelhouse를 만들거나 별도 PC에서 wheel 파일을 받아 .opencode/wsl/wheelhouse/에 복사한 뒤 install_offline.sh 실행
+조치: SSL 설치 금지. 내부 http:// PyPI/Nexus 미러 URL을 사용해 requirements.txt 기준으로 설치
 ```
 
 </details>

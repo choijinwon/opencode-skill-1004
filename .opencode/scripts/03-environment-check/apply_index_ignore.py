@@ -71,8 +71,8 @@ GIT_PATTERNS = [
     for pattern in SCAN_PATTERNS
     if pattern not in {".opencode/", ".opencode/node_modules/"}
 ] + [
-    "!.opencode/samples/aiu_studio/saved_model/",
-    "!.opencode/samples/aiu_studio/saved_model/.gitkeep",
+    "!.opencode/samples/pytorch_sample/saved_model/",
+    "!.opencode/samples/pytorch_sample/saved_model/.gitkeep",
 ]
 
 TARGET_FILES = {

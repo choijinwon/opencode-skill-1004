@@ -26,8 +26,8 @@ metadata:
 ```text
 1. 모델 목록 확인
 2. 모델 선택
-3. 템플릿 변환
-4. 환경변수/requirements 갱신
+3. 환경변수/requirements 갱신
+4. 템플릿 변환
 5. 학습 실행 및 원격 MLflow 등록
 6. 추론 테스트
 7. 오류 수정 및 재실행
@@ -42,7 +42,8 @@ metadata:
 4. `.opencode/` 전체는 스킬 번들이므로 분석 대상에서 제외한다.
 5. model_found 값을 먼저 결정한다.
 6. 모델 artifact가 없고 Python 실행파일이 있으면 CSV 유무와 관계없이 샘플 선택 대신 entrypoint 실행 흐름으로 안내한다.
-7. 모델이 있으면 model_artifact_paths를 번호로 보여주고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
+7. 모델이 있으면 model_artifact_paths를 프로젝트 상대경로 알파벳 순서로 번호 표시하고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
+8. 번호 선택은 표시된 model_artifact_paths 순서 그대로 처리하며, 프레임워크/확장자 기준으로 다시 정렬하지 않는다.
 ```
 
 ## Output Contract

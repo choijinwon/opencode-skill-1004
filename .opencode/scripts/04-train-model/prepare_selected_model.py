@@ -5,11 +5,13 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import re
 import shutil
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from pprint import pformat
 
 
 SUPPORTED_MODEL_KINDS = {
@@ -53,15 +55,16 @@ SCRIPT_ROOT = ROOT / "scripts"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+from ai_studio_process import format_model_selection_hint, format_todo_guide
 
-AIU_STUDIO_SAMPLE_DIR_NAME = "aiu_studio"
-AIU_STUDIO_SAMPLE_DIR = ROOT / "samples" / AIU_STUDIO_SAMPLE_DIR_NAME
+TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
+TEMPLATE_SAMPLE_DIR = ROOT / "samples" / TEMPLATE_SAMPLE_DIR_NAME
 REQUIRED_REQUIREMENTS_FILE = ROOT / "scripts" / "03-environment-check" / "requirements.required.txt"
 CHECK_ENVIRONMENT_SCRIPT = ROOT / "scripts" / "03-environment-check" / "check_environment.py"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 RUN_TRAINING_SCRIPT = ROOT / "scripts" / "04-train-model" / "run_training.py"
-PYTORCH_REFERENCE_ENTRYPOINT = ROOT / "samples" / "pytorch_sample" / "runtest.py"
+PYTORCH_REFERENCE_DIR = ROOT / "samples" / "pytorch_sample"
+PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -75,14 +78,26 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
 }
 AIU_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
 AIU_STUDIO_COPY_IGNORE_FILES = {"runtest_2.py"}
+FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
+    "PROJECT_DIR = Path(__file__).resolve().parent",
+    "SOURCE_MODEL_PATH",
+    "DATA_MODEL_PATH",
+    "MODEL_KIND",
+    "MODEL_LOAD_HINT",
+    "INPUT_EXAMPLE_PATH",
+    "CONFIG_DIR",
+    "CONFIG_PATH",
+    "MODEL_DIR",
+    "MODEL_PATH = MODEL_DIR",
+)
 SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
     "runtest_2.py",
     "requirements.txt",
     "input_example.json",
-    "aiu_custom/mapping.json",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
     "local_serving/localservingtest.py",
+    "config/config.json",
 }
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
@@ -401,6 +416,14 @@ def model_kind(path: Path) -> str | None:
     return SUPPORTED_MODEL_KINDS.get(path.suffix.lower())
 
 
+def model_sort_key(path: Path, project: Path) -> str:
+    try:
+        relative = path.resolve().relative_to(project.resolve())
+    except ValueError:
+        relative = path
+    return normalize_path_text(str(relative)).lower()
+
+
 def is_filesystem_root(path: Path) -> bool:
     return path.parent == path
 
@@ -428,7 +451,7 @@ def scan_model_artifacts(project: Path) -> list[Path]:
 
     data_root = project / "data"
     if not data_root.is_dir():
-        return sorted(set(found))
+        return sorted(set(found), key=lambda path: model_sort_key(path, project))
 
     for path in data_root.rglob("*"):
         try:
@@ -439,7 +462,7 @@ def scan_model_artifacts(project: Path) -> list[Path]:
             continue
         if path.is_file() and model_kind(path):
             found.append(path)
-    return sorted(set(found))
+    return sorted(set(found), key=lambda path: model_sort_key(path, project))
 
 
 def scan_data_files(project: Path) -> list[Path]:
@@ -485,11 +508,12 @@ def artifacts_under(path: Path) -> list[Path]:
     for child in path.rglob("*"):
         if child.is_file() and model_kind(child):
             found.append(child)
-    return sorted(set(found))
+    project = path if path.is_dir() else path.parent
+    return sorted(set(found), key=lambda item: model_sort_key(item, project))
 
 
 def resolve_single_artifact(project: Path, candidates: list[Path], raw: str) -> tuple[Path | None, str | None]:
-    candidates = sorted(set(path.resolve() for path in candidates))
+    candidates = sorted(set(path.resolve() for path in candidates), key=lambda path: model_sort_key(path, project))
     if len(candidates) == 1:
         return candidates[0], None
     if not candidates:
@@ -520,33 +544,33 @@ def match_model_by_text(project: Path, models: list[Path], raw: str) -> tuple[Pa
     return resolve_single_artifact(project, matches, raw)
 
 
-def selected_model_from_mapping(project: Path) -> tuple[Path | None, str | None, str | None]:
-    mapping_path = project / "aiu_custom" / "mapping.json"
-    if not mapping_path.is_file():
-        return None, None, "selected_model_mapping_missing"
+def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, str | None]:
+    config_path = project / "config" / "config.json"
+    if not config_path.is_file():
+        return None, None, "selected_model_config_missing"
     try:
-        payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        return None, None, f"selected_model_mapping_parse_error:{exc.lineno}"
+        return None, None, f"selected_model_config_parse_error:{exc.lineno}"
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
-        return None, None, "selected_model_mapping_model_missing"
-    source_path = model.get("source_path") or model.get("relative_path")
-    kind = model.get("kind")
+        return None, None, "selected_model_config_model_missing"
+    source_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
+    kind = model.get("model_kind") or model.get("kind")
     if not isinstance(source_path, str) or not source_path.strip():
-        return None, kind if isinstance(kind, str) else None, "selected_model_mapping_source_path_missing"
+        return None, kind if isinstance(kind, str) else None, "selected_model_config_source_path_missing"
     normalized = normalize_path_text(source_path.strip())
     candidate = Path(normalized).expanduser()
     if not candidate.is_absolute():
         candidate = project / candidate
     candidate = candidate.resolve()
     if not candidate.is_file():
-        return candidate, kind if isinstance(kind, str) else None, f"selected_model_mapping_not_found:{source_path}"
+        return candidate, kind if isinstance(kind, str) else None, f"selected_model_config_not_found:{source_path}"
     return candidate, kind if isinstance(kind, str) else None, None
 
 
 def stored_selected_model_path(project: Path) -> Path | None:
-    selected_model, _kind, _error = selected_model_from_mapping(project)
+    selected_model, _kind, _error = selected_model_from_config(project)
     return selected_model
 
 
@@ -609,7 +633,7 @@ def selected_model_from_runtest_2(project: Path) -> tuple[Path | None, str | Non
 
 
 def current_selected_model_path(project: Path) -> Path | None:
-    # The first selected model is kept across later TODO steps.
+    # Later TODO steps reuse the stored selection when no new model is given.
     # runtest_2.py is a generated artifact and must not become the selection source.
     return stored_selected_model_path(project)
 
@@ -625,10 +649,9 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
         if current_selected is not None:
             return current_selected, None
         return None, "stored_model_selection_missing"
-    # Once a model has been selected, every later TODO step must keep that
-    # original model even if the model list order changes or another number is pressed.
-    if current_selected is not None and current_selected.is_file():
-        return current_selected, None
+    # A new explicit --model value means the user is choosing a model again.
+    # Later TODO steps reuse the stored model only when --model is omitted or set
+    # to selected/current.
     if value.isdigit():
         index = int(value)
         if 1 <= index <= len(models):
@@ -685,6 +708,12 @@ def find_reference_entrypoint(project: Path, kind: str | None = None) -> Path | 
     if sample_reference is not None and sample_reference.is_file():
         return sample_reference
     return None
+
+
+def runtest_generation_reference(kind: str | None, reference: Path) -> Path:
+    if kind in {"pytorch", "safetensors"} and PYTORCH_REFERENCE_ENTRYPOINT.is_file():
+        return PYTORCH_REFERENCE_ENTRYPOINT
+    return reference
 
 
 def preserve_reference_code(reference: Path) -> bool:
@@ -768,6 +797,7 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
         "model_kind": kind,
         "model_relative_path": rel(selected_model, project),
         "runtime_model_path": rel(selected_model, project),
+        "saved_model_path": f"saved_model/{selected_model.name}",
         "model_parent": rel(selected_model.parent, project),
         "required_package": details.get("required_package", "unknown"),
         "load_hint": details.get("load_hint", "custom loader required"),
@@ -788,31 +818,37 @@ def reference_display_path(reference: Path) -> str:
         return normalize_path_text(reference.as_posix())
 
 
+def reference_scope_display_path(kind: str | None, reference: Path) -> str:
+    if kind in {"pytorch", "safetensors"} and PYTORCH_REFERENCE_DIR.is_dir():
+        return f"{reference_display_path(PYTORCH_REFERENCE_DIR)} (requirements.txt 제외)"
+    return reference_display_path(reference)
+
+
 def conversion_reference_step(kind: str, reference: Path) -> str:
-    display_path = reference_display_path(reference)
+    display_path = reference_scope_display_path(kind, reference)
     if kind in {"pytorch", "safetensors"}:
-        return f"4. samples/pytorch_sample/ 내부 참조(복사 금지): {display_path}"
+        return f"4. PyTorch 참조 영역 확인: {display_path}"
     return f"4. 선택 모델 기준 참조: {display_path}"
 
 
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        "2. aiu_studio/ 템플릿을 현재 워크스페이스 루트로 복사",
-        f"3. 참조 entrypoint 확인: {reference_display_path(reference)}",
+        "2. pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
+        f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
         "4. runtest.py 참조해서 runtest_2.py 생성",
         "5. 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
         "6. 변환 결과 검증",
     ]
 
 
-def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
     target = project
-    if not AIU_STUDIO_SAMPLE_DIR.is_dir():
-        failures.append(f"aiu_studio_folder_missing:{AIU_STUDIO_SAMPLE_DIR}")
+    if not TEMPLATE_SAMPLE_DIR.is_dir():
+        failures.append(f"pytorch_sample_folder_missing:{TEMPLATE_SAMPLE_DIR}")
         return copied, skipped, failures
     if target.exists() and not target.is_dir():
         failures.append(f"workspace_target_not_directory:{target}")
@@ -820,8 +856,8 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
     current_selected = current_selected_model_path(project)
     selected_model_locked = current_selected is not None and current_selected.is_file()
     if execute:
-        for source in AIU_STUDIO_SAMPLE_DIR.rglob("*"):
-            relative = source.relative_to(AIU_STUDIO_SAMPLE_DIR)
+        for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
+            relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
             if any(part in AIU_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
                 continue
             if relative.as_posix() in AIU_STUDIO_COPY_IGNORE_FILES:
@@ -838,7 +874,20 @@ def copy_aiu_studio_folder(project: Path, execute: bool) -> tuple[list[str], lis
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
-    copied.append(".opencode/samples/aiu_studio/* -> workspace root")
+        runtest_path = target / "runtest.py"
+        if runtest_path.is_file():
+            runtest_text = runtest_path.read_text(encoding="utf-8", errors="ignore")
+            forbidden_markers = [
+                marker
+                for marker in FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS
+                if marker in runtest_text
+            ]
+            if forbidden_markers:
+                failures.append(
+                    "runtest.py_selected_model_constants_forbidden:"
+                    + ",".join(forbidden_markers)
+                )
+    copied.append(".opencode/samples/pytorch_sample/* -> workspace root")
     return copied, skipped, failures
 
 
@@ -846,7 +895,7 @@ def ensure_aiu_custom_template_copied(project: Path, execute: bool) -> tuple[lis
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    template_dir = AIU_STUDIO_SAMPLE_DIR / "aiu_custom"
+    template_dir = TEMPLATE_SAMPLE_DIR / "aiu_custom"
     target_dir = project / "aiu_custom"
     if not template_dir.is_dir():
         failures.append(f"aiu_custom_template_missing:{template_dir}")
@@ -887,6 +936,29 @@ def ensure_runtime_directories(project: Path, execute: bool) -> tuple[list[str],
             failures.append(f"runtime_dir_create_failed:{name}:{exc}")
             continue
         changed.append(f"{name}/")
+    return changed, skipped, failures
+
+
+def write_saved_model(project: Path, selected_model: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / "saved_model" / selected_model.name
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    if not execute:
+        skipped.append("saved_model selected artifact:dry_run")
+        return changed, skipped, failures
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if selected_model.is_dir():
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(selected_model, target)
+        else:
+            shutil.copy2(selected_model, target)
+    except OSError as exc:
+        failures.append(f"saved_model_copy_failed:{rel(selected_model, project)}:{exc}")
+        return changed, skipped, failures
+    changed.append(f"saved_model/{selected_model.name} (selected model copy)")
     return changed, skipped, failures
 
 
@@ -1141,6 +1213,49 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
     )
 
 
+def collapse_multiline_model_prep_calls(text: str, kind: str) -> str:
+    lines = text.splitlines(keepends=True)
+    output: list[str] = []
+    index = 0
+    assignment_pattern = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$")
+    while index < len(lines):
+        line = lines[index]
+        match = assignment_pattern.match(line.rstrip("\n"))
+        if not match:
+            output.append(line)
+            index += 1
+            continue
+
+        indent, name, expression = match.groups()
+        if name not in MODEL_PREP_VARIABLE_NAMES or not MODEL_PREP_CALL_PATTERN.search(expression):
+            output.append(line)
+            index += 1
+            continue
+
+        balance = expression.count("(") - expression.count(")")
+        if balance <= 0:
+            output.append(line)
+            index += 1
+            continue
+
+        skipped = [line.rstrip("\n")]
+        index += 1
+        while index < len(lines) and balance > 0:
+            continuation = lines[index]
+            skipped.append(continuation.rstrip("\n"))
+            balance += continuation.count("(") - continuation.count(")")
+            index += 1
+
+        output.append(
+            f"{indent}{name} = load_selected_model()  "
+            f"# AIU Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용\n"
+        )
+        for skipped_line in skipped:
+            if skipped_line.strip():
+                output.append(f"{indent}# {skipped_line.lstrip()}\n")
+    return "".join(output)
+
+
 def rewrite_summary_line(line: str, kind: str) -> str:
     code, comment = split_inline_comment(line.rstrip("\n"))
     if not SUMMARY_CALL_PATTERN.search(code):
@@ -1252,6 +1367,8 @@ def transform_reference_text(
     required_package: str,
     preserve_code: bool = False,
 ) -> str:
+    if not preserve_code:
+        reference_text = collapse_multiline_model_prep_calls(reference_text, kind)
     lines = reference_text.splitlines(keepends=True)
     output: list[str] = []
     inserted = False
@@ -1284,7 +1401,11 @@ def transform_reference_text(
                 continue
             break
         if import_pattern.match(line):
+            balance = line.count("(") - line.count(")")
             insert_at += 1
+            while balance > 0 and insert_at < len(lines):
+                balance += lines[insert_at].count("(") - lines[insert_at].count(")")
+                insert_at += 1
             continue
         break
 
@@ -1435,11 +1556,12 @@ _aiu_missing_mlflow_settings = [
     if not str(_aiu_value).strip()
 ]
 if _aiu_missing_mlflow_settings:
-    raise ValueError(
-        "mlflow_settings_required: fill "
-        + ", ".join(_aiu_missing_mlflow_settings)
-        + " directly in runtest_2.py, then rerun python runtest_2.py"
-    )
+    print("학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("missing settings:")
+    for _aiu_name in _aiu_missing_mlflow_settings:
+        print(f"- {{_aiu_name}}")
+    print("비밀번호 값은 출력하지 않습니다.")
+    raise SystemExit(0)
 
 for _aiu_env_name, _aiu_env_value in {{
     "MLFLOW_TRACKING_URI": effective_mlflow_tracking_uri,
@@ -1452,14 +1574,18 @@ for _aiu_env_name, _aiu_env_value in {{
         os.environ[_aiu_env_name] = _aiu_env_value
 
 def _aiu_print_existing_model_tod():
-    print("\\nTODO Guide:")
-    print("- 1. 모델 목록 확인 - 완료")
-    print("- 2. 모델 선택 - 완료")
-    print("- 3. 템플릿 변환 - 완료")
-    print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 원격 MLflow 등록 실행 - 완료")
-    print("- 6. 추론 테스트 - 선택 시")
-    print("- 7. 오류 수정 및 재실행 - 오류 시")
+    print("\\n============================================================")
+    print("AI Studio TODO Guide - 7단계")
+    print("============================================================")
+    print("숫자키로 단계 실행 가능 / 모델 목록 화면에서는 숫자=모델 번호")
+    print("[1] 모델 목록 확인: 완료")
+    print("[2] 모델 선택: 완료")
+    print("[3] 환경변수/requirements 갱신: 확인 필요")
+    print("[4] 템플릿 변환: 완료")
+    print("[5] 원격 MLflow 등록 실행: 완료")
+    print("[6] 추론 테스트: 선택 시")
+    print("[7] 오류 수정 및 재실행: 오류 시")
+    print("============================================================")
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
 # --- /AIU Studio selected model conversion ---
@@ -1708,10 +1834,30 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
     return payload
 
 
+def selected_model_data_config(project: Path, selected_model: Path, kind: str) -> dict:
+    input_example = selected_model_input_example_data(project, selected_model, kind)
+    inputs = input_example.get("inputs", [])
+    first_input = inputs[0] if inputs and isinstance(inputs[0], dict) else {}
+    return {
+        "training_data_source": "not_embedded",
+        "training_data_note": "실제 학습 데이터 원본은 config.json에 저장하지 않습니다.",
+        "dataset_path": None,
+        "input_example": "input_example.json",
+        "input_schema": {
+            "name": first_input.get("name"),
+            "shape": first_input.get("shape"),
+            "datatype": first_input.get("datatype"),
+        },
+        "model_kind": kind,
+        "model_path": rel(selected_model, project),
+    }
+
+
 def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
     experiment_name, registered_model_name = default_mlflow_names(project, selected_model)
     return {
         "model": model_profile(project, selected_model, kind),
+        "data": selected_model_data_config(project, selected_model, kind),
         "mlflow": {
             "artifact_path": "ai_studio",
             "experiment_name": experiment_name,
@@ -1721,7 +1867,6 @@ def selected_model_config_data(project: Path, selected_model: Path, kind: str) -
             "entrypoint": "runtest_2.py",
             "model_entrypoint": "aiu_custom/model.py",
             "predict_entrypoint": "aiu_custom/predict.py",
-            "mapping": "aiu_custom/mapping.json",
             "input_example": "input_example.json",
             "local_serving_test": "local_serving/localservingtest.py",
         },
@@ -1733,19 +1878,451 @@ def selected_model_config_data(project: Path, selected_model: Path, kind: str) -
     }
 
 
-def ensure_linux_code_paths(text: str) -> str:
+def ensure_workspace_code_paths(text: str) -> str:
     if "mlflow.pyfunc.log_model(" not in text or "code_paths=" in text:
         return text
     marker = "            pip_requirements=\"requirements.txt\","
-    code_paths_line = (
-        "            code_paths=[(__import__(\"pathlib\").Path(__file__).resolve().parent / \"aiu_custom\").as_posix()],\n"
-    )
+    code_paths_line = '            code_paths=["aiu_custom"],\n'
     if marker in text:
         return text.replace(marker, code_paths_line + marker, 1)
     marker = "            registered_model_name=mlflow_register_model_name,\n"
     if marker in text:
         return text.replace(marker, marker + code_paths_line, 1)
     return text
+
+
+def normalize_existing_code_paths(text: str) -> str:
+    if "code_paths" not in text:
+        return text
+    selected_code_path = '"aiu_custom"'
+
+    text = re.sub(
+        r'(?m)^(\s*)"code_paths"\s*:\s*\[[^\]]*\](\s*,?)$',
+        rf'\1"code_paths": [{selected_code_path}]\2',
+        text,
+    )
+    text = re.sub(
+        r'(?m)^(\s*)code_paths\s*=\s*\[[^\]]*\](\s*,?)$',
+        rf'\1code_paths=[{selected_code_path}]\2',
+        text,
+    )
+    return text
+
+
+def constant_free_loader_text(kind: str) -> str:
+    if kind in {"sklearn_pickle", "sklearn_joblib", "xgboost_pickle"}:
+        return '''def load_selected_model():
+    import joblib
+
+    return joblib.load(selected_model_path())
+'''
+    if kind in {"pytorch", "safetensors"}:
+        return '''def load_selected_model():
+    import torch
+
+    try:
+        return torch.load(selected_model_path(), map_location="cpu", weights_only=False)
+    except TypeError:
+        return torch.load(selected_model_path(), map_location="cpu")
+'''
+    if kind == "onnx":
+        return '''def load_selected_model():
+    import onnxruntime as ort
+
+    return ort.InferenceSession(server_upload_path(selected_model_path()))
+'''
+    if kind in {"tensorflow_keras", "tensorflow_h5"}:
+        return '''def load_selected_model():
+    import tensorflow as tf
+
+    return tf.keras.models.load_model(selected_model_path())
+'''
+    return '''def load_selected_model():
+    raise ValueError("unsupported selected model type")
+'''
+
+
+def reference_style_input_example_code(kind: str, input_example: dict) -> str:
+    if kind in {"pytorch", "safetensors"}:
+        return '''sample_shape = [1, 1, 28, 28]
+sample_data = [0.0] * 784
+
+request_input_example = {
+    "inputs": [
+        {
+            "name": "selected_pytorch_tensor",
+            "shape": sample_shape,
+            "datatype": "FP32",
+            "data": sample_data,
+        }
+    ],
+    "model_kind": model_kind,
+    "model_path": selected_model_relative_path,
+}
+'''
+    return f'''request_input_example = {repr(input_example)}
+'''
+
+
+def reference_style_loader_code(kind: str) -> str:
+    if kind in {"sklearn_pickle", "sklearn_joblib", "xgboost_pickle"}:
+        return '''def load_selected_model():
+    import joblib
+
+    return joblib.load(selected_model_path)
+'''
+    if kind in {"pytorch", "safetensors"}:
+        return '''def load_selected_model():
+    import torch
+
+    try:
+        return torch.load(selected_model_path, map_location="cpu", weights_only=False)
+    except TypeError:
+        return torch.load(selected_model_path, map_location="cpu")
+'''
+    if kind == "onnx":
+        return '''def load_selected_model():
+    import onnxruntime as ort
+
+    return ort.InferenceSession(selected_model_path)
+'''
+    if kind in {"tensorflow_keras", "tensorflow_h5"}:
+        return '''def load_selected_model():
+    import tensorflow as tf
+
+    return tf.keras.models.load_model(selected_model_path)
+'''
+    return '''def load_selected_model():
+    raise ValueError(f"unsupported selected model type: {model_kind}")
+'''
+
+
+def generated_constant_free_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path | None = None) -> str:
+    selected_relative = rel(selected_model, project)
+    default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
+    profile = model_profile(project, selected_model, kind)
+    input_example = selected_model_input_example_data(project, selected_model, kind)
+    config = selected_model_config_data(project, selected_model, kind)
+    config_literal = pformat(config, width=100, sort_dicts=False)
+    loader = reference_style_loader_code(kind)
+    input_example_code = reference_style_input_example_code(kind, input_example).rstrip()
+    reference_header = ""
+    if reference is not None:
+        reference_header = (
+            f"# 참조 영역: {reference_scope_display_path(kind, reference)}\n"
+            f"# 참조 파일: {reference_display_path(reference)}\n"
+        )
+    return f'''{reference_header}import io
+import inspect
+import json
+import logging
+import os
+import sys
+from urllib.parse import quote
+
+import mlflow
+
+from aiu_custom.predict import ModelWrapper
+
+
+logging.getLogger("mlflow").setLevel(logging.ERROR)
+
+
+# ------------------------------------------------------------
+# Windows 인코딩 문제 해결
+# ------------------------------------------------------------
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
+
+# ------------------------------------------------------------
+# MLflow 환경 설정
+# ------------------------------------------------------------
+# 할당받은 MLflow Tracking Server URL / 계정 정보 기재
+mlflow_tracking_url = ""
+mlflow_tracking_username = ""
+mlflow_tracking_password = ""
+
+mlflow_experiment_name = {default_experiment_name!r}
+mlflow_register_model_name = {default_register_model_name!r}
+
+os.environ["MLFLOW_TRACKING_INSECURE_TLS"] = "TRUE"
+os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_tracking_username
+os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_tracking_password
+
+
+def normalize_local_path(path):
+    value = str(path).replace("＼", os.sep).replace("￦", os.sep).replace("₩", os.sep)
+    return os.path.abspath(os.path.normpath(value))
+
+
+def workspace_path(*parts):
+    return normalize_local_path(os.path.join(project_dir, *parts))
+
+
+def first_existing_file(label, candidates):
+    normalized_candidates = [normalize_local_path(candidate) for candidate in candidates]
+    for candidate in normalized_candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    print(f"파일을 찾을 수 없습니다: {{label}}")
+    print("확인한 경로:")
+    for candidate in normalized_candidates:
+        print(f"- {{candidate}}")
+    raise FileNotFoundError(f"{{label}} not found")
+
+
+def mlflow_artifact_uri(path):
+    # Windows에서는 C:\\... native 경로를 유지하고, Linux에서는 /... 경로를 유지합니다.
+    return normalize_local_path(path)
+
+
+def validate_mlflow_tracking_url(value):
+    tracking_url = str(value).strip()
+    lowered = tracking_url.lower()
+    if not tracking_url:
+        raise ValueError("mlflow_tracking_url_required: 원격 MLflow Tracking Server URL을 입력하세요.")
+    if lowered.startswith(("sqlite:", "file:")):
+        raise ValueError(
+            "mlflow_tracking_url_invalid: sqlite/file 로컬 tracking은 사용하지 않습니다. "
+            "원격 MLflow 서버 URL(http:// 또는 https://)을 입력하세요."
+        )
+    if not lowered.startswith(("http://", "https://")):
+        raise ValueError("mlflow_tracking_url_invalid: http:// 또는 https:// URL만 사용할 수 있습니다.")
+    if lowered.startswith((
+        "http://127.",
+        "https://127.",
+        "http://localhost",
+        "https://localhost",
+        "http://0.0.0.0",
+        "https://0.0.0.0",
+    )):
+        raise ValueError(
+            "mlflow_tracking_url_invalid: 5번 원격 MLflow 등록 실행에는 원격 서버 URL이 필요합니다. "
+            "localhost/127.0.0.1/0.0.0.0 대신 원격 http:// 또는 https:// URL을 입력하세요."
+        )
+    return tracking_url
+
+
+def handle_mlflow_connection_error(exc):
+    message = str(exc)
+    if "sqlite3.OperationalError" in message and "disk I/O error" in message:
+        print("MLflow 서버 저장소 오류: SQLite disk I/O error가 발생했습니다.")
+        print("원인 후보: MLflow 서버가 sqlite/mlflow.db backend로 떠 있고, 해당 경로 권한/잠금/드라이브 I/O 문제가 있습니다.")
+        print("조치: mlflow_tracking_url을 원격 MLflow 서버 URL로 바꾸거나, 서버 backend-store-uri와 artifact-root 경로 권한을 확인하세요.")
+        print("주의: runtest_2.py에서는 로컬 sqlite/file tracking을 사용하지 않습니다.")
+        raise SystemExit(1)
+    raise exc
+
+
+missing_mlflow_settings = [
+    name
+    for name, value in {{
+        "mlflow_tracking_url": mlflow_tracking_url,
+        "mlflow_tracking_username": mlflow_tracking_username,
+        "mlflow_tracking_password": mlflow_tracking_password,
+    }}.items()
+    if not str(value).strip()
+]
+
+if missing_mlflow_settings:
+    print("학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("missing settings:")
+    for name in missing_mlflow_settings:
+        print(f"- {{name}}")
+    print("비밀번호 값은 출력하지 않습니다.")
+    raise SystemExit(0)
+
+mlflow_tracking_url = validate_mlflow_tracking_url(mlflow_tracking_url)
+try:
+    mlflow.set_tracking_uri(mlflow_tracking_url)
+    mlflow.set_experiment(mlflow_experiment_name)
+except Exception as exc:
+    handle_mlflow_connection_error(exc)
+
+
+# ------------------------------------------------------------
+# 데이터 준비
+# ------------------------------------------------------------
+project_dir = os.path.dirname(os.path.abspath(__file__))
+selected_model_relative_path = {selected_relative!r}
+selected_model_path = first_existing_file(
+    "selected_model",
+    [
+        os.path.join(project_dir, selected_model_relative_path),
+        os.path.join(project_dir, "saved_model", os.path.basename(selected_model_relative_path)),
+    ],
+)
+model_kind = {kind!r}
+
+{input_example_code}
+
+input_example_path = workspace_path("input_example.json")
+with open(input_example_path, "w", encoding="utf-8") as f:
+    json.dump(request_input_example, f, indent=2, ensure_ascii=False)
+
+mlflow_input_example = request_input_example
+
+
+# ------------------------------------------------------------
+# 모델 준비
+# ------------------------------------------------------------
+{loader}
+
+model = load_selected_model()
+
+
+def compute_metrics(loaded_model):
+    return {{
+        "model_loaded": 1.0 if loaded_model is not None else 0.0,
+    }}
+
+
+# ------------------------------------------------------------
+# Config 저장
+# ------------------------------------------------------------
+config_dir = "config"
+config_dir_path = workspace_path(config_dir)
+os.makedirs(config_dir_path, exist_ok=True)
+
+config_path = workspace_path(config_dir, "config.json")
+
+params = {config_literal}
+params["model"]["runtime_model_path"] = selected_model_relative_path
+
+with open(config_path, "w", encoding="utf-8") as f:
+    json.dump(params, f, indent=4, ensure_ascii=False)
+
+
+# ------------------------------------------------------------
+# MLflow Dataset 정의
+# ------------------------------------------------------------
+mlflow_train_ds = None
+mlflow_test_ds = None
+
+
+def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, str]:
+    base_url = str(mlflow_tracking_url).strip().rstrip("/")
+    urls = {{
+        "tracking_url": base_url,
+        "experiment_url": f"{{base_url}}/#/experiments/{{experiment_id}}",
+        "experiment_models_url": f"{{base_url}}/#/experiments/{{experiment_id}}/models",
+        "traces_url": f"{{base_url}}/#/experiments/{{experiment_id}}/traces?startTime=ALL",
+    }}
+    if run_id:
+        urls["run_url"] = f"{{base_url}}/#/experiments/{{experiment_id}}/runs/{{run_id}}"
+    if mlflow_register_model_name:
+        model_name = quote(mlflow_register_model_name, safe="")
+        urls["registered_model_url"] = f"{{base_url}}/#/models/{{model_name}}"
+    return urls
+
+
+def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
+    urls = mlflow_ui_urls(experiment_id, run_id)
+    print("MLflow Tracking URL:", urls["tracking_url"])
+    print("MLflow Experiment URL:", urls["experiment_url"])
+    print("MLflow Experiment Models URL:", urls["experiment_models_url"])
+    print("MLflow Traces URL:", urls["traces_url"])
+    if "run_url" in urls:
+        print("MLflow Run URL:", urls["run_url"])
+    if "registered_model_url" in urls:
+        print("MLflow Registered Model URL:", urls["registered_model_url"])
+
+
+def ensure_registered_model(model_info) -> str:
+    model_name = str(mlflow_register_model_name).strip()
+    if not model_name:
+        return "skipped: mlflow_register_model_name empty"
+
+    try:
+        client = mlflow.tracking.MlflowClient()
+        client.get_registered_model(model_name)
+        return f"exists: {{model_name}}"
+    except Exception:
+        pass
+
+    model_uri = getattr(model_info, "model_uri", "")
+    if not model_uri:
+        return "failed: model_uri missing"
+
+    try:
+        registered = mlflow.register_model(model_uri=model_uri, name=model_name)
+        version = getattr(registered, "version", "unknown")
+        return f"registered: {{model_name}}, version={{version}}"
+    except Exception as exc:
+        return f"failed: {{type(exc).__name__}}: {{exc}}"
+
+
+# ------------------------------------------------------------
+# 모델 학습 / 평가 / 로깅
+# ------------------------------------------------------------
+with mlflow.start_run(run_name=mlflow_register_model_name) as run:
+    if mlflow_train_ds is not None:
+        mlflow.log_input(mlflow_train_ds, context="training")
+    if mlflow_test_ds is not None:
+        mlflow.log_input(mlflow_test_ds, context="test")
+
+    mlflow.set_tag("data.name", "selected_model")
+    mlflow.set_tag("model.type", params["model"]["model_name"])
+    mlflow.set_tag("framework", model_kind)
+
+    mlflow.log_params(
+        {{
+            "model_name": params["model"]["model_name"],
+            "model_kind": model_kind,
+            "model_path": selected_model_relative_path,
+        }}
+    )
+
+    metrics = compute_metrics(model)
+    mlflow.log_metrics(metrics)
+
+    # --------------------------------------------------------
+    # 모델 파일 저장
+    # --------------------------------------------------------
+    model_dir = "saved_model"
+    model_dir_path = workspace_path(model_dir)
+    os.makedirs(model_dir_path, exist_ok=True)
+
+    model_path = workspace_path(model_dir, os.path.basename(selected_model_path))
+    if os.path.abspath(selected_model_path) != os.path.abspath(model_path):
+        with open(selected_model_path, "rb") as src, open(model_path, "wb") as dst:
+            dst.write(src.read())
+
+    aiu_custom_path = "aiu_custom"
+
+    # --------------------------------------------------------
+    # MLflow PyFunc 모델 로깅
+    # --------------------------------------------------------
+    log_model_args = {{
+        "artifact_path": "ai_studio",
+        "python_model": ModelWrapper(),
+        "code_paths": [aiu_custom_path],
+        "artifacts": {{
+            "model": mlflow_artifact_uri(model_path),
+            "config": mlflow_artifact_uri(config_path),
+        }},
+        "input_example": mlflow_input_example,
+        "pip_requirements": "requirements.txt",
+    }}
+
+    if mlflow_register_model_name:
+        log_model_args["registered_model_name"] = mlflow_register_model_name
+
+    if "name" in inspect.signature(mlflow.pyfunc.log_model).parameters:
+        log_model_args["name"] = log_model_args.pop("artifact_path")
+
+    model_info = mlflow.pyfunc.log_model(**log_model_args)
+    registry_status = ensure_registered_model(model_info)
+
+    print("MLflow Run ID:", run.info.run_id)
+    print("Model URI:", model_info.model_uri)
+    print("MLflow Registry:", registry_status)
+    print("Selected Model:", selected_model_path)
+    print("Model saved:", model_path)
+    print("Metrics:", metrics)
+    print_mlflow_ui_urls(run.info.experiment_id, run.info.run_id)
+'''
 
 
 def generated_selected_model_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
@@ -1764,16 +2341,21 @@ def generated_selected_model_runtest_text(project: Path, selected_model: Path, k
 {loader}
 {selected_model_input_example_block(kind)}
 
+def normalize_upload_uri(path) -> str:
+    value = str(path).replace("＼", os.sep).replace("￦", os.sep).replace("₩", os.sep)
+    return os.path.normpath(value)
+
+
 def server_upload_path(path: Path) -> str:
-    # 서버 업로드 전에 로컬 파일 경로를 Linux 호환 슬래시 절대경로로 고정합니다.
-    return Path(str(path).replace("\\\\", "/")).resolve().as_posix()
+    # MLflow에 넘기는 원본 uri는 Windows 실행 환경의 native 경로를 유지합니다.
+    return normalize_upload_uri(path)
 
 
 def server_relative_path(path: Path) -> str:
     try:
-        return Path(path).resolve().relative_to(PROJECT_DIR.resolve()).as_posix()
+        return normalize_upload_uri(Path(path).resolve().relative_to(PROJECT_DIR.resolve()))
     except ValueError:
-        return Path(str(path).replace("\\\\", "/")).as_posix()
+        return normalize_upload_uri(path)
 
 
 def validate_server_upload_paths(paths: dict[str, Path]) -> list[str]:
@@ -1782,6 +2364,8 @@ def validate_server_upload_paths(paths: dict[str, Path]) -> list[str]:
         if not Path(path).exists():
             missing.append(f"{{name}}:{{server_upload_path(path)}}")
     return missing
+
+
 '''
     original_path_block = '''PROJECT_DIR = Path(__file__).resolve().parent
 SOURCE_MODEL_PATH = PROJECT_DIR / "data" / "torch" / "model.pt"
@@ -1867,8 +2451,8 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
         count=1,
     )
     text = text.replace('        mlflow.set_tag("data.name", "synthetic_tensor(pytorch)")', '        mlflow.set_tag("data.name", "selected_model")')
-    text = text.replace(
-        "    with mlflow.start_run(run_name=mlflow_register_model_name):",
+    text = re.sub(
+        r"(?m)^    with mlflow\.start_run\(run_name=mlflow_register_model_name\)(?: as run)?:$",
         "    upload_paths = {\"model\": selected_model_path, \"config\": CONFIG_PATH, \"code\": PROJECT_DIR / \"aiu_custom\"}\n"
         "    missing_upload_paths = validate_server_upload_paths(upload_paths)\n"
         "    if missing_upload_paths:\n"
@@ -1876,8 +2460,9 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
         "        for item in missing_upload_paths:\n"
         "            print(f\"- {item}\")\n"
         "        return\n\n"
-        "    with mlflow.start_run(run_name=mlflow_register_model_name):",
-        1,
+        "    with mlflow.start_run(run_name=mlflow_register_model_name) as run:",
+        text,
+        count=1,
     )
     text = text.replace("            artifacts={\n                \"model\": MODEL_PATH.as_posix(),", "            artifacts={\n                \"model\": server_upload_path(selected_model_path),")
     text = text.replace("            artifacts={\n                \"model\": MODEL_DIR.as_posix(),", "            artifacts={\n                \"model\": server_upload_path(selected_model_path),")
@@ -1885,14 +2470,25 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
     text = text.replace("                \"config\": CONFIG_PATH.as_posix(),", "                \"config\": server_upload_path(CONFIG_PATH),")
     text = text.replace(
         "            code_paths=[(Path(__file__).resolve().parent / \"aiu_custom\").as_posix()],",
-        "            code_paths=[server_upload_path(PROJECT_DIR / \"aiu_custom\")],",
+        "            code_paths=[\"aiu_custom\"],",
     )
     text = text.replace('    print(f"model written: {MODEL_PATH}")', '    print(f"selected model: {selected_model_path}")')
-    text = ensure_linux_code_paths(text)
+    if "print_mlflow_ui_urls(run.info.experiment_id, run.info.run_id)" not in text:
+        text = text.replace(
+            '    print("MLflow model logged with artifact_path=\'ai_studio\'")',
+            '    print("MLflow model logged with artifact_path=\'ai_studio\'")\n'
+            '    print_mlflow_ui_urls(run.info.experiment_id, run.info.run_id)',
+            1,
+        )
+    text = normalize_existing_code_paths(text)
+    text = ensure_workspace_code_paths(text)
     return text.rstrip() + "\n"
 
 
 def generated_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path) -> str:
+    generation_reference = runtest_generation_reference(kind, reference)
+    return generated_constant_free_runtest_text(project, selected_model, kind, generation_reference)
+
     reference_text = reference.read_text(encoding="utf-8", errors="ignore")
     selected_relative = rel(selected_model, project)
     preserve_code = preserve_reference_code(reference)
@@ -2009,7 +2605,8 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
         "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
     )
-    transformed = ensure_linux_code_paths(transformed)
+    transformed = normalize_existing_code_paths(transformed)
+    transformed = ensure_workspace_code_paths(transformed)
     return transformed.rstrip() + "\n"
 
 
@@ -2037,22 +2634,21 @@ def generated_minimal_localservingtest_text(template_text: str, project: Path, s
         "loader",
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
     )
+    loader = loader.replace("MODEL_PATH", "DATA_MODEL_PATH")
 
     text = template_text
-    text = rewrite_top_level_assignment(text, "PROJECT_DIR", "AI_STUDIO_DIR")
-    text = rewrite_top_level_assignment(text, "SOURCE_MODEL_PATH", f"AI_STUDIO_DIR / {selected_relative!r}")
+    text = rewrite_top_level_assignment(text, "PROJECT_DIR", "LOCAL_SERVING_DIR.parent")
+    text = rewrite_top_level_assignment(text, "SOURCE_MODEL_PATH", f"PROJECT_DIR / {selected_relative!r}")
     text = rewrite_top_level_assignment(text, "DATA_MODEL_PATH", "SOURCE_MODEL_PATH")
-    text = rewrite_top_level_assignment(text, "MODEL_PATH", "SOURCE_MODEL_PATH")
+    text = rewrite_top_level_assignment(text, "MODEL_PATH", "DATA_MODEL_PATH")
     text = rewrite_top_level_assignment(text, "MODEL_KIND", repr(kind))
     text = replace_function_block(text, "load_selected_model", loader)
     return text.rstrip() + "\n"
 
 
 def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path, template_text: str | None = None) -> str:
-    if template_text:
-        return generated_minimal_localservingtest_text(template_text, project, selected_model, kind)
-
     selected_relative = rel(selected_model, project)
+    reference_entrypoint = rel(reference, project) if reference.is_relative_to(project) else reference_display_path(reference)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
     required_package = details.get("required_package", "unknown")
@@ -2065,25 +2661,55 @@ def generated_localservingtest_text(project: Path, selected_model: Path, kind: s
 from __future__ import annotations
 
 import importlib.util
+import contextlib
+import io
 import json
+import re
+import warnings
 from pathlib import Path
 
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*Add type hints to the `predict` method.*",
+    category=UserWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module="mlflow[.]pyfunc[.]utils[.]data_validation",
+)
 
 LOCAL_SERVING_DIR = Path(__file__).resolve().parent
 AI_STUDIO_DIR = LOCAL_SERVING_DIR.parent
 ORIGINAL_MODEL_PATH = AI_STUDIO_DIR / {selected_relative!r}
-SOURCE_MODEL_PATH = ORIGINAL_MODEL_PATH
-DATA_MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_PATH = SOURCE_MODEL_PATH
+SAVED_MODEL_PATH = AI_STUDIO_DIR / "saved_model" / ORIGINAL_MODEL_PATH.name
+MODEL_PATH_CANDIDATES = [ORIGINAL_MODEL_PATH, SAVED_MODEL_PATH]
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 AIU_REQUIRED_PACKAGE = "{required_package}"
 AIU_LOAD_HINT = "{load_hint}"
-REFERENCE_ENTRYPOINT = {reference_display_path(reference)!r}
+REFERENCE_ENTRYPOINT = {reference_entrypoint!r}
 
-# AIU Studio 변환: 선택 모델 원본 경로 {selected_relative} 기준 추론 테스트입니다.
-# 모델 파일은 템플릿 폴더로 복사하지 않고 프로젝트 내 원본 위치에서 직접 읽습니다.
+# AIU Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
+# 추론 테스트는 선택 모델 원본 경로와 saved_model/ 복사본 후보를 확인합니다.
 # MODEL_KIND={kind}, loader={load_hint}
+
+
+def first_existing_model_path():
+    for candidate in MODEL_PATH_CANDIDATES:
+        if candidate.is_file():
+            return candidate
+    print("선택 모델 파일을 찾을 수 없습니다.")
+    print("확인한 경로:")
+    for candidate in MODEL_PATH_CANDIDATES:
+        print(f"- {{candidate}}")
+    raise FileNotFoundError("selected model not found")
+
+
+SOURCE_MODEL_PATH = first_existing_model_path()
+DATA_MODEL_PATH = SOURCE_MODEL_PATH
+MODEL_PATH = SOURCE_MODEL_PATH
 
 {loader}
 
@@ -2106,7 +2732,9 @@ def load_aiu_custom_wrapper():
         if spec is None or spec.loader is None:
             continue
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
+            warnings.simplefilter("ignore", UserWarning)
+            spec.loader.exec_module(module)
         wrapper_class = getattr(module, "ModelWrapper", None)
         if wrapper_class is not None:
             return wrapper_class()
@@ -2117,7 +2745,9 @@ def run_inference():
     payload = load_input_example()
     wrapper = load_aiu_custom_wrapper()
     if wrapper is not None:
-        return wrapper.predict(None, payload)
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
+            warnings.simplefilter("ignore", UserWarning)
+            return wrapper.predict(None, payload)
 
     model = load_selected_model()
     if hasattr(model, "predict"):
@@ -2132,25 +2762,34 @@ def run_inference():
     }}
 
 
-def _print_tod(local_status="완료"):
-    print("\\nTODO Guide:")
-    print("- 1. 모델 목록 확인 - 완료")
-    print("- 2. 모델 선택 - 완료")
-    print("- 3. 템플릿 변환 - 완료")
-    print("- 4. 환경변수/requirements 갱신 - 확인 필요")
-    print("- 5. 원격 MLflow 등록 실행 - 완료")
-    print(f"- 6. 추론 테스트 - {{local_status}}")
-    print("- 7. 오류 수정 및 재실행 - 오류 시")
+def _shorten(value):
+    if isinstance(value, list):
+        if len(value) > 10:
+            return [_shorten(item) for item in value[:10]] + [f"... {{len(value) - 10}} more"]
+        return [_shorten(item) for item in value]
+    if isinstance(value, dict):
+        hidden_keys = {{"input", "inputs", "input_example", "data"}}
+        return {{key: _shorten(item) for key, item in value.items() if key not in hidden_keys}}
+    return value
+
+
+def compact_result(result):
+    compact = _shorten(result)
+    if isinstance(compact, dict):
+        compact.setdefault("model_kind", MODEL_KIND)
+        compact.setdefault("model_path", str(MODEL_PATH))
+        return compact
+    return {{
+        "status": "completed",
+        "model_kind": MODEL_KIND,
+        "model_path": str(MODEL_PATH),
+        "result": compact,
+    }}
 
 
 def main():
-    local_status = "확인 필요"
-    try:
-        result = run_inference()
-        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-        local_status = "완료"
-    finally:
-        _print_tod(local_status)
+    result = run_inference()
+    print(json.dumps(compact_result(result), ensure_ascii=False, indent=2, default=str))
 
 
 if __name__ == "__main__":
@@ -2173,23 +2812,27 @@ import json
 import os
 
 
-def _load_mapping():
-    mapping_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mapping.json")
-    if not os.path.isfile(mapping_path):
+def _workspace_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _load_config():
+    config_path = _CONTEXT_ARTIFACT_CONFIG_PATH or os.path.join(_workspace_root(), "config", "config.json")
+    if not os.path.isfile(config_path):
         return {{}}
-    with open(mapping_path, "r", encoding="utf-8") as handle:
+    with open(config_path, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def _mapping_model():
-    mapping = _load_mapping()
-    model = mapping.get("model", {{}})
+def _config_model():
+    config = _load_config()
+    model = config.get("model", {{}})
     return model if isinstance(model, dict) else {{}}
 
 
-def _mapping_runtime():
-    mapping = _load_mapping()
-    runtime = mapping.get("runtime", {{}})
+def _config_runtime():
+    config = _load_config()
+    runtime = config.get("runtime", {{}})
     return runtime if isinstance(runtime, dict) else {{}}
 
 
@@ -2198,11 +2841,22 @@ _CONTEXT_ARTIFACT_CONFIG_PATH = None
 
 
 def _normalize_server_path(raw_path):
-    return str(raw_path).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+    value = str(raw_path).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+    while "//" in value and not value.startswith("//"):
+        value = value.replace("//", "/")
+    return value
 
 
-def _workspace_root():
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _looks_like_windows_drive_path(path):
+    return len(path) >= 3 and path[1:3] == ":/" and path[0].isalpha()
+
+
+def _reject_windows_path_on_linux(path, source):
+    if os.name != "nt" and _looks_like_windows_drive_path(path):
+        raise ValueError(
+            f"{{source}}_windows_path_on_linux: KServe 컨테이너에서는 Linux artifact 경로를 사용해야 합니다. "
+            "context.artifacts 기반 경로를 확인하세요."
+        )
 
 
 def _first_existing_path(candidates):
@@ -2215,11 +2869,12 @@ def _first_existing_path(candidates):
 def _resolve_model_path():
     if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
         return _CONTEXT_ARTIFACT_MODEL_PATH
-    model = _mapping_model()
-    raw_path = model.get("relative_path") or model.get("source_path")
+    model = _config_model()
+    raw_path = model.get("saved_model_path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path") or model.get("source_path")
     if not raw_path:
         raise ValueError("selected_model_path_missing: selected model metadata")
     path = _normalize_server_path(raw_path)
+    _reject_windows_path_on_linux(path, "selected_model")
     workspace_root = _workspace_root()
     if os.path.isabs(path):
         return _first_existing_path([path])
@@ -2237,6 +2892,7 @@ def _context_artifact_path(context, name):
     if not artifact_path:
         return None
     path = _normalize_server_path(artifact_path)
+    _reject_windows_path_on_linux(path, f"context_artifact_{{name}}")
     workspace_root = _workspace_root()
     if os.path.isabs(path):
         return _first_existing_path([path])
@@ -2247,12 +2903,12 @@ def _context_artifact_path(context, name):
 
 
 def _model_kind():
-    return str(_mapping_model().get("kind") or "{kind}")
+    return str(_config_model().get("model_kind") or _config_model().get("kind") or "{kind}")
 
 
 MODEL_KIND = _model_kind()
-AIU_REQUIRED_PACKAGE = str(_mapping_model().get("required_package") or "{required_package}")
-AIU_LOAD_HINT = str(_mapping_model().get("load_hint") or "{load_hint}")
+AIU_REQUIRED_PACKAGE = str(_config_model().get("required_package") or "{required_package}")
+AIU_LOAD_HINT = str(_config_model().get("load_hint") or "{load_hint}")
 
 # AIU Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
 # 모델 위치와 종류는 선택 모델 정보에서 읽습니다.
@@ -2263,7 +2919,14 @@ AIU_LOAD_HINT = str(_mapping_model().get("load_hint") or "{load_hint}")
 
 def _payload_to_model_input(payload):
     if isinstance(payload, dict):
-        for key in ["data", "inputs", "instances", "features", "x"]:
+        if isinstance(payload.get("inputs"), list) and payload["inputs"]:
+            first_input = payload["inputs"][0]
+            if isinstance(first_input, dict) and "data" in first_input:
+                return {{
+                    "data": first_input.get("data"),
+                    "shape": first_input.get("shape"),
+                }}
+        for key in ["data", "instances", "features", "x"]:
             if key in payload:
                 return payload[key]
     return payload
@@ -2321,7 +2984,16 @@ def _predict_torch_like(model, payload):
 
         if hasattr(model, "eval"):
             model.eval()
-        tensor_input = payload if hasattr(payload, "shape") else torch.tensor(payload)
+        shape = None
+        if isinstance(payload, dict) and "data" in payload:
+            shape = payload.get("shape")
+            payload = payload.get("data")
+        tensor_input = payload if hasattr(payload, "shape") else torch.tensor(payload, dtype=torch.float32)
+        if shape:
+            try:
+                tensor_input = tensor_input.reshape(tuple(int(item) for item in shape))
+            except Exception:
+                pass
         with torch.no_grad():
             result = model(tensor_input) if callable(model) else model
         if hasattr(result, "detach"):
@@ -2343,20 +3015,15 @@ def predict(payload):
 
 
 def generated_predict_text(template_text: str) -> str:
-    text = template_text
-    if "import os" not in text:
-        if "from __future__ import annotations\n\n" in text:
-            text = text.replace("from __future__ import annotations\n\n", "from __future__ import annotations\n\nimport os\n", 1)
-        else:
-            text = "import os\n" + text
-    text = text.replace("from pathlib import Path\n", "")
-    if "import importlib.util" not in text:
-        if "from __future__ import annotations\n\n" in text:
-            text = text.replace("from __future__ import annotations\n\n", "from __future__ import annotations\n\nimport importlib.util\n", 1)
-        else:
-            text = "import importlib.util\n" + text
+    return '''from __future__ import annotations
 
-    delegate_block = '''def _model_module_path():
+import importlib.util
+import os
+
+import mlflow.pyfunc
+
+
+def _model_module_path():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.py")
 
 
@@ -2396,71 +3063,11 @@ class ModelWrapper(mlflow.pyfunc.PythonModel):
     def predict(self, context, model_input, params=None):
         delegate = self.load_context(context)
         return delegate.predict(context, model_input)
+
+
+def predict(payload):
+    return ModelWrapper().predict(None, payload)
 '''
-    pattern = re.compile(r"\nclass\s+ModelWrapper\b.*?(?=\ndef\s+predict\b)", re.DOTALL)
-    if pattern.search(text):
-        text = pattern.sub("\n\n" + delegate_block.rstrip() + "\n", text, count=1)
-    elif "def predict(payload):" in text:
-        text = text.replace("\ndef predict(payload):", "\n\n" + delegate_block.rstrip() + "\n\n\ndef predict(payload):", 1)
-    else:
-        text = text.rstrip() + "\n\n" + delegate_block.rstrip() + "\n\n\ndef predict(payload):\n    return ModelWrapper().predict(None, payload)\n"
-    text = text.replace("runtest.py", "runtest_2.py")
-    return text.rstrip() + "\n"
-
-
-def generated_mapping_json(project: Path, selected_model: Path, kind: str, template_text: str | None = None) -> str:
-    selected_relative = rel(selected_model, project)
-    details = MODEL_KIND_DETAILS.get(kind, {})
-    try:
-        mapping = json.loads(template_text) if template_text else {}
-    except json.JSONDecodeError:
-        mapping = {}
-    if not isinstance(mapping, dict):
-        mapping = {}
-
-    model = mapping.get("model", {})
-    if not isinstance(model, dict):
-        model = {}
-    model.update(
-        {
-            "name": selected_model.name,
-            "kind": kind,
-            "relative_path": selected_relative,
-            "source_path": selected_relative,
-            "load_hint": details.get("load_hint", "custom loader required"),
-            "required_package": details.get("required_package", "unknown"),
-        }
-    )
-    mapping["model"] = model
-
-    runtime = mapping.get("runtime", {})
-    if not isinstance(runtime, dict):
-        runtime = {}
-    runtime.update(
-        {
-            "workspace_root": ".",
-            "model_entrypoint": "aiu_custom/model.py",
-            "predict_entrypoint": "aiu_custom/predict.py",
-            "deployment_entrypoint": "aiu_custom/predict.py",
-            "wrapper_class": "ModelWrapper",
-            "local_serving_test": "local_serving/localservingtest.py",
-        }
-    )
-    mapping["runtime"] = runtime
-
-    policy = mapping.get("policy", {})
-    if not isinstance(policy, dict):
-        policy = {}
-    policy.update(
-        {
-            "copy_model_to_aiu_studio": False,
-            "model_source": "selected_project_model_path",
-            "transform_aiu_studio_templates": True,
-            "secret_output": "masked",
-        }
-    )
-    mapping["policy"] = policy
-    return json.dumps(mapping, ensure_ascii=False, indent=2) + "\n"
 
 
 def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], list[str]]:
@@ -2476,7 +3083,7 @@ def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], lis
             "torch==2.12.1",
             "numpy==1.26.4",
             "kserve==0.15.0",
-            "pandas==2.23",
+            "pandas==2.2.3",
         ]
     extras_by_kind = {
         "sklearn_pickle": ["scikit-learn==1.7.0", "joblib==1.5.1"],
@@ -2503,16 +3110,56 @@ def generated_requirements_text(kind: str) -> str:
     return "\n".join(packages) + "\n"
 
 
+def ast_literal_string(node: ast.AST | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def existing_mlflow_settings(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:
+        return {}
+    values: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        value = ast_literal_string(node.value)
+        if value is None:
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id in MLFLOW_SETTING_NAMES and value:
+                values[target.id] = value
+    return values
+
+
+def apply_existing_mlflow_settings(text: str, settings: dict[str, str]) -> str:
+    for name, value in settings.items():
+        text = re.sub(
+            rf"(?m)^{re.escape(name)}\s*=\s*['\"].*?['\"]\s*$",
+            f"{name} = {value!r}",
+            text,
+            count=1,
+        )
+    return text
+
+
 def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool, force: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / "runtest_2.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
+    generation_reference = runtest_generation_reference(kind, reference)
     reference_digest_before = file_sha256(reference)
     existed_before = target.exists()
     if execute:
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(generated_runtest_text(project, selected_model, kind, reference), encoding="utf-8")
+        preserved_settings = existing_mlflow_settings(target)
+        generated_text = generated_runtest_text(project, selected_model, kind, reference)
+        target.write_text(apply_existing_mlflow_settings(generated_text, preserved_settings), encoding="utf-8")
         reference_digest_after = file_sha256(reference)
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
@@ -2522,6 +3169,8 @@ def write_runtest_2(project: Path, selected_model: Path, kind: str, reference: P
         if existed_before
         else "runtest_2.py generated from selected model"
     )
+    if generation_reference.resolve() != reference.resolve():
+        changed.append(f"runtest_2.py reference scope: {reference_scope_display_path(kind, generation_reference)}")
     return changed, skipped, failures
 
 
@@ -2573,9 +3222,9 @@ def write_localservingtest(project: Path, selected_model: Path, kind: str, refer
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    reference_digest_before = file_sha256(reference)
     existed_before = target.exists()
     if execute:
+        reference_digest_before = file_sha256(reference)
         target.parent.mkdir(parents=True, exist_ok=True)
         copied_text = target.read_text(encoding="utf-8", errors="ignore") if target.is_file() else None
         target.write_text(
@@ -2616,24 +3265,10 @@ def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: b
     if target.is_file():
         template_text = target.read_text(encoding="utf-8", errors="ignore")
     else:
-        template_path = AIU_STUDIO_SAMPLE_DIR / "aiu_custom" / "predict.py"
+        template_path = TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py"
         template_text = template_path.read_text(encoding="utf-8", errors="ignore") if template_path.is_file() else ""
     target.write_text(generated_predict_text(template_text), encoding="utf-8")
     changed.append("aiu_custom/predict.py deployment entrypoint (refreshed)" if existed_before else "aiu_custom/predict.py deployment entrypoint")
-    return changed, skipped, failures
-
-
-def write_aiu_mapping(project: Path, selected_model: Path, kind: str, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / "aiu_custom" / "mapping.json"
-    changed: list[str] = []
-    skipped: list[str] = []
-    failures: list[str] = []
-    existed_before = target.exists()
-    if execute:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        copied_text = target.read_text(encoding="utf-8", errors="ignore") if target.is_file() else None
-        target.write_text(generated_mapping_json(project, selected_model, kind, copied_text), encoding="utf-8")
-    changed.append("aiu_custom/mapping.json (refreshed)" if existed_before else "aiu_custom/mapping.json")
     return changed, skipped, failures
 
 
@@ -2655,13 +3290,13 @@ def sync_selected_model_runtime(
         write_requirements(project, kind, execute),
         write_input_example(project, selected_model, kind, execute),
         write_config_json(project, selected_model, kind, execute),
+        write_saved_model(project, selected_model, execute),
         write_localservingtest(project, selected_model, kind, runtime_reference, execute),
         write_aiu_model(project, selected_model, kind, execute),
         write_aiu_predict(project, selected_model, kind, execute),
-        write_aiu_mapping(project, selected_model, kind, execute),
     ]
     if copy_template:
-        runtime_steps.insert(0, copy_aiu_studio_folder(project, execute))
+        runtime_steps.insert(0, copy_template_sample_folder(project, execute))
 
     for next_changed, next_skipped, next_failures in runtime_steps:
         changed.extend(next_changed)
@@ -2676,11 +3311,9 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         return [], ["selected_model_conversion_verification:dry_run"], []
 
     selected_relative = rel(selected_model, project)
-    selected_absolute = absolute_path_text(selected_model)
     required_text_files = [
         project / "runtest_2.py",
         project / "aiu_custom" / "model.py",
-        project / "aiu_custom" / "mapping.json",
         project / "local_serving" / "localservingtest.py",
         project / "input_example.json",
         project / "config" / "config.json",
@@ -2689,7 +3322,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     failures: list[str] = []
     direct_selected_path_files = {
         "runtest_2.py",
-        "aiu_custom/mapping.json",
         "local_serving/localservingtest.py",
         "input_example.json",
         "config/config.json",
@@ -2702,18 +3334,36 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             continue
 
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if display_path in direct_selected_path_files and selected_relative not in text and selected_absolute not in text:
-            failures.append(f"selected_model_not_reflected:{display_path}:{selected_absolute}")
+        if display_path in direct_selected_path_files and selected_relative not in text:
+            failures.append(f"selected_model_not_reflected:{display_path}:{selected_relative}")
         if display_path == "runtest_2.py":
-            if "def load_selected_model(" not in text or "SOURCE_MODEL_PATH" not in text:
+            has_selected_path_connection = (
+                "selected_model_path =" in text
+                or "def selected_model_path(" in text
+            )
+            if "def load_selected_model(" not in text or not has_selected_path_connection:
                 failures.append("runtest_2_selected_model_loader_missing:runtest_2.py")
-            if '"model_relative_path"' not in text and "SOURCE_MODEL_PATH =" not in text:
+            if selected_relative not in text:
                 failures.append("runtest_2_selected_artifact_path_missing:runtest_2.py")
+            forbidden_runtest2_markers = [
+                "PROJECT_DIR = Path(__file__).resolve().parent",
+                "SOURCE_MODEL_PATH",
+                "DATA_MODEL_PATH",
+                "MODEL_KIND",
+                "MODEL_LOAD_HINT",
+                "INPUT_EXAMPLE_PATH",
+                "CONFIG_DIR",
+                "CONFIG_PATH",
+                "MODEL_DIR",
+                "MODEL_PATH =",
+            ]
+            embedded_constants = [name for name in forbidden_runtest2_markers if name in text]
+            if embedded_constants:
+                failures.append(f"runtest_2_selected_model_constants_forbidden:{','.join(embedded_constants)}")
             forbidden_helpers = [
                 "_workspace_dir",
                 "_selected_model_path",
                 "_selected_model_kind",
-                "_mapping_path",
             ]
             embedded = [name for name in forbidden_helpers if name in text]
             if embedded:
@@ -2725,19 +3375,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append("aiu_custom_model_selected_path_resolver_missing:aiu_custom/model.py")
             if kind not in text:
                 failures.append(f"aiu_custom_model_kind_not_reflected:aiu_custom/model.py:{kind}")
-        if display_path == "aiu_custom/mapping.json":
-            try:
-                mapping = json.loads(text)
-            except json.JSONDecodeError as exc:
-                failures.append(f"selected_model_mapping_invalid_json:{exc.lineno}")
-                mapping = {}
-            model_mapping = mapping.get("model", {}) if isinstance(mapping, dict) else {}
-            mapped_path = model_mapping.get("relative_path") or model_mapping.get("source_path")
-            mapped_kind = model_mapping.get("kind")
-            if normalize_path_text(str(mapped_path or "")) != normalize_path_text(selected_relative):
-                failures.append(f"selected_model_mapping_path_mismatch:{mapped_path}->{selected_relative}")
-            if mapped_kind != kind:
-                failures.append(f"selected_model_mapping_kind_mismatch:{mapped_kind}->{kind}")
         if display_path == "config/config.json":
             try:
                 config = json.loads(text)
@@ -2758,12 +3395,12 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             if display_path in direct_selected_path_files and other_relative != selected_relative and (other_relative in text or other_absolute in text):
                 failures.append(f"stale_model_path_in_generated:{display_path}:{other_relative}")
 
-    locked_model, locked_kind, locked_error = selected_model_from_mapping(project)
+    locked_model, locked_kind, locked_error = selected_model_from_config(project)
     if locked_error:
         failures.append(locked_error)
     elif locked_model is None or locked_model.resolve() != selected_model.resolve():
         locked_display = rel(locked_model, project) if locked_model else "missing"
-        failures.append(f"selected_model_mapping_mismatch:{locked_display}->{selected_relative}")
+        failures.append(f"selected_model_config_mismatch:{locked_display}->{selected_relative}")
     elif locked_kind and locked_kind != kind:
         failures.append(f"selected_model_kind_mismatch:{locked_kind}->{kind}")
 
@@ -2791,18 +3428,12 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     selected_model, selection_error = resolve_model_selection(project, models, args.model)
     selected_kind = model_kind(selected_model) if selected_model else None
     if args.sync_runtime:
-        selected_model, selected_kind, selection_error = selected_model_from_mapping(project)
+        selected_model, selected_kind, selection_error = selected_model_from_config(project)
         if selected_model is not None and selected_kind is None:
             selected_kind = model_kind(selected_model)
         requested_model = selected_model
         locked_model = selected_model
-    model_selection_locked = (
-        locked_model is not None
-        and selected_model is not None
-        and requested_model is not None
-        and rel(locked_model, project) == rel(selected_model, project)
-        and rel(requested_model, project) != rel(selected_model, project)
-    )
+    model_selection_locked = False
 
     report = PreparedModelReport(
         project_path=str(project),
@@ -2866,39 +3497,28 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         args.model
         and current_selected is not None
         and selected_model is not None
-        and current_selected.resolve() == selected_model.resolve()
+        and current_selected.resolve() != selected_model.resolve()
     ):
-        requested_value = normalize_path_text(args.model.strip())
-        current_value = rel(selected_model, project)
-        if requested_value and requested_value.lower() not in {"selected", "current", "last", "기존", "현재", "선택", current_value.lower()}:
-            report.warnings.append(f"selected_model_locked_to_current:{requested_value}->{current_value}")
-            report.next_steps.append(f"처음 선택된 모델을 유지합니다: {current_value}")
-    if (
-        args.model
-        and normalize_path_text(args.model.strip()).isdigit()
-        and current_selected is not None
-        and selected_model is not None
-        and current_selected.resolve() == selected_model.resolve()
-    ):
-        report.warnings.append(f"numeric_model_selection_locked_to_current:{args.model}->{rel(selected_model, project)}")
-        report.next_steps.append(f"현재 선택 모델이 고정되어 목록 순서 대신 기존 선택 경로를 유지합니다: {rel(selected_model, project)}")
-    if (
-        args.model
-        and normalize_path_text(args.model.strip()).isdigit()
-        and selected_model
-        and not (
-            current_selected is not None
-            and current_selected.resolve() == selected_model.resolve()
+        report.warnings.append(
+            f"selected_model_changed:{rel(current_selected, project)}->{rel(selected_model, project)}"
         )
-    ):
-        stable_path = rel(selected_model, project)
-        report.warnings.append(f"numeric_model_selection_is_order_dependent:{args.model}->{stable_path}")
-        report.next_steps.append(f"다음 실행부터는 목록 순서가 바뀌어도 안전하게 실제 경로를 사용하세요: --model {stable_path}")
-        report.next_steps.append("이미 준비된 선택 모델을 다시 쓰려면: --model selected")
-
+        report.next_steps.append(f"선택 모델을 새 값으로 변경합니다: {rel(selected_model, project)}")
     if args.sync_runtime:
         runtime_reference = project / "runtest_2.py"
-        report.reference_entrypoint = "runtest_2.py"
+        reference = find_reference_entrypoint(project, selected_kind)
+        report.reference_entrypoint = rel(reference, project) if reference else None
+        if reference is None:
+            report.failures.append("reference_entrypoint_missing:runtest.py_or_run_test.py")
+            report.next_steps.append("워크스페이스 루트에 기존 runtest.py 또는 run_test.py를 넣어주세요.")
+            return report
+
+        changed, write_skipped, write_failures = write_runtest_2(project, selected_model, selected_kind, reference, args.execute, args.force)
+        report.prepared_paths.extend(changed)
+        report.skipped.extend(write_skipped)
+        report.failures.extend(write_failures)
+        if report.failures:
+            return report
+
         if not runtime_reference.is_file():
             report.failures.append("runtest_2_missing")
             report.next_steps.append("먼저 모델 선택으로 runtest_2.py를 생성하세요.")
@@ -2920,7 +3540,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 [
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 경로와 모델 형식 연결부를 수정했습니다.",
                     "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
-                    "다음은 4번 환경변수/requirements 갱신입니다.",
+                    "다음은 3번 환경변수/requirements 갱신입니다.",
                     powershell_python_script(
                         CHECK_ENVIRONMENT_SCRIPT,
                         "--project",
@@ -2934,7 +3554,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.append("검토 후 --execute를 붙여 선택 모델 기준으로 런타임 폴더/파일을 변환하세요.")
         return report
 
-    template_changed, template_skipped, template_failures = copy_aiu_studio_folder(project, args.execute)
+    template_changed, template_skipped, template_failures = copy_template_sample_folder(project, args.execute)
     report.prepared_paths.extend(template_changed)
     report.skipped.extend(template_skipped)
     report.failures.extend(template_failures)
@@ -2975,30 +3595,15 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.skipped.extend(verify_skipped)
     report.failures.extend(verify_failures)
 
-    if report.model_selection_locked:
-        report.skipped.append(
-            f"requested_model_ignored:first_selected_model_locked:{report.requested_model_path}->{report.selected_model_path}"
-        )
-        report.next_steps.append(
-            f"최초 선택 모델 유지: 요청 모델 {report.requested_model_path} 대신 {report.selected_model_path} 기준으로 변환했습니다."
-        )
-
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
                 "자동 준비 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
                 f"선택 모델 유지: {rel(selected_model, project)}",
-                powershell_python_script(
-                    CHECK_ENVIRONMENT_SCRIPT,
-                    "--project",
-                    powershell_quote_path(project),
-                    "--entrypoint",
-                    "runtest_2.py",
-                ),
+                "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
+                "python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py",
                 "환경 체크 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
-                "PowerShell에서는 선택 프로젝트 루트로 이동한 뒤 실행하세요.",
-                f"cd {powershell_quote_path(project)}",
-                "python runtest_2.py",
+                "python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute",
                 "6번 추론 테스트는 자동 실행하지 않습니다. 사용자가 6번을 선택했을 때만 진행합니다.",
             ]
         )
@@ -3007,7 +3612,61 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     return report
 
 
-def print_report(report: PreparedModelReport) -> None:
+def todo_statuses(report: PreparedModelReport) -> list[str]:
+    model_selected = bool(report.selected_model_path)
+    auto_ready = all(
+        path in report.prepared_paths
+        or f"{path} (refreshed)" in report.prepared_paths
+        or any(item.startswith(f"{path} ") for item in report.prepared_paths)
+        or (Path(report.project_path) / path).is_file()
+        for path in [
+            "runtest_2.py",
+        ]
+    )
+    runtime_ready = all(
+        (Path(report.project_path) / path).exists()
+        for path in [
+            "aiu_custom/model.py",
+            "aiu_custom/predict.py",
+            "local_serving/localservingtest.py",
+            "input_example.json",
+            "config/config.json",
+            "requirements.txt",
+        ]
+    )
+    if report.model_artifact_paths:
+        model_list_status = "완료"
+    elif report.entrypoint_paths:
+        model_list_status = "실행파일 있음"
+    elif report.data_file_paths:
+        model_list_status = "데이터만 있음"
+    else:
+        model_list_status = "모델 없음"
+    return [
+        model_list_status,
+        "완료" if model_selected else "대기",
+        "다음" if runtime_ready else "2번 완료 후",
+        "완료" if runtime_ready else ("진행중" if auto_ready else "대기"),
+        "3번 완료 후",
+        "선택 시",
+        "오류 시",
+    ]
+
+
+def print_todo_guide(report: PreparedModelReport) -> None:
+    print(format_todo_guide(todo_statuses(report)))
+
+
+def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
+    if not verbose and report.execute and report.selected_model_path and not report.failures:
+        print("준비 결과:")
+        print(f"- 선택 모델: {report.selected_model_path}")
+        print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+        print("- 완료: 템플릿 복사 후 선택 모델 형식에 맞게 변환")
+        print("- 변환: runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py")
+        print("- 변환: local_serving/localservingtest.py, config/config.json, input_example.json, requirements.txt")
+        return
+
     print(f"Project: {report.project_path}")
     print(f"Data root: {report.data_root}")
 
@@ -3017,26 +3676,62 @@ def print_report(report: PreparedModelReport) -> None:
         print("\n모델 선택 화면")
         if report.selected_model_path:
             print(f"- 선택 모델: {report.selected_model_path}")
-            print("- 처음 선택한 모델을 계속 유지합니다.")
-            if report.model_selection_locked:
-                print(f"- 요청 모델은 무시됨: {report.requested_model_path}")
-                print("- 이유: 최초 선택 모델 기준으로만 스킬 변환을 진행합니다.")
+            print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
+            print("- 이후 단계는 이 선택 모델 기준으로 계속 진행합니다.")
         else:
+            print(format_model_selection_hint())
             if data_model_count == total_model_count:
                 print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
             elif data_model_count:
                 print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
             else:
                 print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+            print("- 모델 목록은 프로젝트 기준 상대경로 알파벳 순서입니다.")
             print("- 숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
-        for index, path in enumerate(report.model_artifact_paths, start=1):
-            marker = " <선택됨>" if path == report.selected_model_path else ""
-            print(f"  {index}. {path}{marker}")
-        if report.selected_model_path is None:
+            for index, path in enumerate(report.model_artifact_paths, start=1):
+                print(f"  {index}. {path}")
             print("- 실행 예: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
             print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> input_example.json 생성 -> 선택 모델 기준 연결부 변환")
 
-    print("model_artifact_paths:")
+    print_todo_guide(report)
+
+    if not verbose:
+        if report.required_requirements:
+            print("\nrequirements.txt 필수 항목:")
+            print("- " + ", ".join(report.required_requirements))
+        if report.prepared_paths:
+            print("\n준비 결과:")
+            if report.failures:
+                print("- 실패")
+            elif report.execute:
+                print("- 완료: 템플릿 복사, runtest_2.py 생성, requirements/input/config 갱신, 런타임 연결부 변환")
+            else:
+                print("- dry-run: --execute를 붙이면 실제 파일을 갱신합니다.")
+        if report.warnings:
+            print("\nWarnings:")
+            for warning in report.warnings:
+                print(f"- {warning}")
+        if report.failures:
+            print("\nFailures:")
+            for failure in report.failures:
+                print(f"- {failure}")
+        print("\n다음 단계:")
+        if report.failures:
+            if report.next_steps:
+                for step in report.next_steps[:3]:
+                    print(f"- {step}")
+            else:
+                print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
+        elif report.selected_model_path:
+            print("- 4번 환경 체크: python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py")
+            print("- 5번 원격 MLflow 등록: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
+            print("- 6번 추론 테스트: python local_serving/localservingtest.py")
+        elif report.next_steps:
+            for step in report.next_steps[:3]:
+                print(f"- {step}")
+        return
+
+    print("\nmodel_artifact_paths:")
     if report.model_artifact_paths:
         for index, path in enumerate(report.model_artifact_paths, start=1):
             print(f"{index}. {path}")
@@ -3087,56 +3782,6 @@ def print_report(report: PreparedModelReport) -> None:
         print("Failures:")
         for failure in report.failures:
             print(f"- {failure}")
-    print("TODO Guide:")
-    def step_line(number: int, title: str, status: str) -> None:
-        print(f"{number}. {title} [{status}]")
-
-    model_selected = bool(report.selected_model_path)
-    auto_ready = all(
-        path in report.prepared_paths
-        or f"{path} (refreshed)" in report.prepared_paths
-        or any(item.startswith(f"{path} ") for item in report.prepared_paths)
-        or (Path(report.project_path) / path).is_file()
-        for path in [
-            "runtest_2.py",
-        ]
-    )
-    runtime_ready = all(
-        (Path(report.project_path) / path).exists()
-        for path in [
-            "aiu_custom/model.py",
-            "aiu_custom/predict.py",
-            "aiu_custom/mapping.json",
-            "local_serving/localservingtest.py",
-            "input_example.json",
-            "config/config.json",
-            "requirements.txt",
-        ]
-    )
-    if report.model_artifact_paths:
-        model_list_status = "완료"
-    elif report.entrypoint_paths:
-        model_list_status = "실행파일 있음"
-    elif report.data_file_paths:
-        model_list_status = "데이터만 있음"
-    else:
-        model_list_status = "모델 없음"
-    selected_model_locked = False
-    if report.selected_model_path:
-        current_selected = current_selected_model_path(Path(report.project_path))
-        if current_selected is not None and rel(current_selected, Path(report.project_path)) == report.selected_model_path:
-            selected_model_locked = True
-    statuses = [
-        model_list_status,
-        "고정" if selected_model_locked else ("완료" if model_selected else "대기"),
-        "완료" if runtime_ready else ("진행중" if auto_ready else "대기"),
-        "다음" if runtime_ready else "3번 완료 후",
-        "4번 완료 후",
-        "선택 시",
-        "오류 시",
-    ]
-    for index, (title, status) in enumerate(zip(AI_STUDIO_PROCESS_STEPS, statuses), start=1):
-        step_line(index, title, status)
     if report.next_steps:
         print("Next steps:")
         for step in report.next_steps:
@@ -3151,13 +3796,14 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is refreshed for the selected model")
     parser.add_argument("--sync-runtime", action="store_true", help="reuse the selected model and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    parser.add_argument("--verbose", action="store_true", help="print detailed model lists, prepared files, warnings, and next steps")
     args = parser.parse_args()
 
     report = build_report(args)
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print_report(report)
+        print_report(report, verbose=args.verbose)
     return 1 if report.failures else 0
 
 

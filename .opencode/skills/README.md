@@ -47,6 +47,7 @@
 - 모델 경로/MODEL_KIND/로더는 선택 모델 실행/등록 연결부 기준으로 변환한다.
 - 선택된 모델 종류에 맞춰 `load_selected_model()`, `required_package`, `load_hint`를 생성한다.
 - 사용자가 직접 입력할 값은 `mlflow_tracking_url`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개다.
+- `mlflow_tracking_url`은 사용자가 직접 입력하되, 5번 실행에서는 원격 `http://` 또는 `https://` URL만 허용한다. `localhost`, `127.0.0.1`, `0.0.0.0`, `file://`, `sqlite:`는 차단한다.
 - `mlflow_experiment_name`, `mlflow_register_model_name`은 선택 모델 파일명에서 확장자를 제거한 이름 기준으로 자동 생성한다.
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 확인한다.
 
@@ -54,24 +55,26 @@
 Step 1. 모델 목록 확인
         현재 --project 루트 바로 아래와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 모델 선택
-        model_artifact_paths를 번호로 보여주되, 자동 준비에는 실제 경로 선택을 우선한다.
-        처음 선택한 모델은 이후 단계에서 계속 유지된다.
-        번호는 현재 출력된 목록 순서에 의존하지만, 이미 준비된 선택 모델이 있으면 다른 번호를 눌러도 기존 선택 모델을 유지한다.
+        model_artifact_paths를 프로젝트 기준 상대경로 알파벳 순서로 번호 표시한다.
+        `--model <번호|경로>`를 명시하면 그 모델을 새 선택값으로 반영한다.
+        같은 파일 목록이면 분석 화면과 준비 스크립트의 번호가 항상 같다.
+        이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 계속 사용한다.
         이미 준비된 선택 모델은 --model selected로 재사용한다.
         runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
-Step 3. 템플릿 변환
-        aiu_studio/ 템플릿을 먼저 복사한다.
+Step 3. 환경변수/requirements 갱신
+        pytorch_sample/ 템플릿을 먼저 복사한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
         모델 선택 명령 한 번으로 이 단계까지 수행한다. `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
         requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
+        Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
         내부 일치 검증은 선택된 runtest_2.py와 런타임 파일 기준으로 수행한다.
-Step 4. 환경변수/requirements 갱신
+Step 4. 템플릿 변환
         입력값 3개와 자동값 2개 상태를 확인한다.
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 5. 원격 MLflow 등록 실행
-        runtest_2.py를 먼저 실행해 선택 모델 기준 변환/실행 파일을 확인한다.
+        run_training.py가 먼저 선택 모델 기준으로 runtest_2.py와 런타임 파일을 재검증/변환한 뒤 원격 MLflow 등록을 실행한다.
 Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
         자동 실행하지 않고 사용자가 6번을 선택했을 때만 진행한다.
@@ -203,8 +206,8 @@ tracking target -> 사용자가 입력한 원격 MLflow tracking 서버
 - secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 표시합니다.
 - Bun은 사용하지 않습니다.
 - JavaScript 패키지 설치가 필요하고 `package.json`이 있으면 `npm i`만 사용합니다.
-- 폐쇄망 WSL에서는 `.opencode/wsl/install_offline.sh`를 우선 사용합니다.
-- torch는 SSL/HTTPS 인덱스로 설치하지 않습니다. wheelhouse 또는 내부 `http://` PyPI 미러만 사용합니다.
+- 폐쇄망에서는 `requirements.txt` 기준으로 내부 `http://` PyPI/Nexus 미러를 사용합니다.
+- torch는 SSL/HTTPS 인덱스로 직접 설치하지 않습니다. 내부 `http://` PyPI/Nexus 미러만 사용합니다.
 - PyTorch CPU wheel의 Nexus proxy upstream 참고 URL은 `https://download.pytorch.org/whl/cpu`입니다.
 - Windows에서는 `standaloneExecutable` 또는 native executable 흐름보다 Python script 흐름을 우선합니다.
 - 폐쇄망 응답이 느리면 `python .opencode/scripts/03-environment-check/response_speed_check.py --project .` 후 `python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .`를 실행합니다.
