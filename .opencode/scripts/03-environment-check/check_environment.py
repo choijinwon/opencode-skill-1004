@@ -6,7 +6,6 @@ import json
 import os
 import platform
 import re
-import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -395,7 +394,7 @@ def server_deploy_error_items(failures: list[str], blocked_summary: list[str]) -
         elif failure.startswith("missing_dependency:"):
             package_name = failure.split(":", 1)[1]
             if package_name.startswith("selected_model:"):
-                items.append("선택 모델 패키지 설치 필요 → " + package_name.split(":", 1)[1])
+                items.append("선택 모델 패키지 확인 필요 → " + package_name.split(":", 1)[1])
             else:
                 missing_package_names.append(package_name)
         elif failure.startswith("version_mismatch:mlflow"):
@@ -428,7 +427,7 @@ def server_deploy_error_items(failures: list[str], blocked_summary: list[str]) -
     if missing_env_names:
         items.append("환경변수 입력 필요 → " + ", ".join(sorted(set(missing_env_names))))
     if missing_package_names:
-        items.append("패키지 설치 필요 → " + ", ".join(sorted(set(missing_package_names))))
+        items.append("패키지 확인 필요 → " + ", ".join(sorted(set(missing_package_names))))
     if version_mismatch_names:
         items.append("패키지 버전 불일치 → " + ", ".join(sorted(set(version_mismatch_names))))
 
@@ -1306,16 +1305,16 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     mismatched_requirements = [item.name for item in blocking_requirements if item.status == "version_mismatch"]
     if missing_requirements:
         failures.append("missing_requirements:" + ",".join(missing_requirements))
-        next_steps.append("requirements.txt 기준으로 누락 패키지를 설치하세요: python -m pip install -r requirements.txt")
+        next_steps.append("requirements.txt 기준 누락 패키지가 있습니다. 로컬 자동 설치는 하지 않으며, 필요 시 사용자가 직접 설치하세요.")
     if mismatched_requirements:
         failures.append("version_mismatch_requirements:" + ",".join(mismatched_requirements))
-        next_steps.append("requirements.txt 기준으로 버전 불일치를 맞추세요: python -m pip install -r requirements.txt")
+        next_steps.append("requirements.txt 기준 버전 불일치가 있습니다. 로컬 자동 설치는 하지 않으며, 필요 시 사용자가 직접 설치하세요.")
     if package_version("mlflow") is None:
         failures.append("missing_dependency:mlflow")
         next_steps.append("Install or activate an environment that includes mlflow.")
     if existing_model_flow and selected_required_package and selected_package_status == "missing":
         failures.append(f"missing_dependency:selected_model:{selected_required_package}")
-        next_steps.append(f"선택 모델 실행에 필요한 패키지를 설치하세요: {selected_required_package}")
+        next_steps.append(f"선택 모델 실행에 필요한 패키지가 없습니다. 로컬 자동 설치는 하지 않습니다: {selected_required_package}")
     if remote_mlflow.status == "version_mismatch" and remote_mlflow.server_version:
         failures.append(
             f"version_mismatch:mlflow remote {remote_mlflow.server_version} local {remote_mlflow.local_version or 'missing'}"
@@ -1409,7 +1408,7 @@ def print_text(report: EnvironmentReport):
         print("\nrequirements.txt generated/updated:")
         for item in report.requirements_updated:
             print(f"- {item}")
-        print("- install command: python -m pip install -r requirements.txt")
+        print("- local install: skipped (사용자가 필요 시 직접 설치)")
     if report.selected_model_path or report.selected_model_kind or report.selected_required_package:
         print("\nSelected model:")
         print(f"- path: {report.selected_model_path or 'missing'}")
@@ -1434,9 +1433,9 @@ def print_text(report: EnvironmentReport):
             print(f"- detail: {report.remote_mlflow.detail}")
     if report.package_auto_fix_attempted:
         status = "success" if report.package_auto_fix_return_code == 0 else "failed"
-        print("\nPackage auto fix:")
+        print("\nPackage check:")
         print(f"- status: {status}")
-        print(f"- command: python -m pip install -r requirements.txt")
+        print("- local install: skipped")
         if report.package_auto_fix_return_code not in {None, 0}:
             print(f"- return_code: {report.package_auto_fix_return_code}")
     if report.requirements:
@@ -1498,29 +1497,6 @@ def package_action_items(report: EnvironmentReport) -> list[RequirementStatus]:
     ]
 
 
-def run_package_auto_fix(project: Path) -> int:
-    requirements_path = project / "requirements.txt"
-    if not requirements_path.is_file():
-        print("패키지 자동 처리 실패: requirements.txt 파일을 찾을 수 없습니다.")
-        return 1
-
-    command = [sys.executable, "-m", "pip", "install", "-r", str(requirements_path)]
-    print("\n패키지 자동 처리 실행:")
-    print("python -m pip install -r requirements.txt")
-    proc = subprocess.run(command, cwd=str(project), text=True, capture_output=True)
-    output = (proc.stdout + "\n" + proc.stderr).strip()
-    if output:
-        lines = output.splitlines()
-        print("\n패키지 설치 출력:")
-        for line in lines[-30:]:
-            print(line)
-    if proc.returncode == 0:
-        print("\n패키지 자동 처리 완료")
-    else:
-        print(f"\n패키지 자동 처리 실패: return_code={proc.returncode}")
-    return proc.returncode
-
-
 def print_action_items(report: EnvironmentReport) -> None:
     package_issues = package_action_items(report)
     python_issue = report.python_version_status == "version_mismatch"
@@ -1553,18 +1529,18 @@ def print_action_items(report: EnvironmentReport) -> None:
         print(f"  현재 버전: {report.python_version}")
         print("  조치: Python 3.11.9 환경에서 다시 실행하세요.")
     if package_issues:
-        title = "자동 처리 후 남은 항목" if report.package_auto_fix_attempted else "자동 처리 대상"
+        title = "직접 확인 대상"
         print(f"- {title}: 패키지 불일치/미설치")
         if report.package_auto_fix_attempted:
             if report.package_auto_fix_return_code == 0:
-                print("  자동 처리 실행됨: python -m pip install -r requirements.txt")
-                print("  조치: 아래 항목은 설치 후에도 남아 있으므로 내부 Nexus/버전 고정값을 확인하세요.")
+                print("  로컬 자동 설치는 실행하지 않습니다.")
+                print("  조치: 내부 Nexus/버전 고정값을 확인하세요.")
             else:
-                print("  자동 처리 실패: python -m pip install -r requirements.txt")
-                print("  조치: 내부 Nexus/네트워크/패키지 버전을 확인한 뒤 같은 명령을 다시 실행하세요.")
+                print("  로컬 자동 설치는 실행하지 않습니다.")
+                print("  조치: 내부 Nexus/네트워크/패키지 버전을 확인하세요.")
         else:
-            print("  자동 처리: 기본 실행에서 python -m pip install -r requirements.txt 를 실행합니다.")
-            print("  직접 수정 명령: python -m pip install -r requirements.txt")
+            print("  로컬 자동 설치: 실행하지 않음")
+            print("  필요 시 사용자 직접 설치: python -m pip install -r requirements.txt")
         for item in package_issues:
             label = "미설치" if item.status == "missing" else "버전 불일치"
             installed = item.installed_version or "missing"
@@ -1593,8 +1569,8 @@ def main():
     parser = argparse.ArgumentParser(description="Check local ML project execution environment and .env settings.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--entrypoint", help="actual local training/model creation file, such as run.py")
-    parser.add_argument("--fix-packages", action="store_true", help="install requirements.txt automatically when packages are missing or mismatched")
-    parser.add_argument("--no-fix-packages", action="store_true", help="skip automatic package installation even when packages are missing or mismatched")
+    parser.add_argument("--fix-packages", action="store_true", help="deprecated: local package installation is disabled; requirements.txt is only checked")
+    parser.add_argument("--no-fix-packages", action="store_true", help="kept for compatibility; package installation is always skipped")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
@@ -1603,15 +1579,8 @@ def main():
         raise FileNotFoundError(f"project folder not found: {project}")
 
     report = build_report(project, args.entrypoint)
-    should_fix_packages = args.fix_packages or (not args.no_fix_packages and not args.json)
-    if should_fix_packages:
-        if package_action_items(report):
-            package_fix_return_code = run_package_auto_fix(project)
-            report = build_report(project, args.entrypoint)
-            report.package_auto_fix_attempted = True
-            report.package_auto_fix_return_code = package_fix_return_code
-        elif args.fix_packages and not args.json:
-            print("패키지 자동 처리: 불일치/미설치 항목이 없습니다.")
+    if args.fix_packages and not args.json:
+        print("패키지 자동 설치는 비활성화되어 있습니다. requirements.txt만 확인/갱신합니다.")
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

@@ -73,7 +73,8 @@ Step 3. 환경 검증
         현재 워크스페이스 루트의 .env 파일에서 MLflow 5개 값 상태를 확인한다.
         requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
         Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
-        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
+        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부만 안내한다.
+        로컬 dependency 설치는 자동 실행하지 않는다.
 Step 4. 템플릿 변환
         사용자가 4번을 선택했을 때만 실행한다.
         04-train-model/templates/pytorch_sample/ 템플릿을 먼저 복사한다.

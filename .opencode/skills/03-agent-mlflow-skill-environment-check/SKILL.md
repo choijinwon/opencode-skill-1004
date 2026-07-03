@@ -83,12 +83,12 @@ Secrets: mlflow_tracking_password=set, value hidden
 사용자가 해야 할 일은 아래 고정 형식으로만 안내한다.
 
 ```text
-패키지 불일치/미설치가 있으면 환경 검증 기본 실행에서 자동으로 처리한다.
-자동 실행 명령: python -m pip install -r requirements.txt
+패키지 불일치/미설치가 있어도 로컬 dependency 설치는 자동 실행하지 않는다.
+requirements.txt 생성/갱신과 상태 표시만 수행한다.
 
 처리해야 할 항목:
-- 자동 처리 후 남은 항목: 패키지 불일치/미설치
-  조치: 내부 Nexus/네트워크/패키지 버전을 확인한 뒤 같은 명령을 다시 실행하세요.
+- 직접 확인 대상: 패키지 불일치/미설치
+  조치: 내부 Nexus/네트워크/패키지 버전을 확인하고, 필요 시 사용자가 직접 설치하세요.
   - pandas: 버전 불일치
     요구 버전: ==2.2.3
     설치 버전: 2.3.3
@@ -109,9 +109,10 @@ Secrets: mlflow_tracking_password=set, value hidden
 환경 검증:
 python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path>
 python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file>
-python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file> --no-fix-packages
+python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file>
 
 폐쇄망 패키지 설치:
+필요 시 사용자 직접 설치:
 python -m pip install -r requirements.txt --index-url http://<internal-pypi>/simple --trusted-host <internal-pypi-host>
 
 PyTorch CPU wheel Nexus upstream 참고:
