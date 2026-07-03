@@ -43,7 +43,8 @@ metadata:
 5. mlflow_tracking_uri이 있으면 원격 MLflow 서버 version을 확인한다.
 6. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트한다. 이때 필수 패키지 5개는 항상 유지한다.
 7. Python 3.13 등에서 kserve 설치 호환성 문제가 보여도 `kserve==0.15.0`을 requirements.txt에서 제거하지 않는다. Python 버전 차단/전환 대상으로 안내한다.
-7. `.env`의 비어 있는 값은 사용자가 직접 `.env`에 입력하도록 안내한다.
+8. requirements.txt에는 `torch==2.x.x+cpu`, `torchvision==...+cpu` 같은 wheel local tag를 넣지 않는다. CPU wheel 선택은 내부 Nexus/pip index 설정으로 처리하고, 파일은 `torch==2.x.x` 형식으로 유지한다.
+9. `.env`의 비어 있는 값은 사용자가 직접 `.env`에 입력하도록 안내한다.
 ```
 
 ## Output Contract

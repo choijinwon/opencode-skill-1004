@@ -509,8 +509,18 @@ def strip_inline_comment(line: str) -> str:
     return line.strip()
 
 
+def normalize_requirement_file_line(line: str) -> str:
+    # requirements.txt에는 torch==...+cpu 같은 wheel local tag를 쓰지 않는다.
+    # CPU wheel 선택은 내부 Nexus/pip index 설정에서 처리하고, 파일은 표준 고정 버전만 유지한다.
+    return re.sub(
+        r"(?i)(==\s*[^,;\s#]+?)\+(cpu|cup|cu\d+)(?=\s*(?:[,;#]|$))",
+        r"\1",
+        line,
+    )
+
+
 def parse_requirement_line(raw_line: str) -> tuple[str, str] | None:
-    line = strip_inline_comment(raw_line)
+    line = strip_inline_comment(normalize_requirement_file_line(raw_line))
     if not line or line.startswith("#"):
         return None
     if line.startswith(("-", "git+", "http://", "https://", "file:")):
@@ -540,6 +550,7 @@ def requirement_package_name(requirement: str) -> str | None:
 
 
 def pin_requirement(requirement: str) -> str:
+    requirement = normalize_requirement_file_line(requirement)
     parsed = parse_requirement_line(requirement)
     if parsed is None:
         return requirement
@@ -551,7 +562,7 @@ def pin_requirement(requirement: str) -> str:
         return f"{name}{expected}"
     installed = package_version(name)
     if installed:
-        return f"{name}=={installed}"
+        return normalize_requirement_file_line(f"{name}=={installed}")
     return requirement
 
 
@@ -623,20 +634,25 @@ def update_requirements_from_imports(project: Path) -> list[str]:
     changed_requirements: list[str] = []
 
     for line in existing_lines:
-        parsed = parse_requirement_line(line)
+        normalized_line = normalize_requirement_file_line(line)
+        parsed = parse_requirement_line(normalized_line)
         if parsed is None:
-            updated_lines.append(line)
+            updated_lines.append(normalized_line)
+            if line.strip() != normalized_line.strip():
+                changed_requirements.append(normalized_line.strip())
             continue
         package_name, _specifier = parsed
         required_requirement = required_by_name.get(package_name)
         if required_requirement is not None:
             updated_lines.append(required_requirement)
             seen_names.add(package_name)
-            if line.strip() != required_requirement:
+            if normalized_line.strip() != required_requirement:
                 changed_requirements.append(required_requirement)
             continue
-        updated_lines.append(line)
+        updated_lines.append(normalized_line)
         seen_names.add(package_name)
+        if line.strip() != normalized_line.strip():
+            changed_requirements.append(normalized_line.strip())
 
     for requirement in required_lines:
         package_name = requirement_package_name(requirement)

@@ -157,6 +157,10 @@ def verify_generated_files(project: Path) -> None:
     if missing:
         raise AssertionError("generated files missing: " + ", ".join(missing))
 
+    requirements_text = (project / "requirements.txt").read_text(encoding="utf-8", errors="ignore").lower()
+    if re.search(r"\+(cpu|cup|cu\d+)\b", requirements_text):
+        raise AssertionError("requirements.txt must not contain wheel local tags such as +cpu")
+
     config = json.loads((project / "config" / "config.json").read_text(encoding="utf-8"))
     model_config = config.get("model", {})
     model_path = str(model_config.get("path") or model_config.get("model_path") or "")
