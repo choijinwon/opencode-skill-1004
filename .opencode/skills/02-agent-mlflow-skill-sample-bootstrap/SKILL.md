@@ -161,6 +161,7 @@ saved_model/
 ```text
 .venv/
 __pycache__/
+data/
 ai_studio/
 mlflow.db
 .DS_Store

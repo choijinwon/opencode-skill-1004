@@ -79,7 +79,7 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_keras": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
-ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "metrics", "tracking"}
+ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "data", "metrics", "tracking"}
 ai_STUDIO_COPY_IGNORE_FILES = {"runtest.py", "runtest_2.py", "requirements.txt"}
 FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
     "PROJECT_DIR = Path(__file__).resolve().parent",
@@ -912,7 +912,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
                     "runtest.py_selected_model_constants_forbidden:"
                     + ",".join(forbidden_markers)
                 )
-    copied.append(".opencode/samples/pytorch_sample/* -> workspace root (requirements.txt 제외)")
+    copied.append(".opencode/samples/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
     return copied, skipped, failures
 
 

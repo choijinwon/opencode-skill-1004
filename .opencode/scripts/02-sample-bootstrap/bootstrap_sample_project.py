@@ -39,6 +39,7 @@ IGNORED_NAMES = {
     ".DS_Store",
     "__pycache__",
     ".venv",
+    "data",
     "venv",
     "env",
     "ai_studio",

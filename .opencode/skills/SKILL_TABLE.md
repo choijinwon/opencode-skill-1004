@@ -38,7 +38,7 @@
 | 항목 | 동작 |
 |---|---|
 | 템플릿 복사 기준 | `.opencode/samples/pytorch_sample/` 내부 템플릿을 현재 워크스페이스 루트로 복사 |
-| 복사 제외 | `runtest_2.py`, `requirements.txt`는 템플릿에서 복사하지 않음 |
+| 복사 제외 | `data/`, `runtest_2.py`, `requirements.txt`는 템플릿에서 복사하지 않음 |
 | 참조 기준 | 기존 `runtest.py`를 읽기 전용으로 참조 |
 | 생성 파일 | `runtest_2.py` |
 | 변환 대상 예시 | `aiu_custom/predict.py`, `aiu_custom/model.py`, `config/config.json`, `local_serving/localservingtest.py`, `input_example.json` |
