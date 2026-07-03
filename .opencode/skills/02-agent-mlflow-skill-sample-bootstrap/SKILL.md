@@ -77,16 +77,16 @@ TODO Guide
 
 ```text
 샘플 목록:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --list
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --list
 
 복사 전 확인:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <workspace> --sample pytorch
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <workspace> --sample pytorch
 
 실제 복사:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <workspace> --sample pytorch --execute
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <workspace> --sample pytorch --execute
 
 기존 모델 골격 보충:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample pytorch --scaffold-existing --execute
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <model-project-folder> --sample pytorch --scaffold-existing --execute
 ```
 
 <details>

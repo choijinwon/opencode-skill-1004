@@ -379,7 +379,7 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
             report.next_steps.append("파일을 넣은 뒤 --entrypoint <file>로 다시 실행하세요.")
         elif error == "entrypoint_ambiguous":
             report.next_steps.append("실행 파일 후보가 여러 개입니다. 사용자가 실제 사용하는 파일명을 직접 지정해야 합니다.")
-            report.next_steps.append("예: python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <project> --entrypoint run.py")
+            report.next_steps.append("예: python .opencode\\scripts\\04-train-model\\adapt_ai_studio.py --project <project> --entrypoint run.py")
         elif error.startswith("entrypoint_not_found:"):
             report.next_steps.append("지정한 실행 파일이 없습니다. 파일명을 확인하거나 해당 Python 파일을 프로젝트에 직접 넣어주세요.")
         else:
@@ -435,8 +435,8 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
     report.next_steps.extend(
         [
             "수정된 entrypoint의 TODO와 MLflow 설정값 5개를 확인하세요.",
-            f"python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project {project} --entrypoint {rel(entrypoint, project)}",
-            f"python .opencode/scripts/03-environment-check/check_environment.py --project {project} --entrypoint {rel(entrypoint, project)}",
+            f"python .opencode\\scripts\\qa-maintenance\\doctor.py --workspace . --project {project} --entrypoint {rel(entrypoint, project)}",
+            f"python .opencode\\scripts\\03-environment-check\\check_environment.py --project {project} --entrypoint {rel(entrypoint, project)}",
         ]
     )
     return report

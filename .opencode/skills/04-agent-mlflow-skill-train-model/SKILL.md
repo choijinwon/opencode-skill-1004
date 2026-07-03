@@ -34,10 +34,10 @@ metadata:
    - 여러 모델이 있어도 스킬 변환 대상은 현재 선택 모델 하나로 유지한다.
    - `runtest_2.py` 안의 모델 경로를 다시 선택 기준으로 삼지 않는다.
 3. 환경변수/requirements 갱신
-4. 템플릿 변환
-5. 원격 MLflow 등록 실행
-6. 추론 테스트
-7. 오류 재실행
+4. 템플릿 변환 (3번 후 자동실행)
+5. 원격 MLflow 등록 실행 (사용자 선택)
+6. 추론 테스트 (사용자 선택)
+7. 오류 재실행 (사용자 선택)
 ```
 
 ## What To Do Now
@@ -84,26 +84,26 @@ MLflow artifact:
 
 ```text
 실행 파일 자동 판단:
-python .opencode/scripts/04-train-model/run_training.py --project <project>
+python .opencode\scripts\04-train-model\run_training.py --project <project>
 
 원격 MLflow 등록 실행:
-python .opencode/scripts/04-train-model/run_training.py --project <project> --execute
-python .opencode/scripts/04-train-model/run_training.py --project <project> --entrypoint runtest_2.py --execute
+python .opencode\scripts\04-train-model\run_training.py --project <project> --execute
+python .opencode\scripts\04-train-model\run_training.py --project <project> --entrypoint runtest_2.py --execute
 
 명시적 entrypoint 실행:
-python .opencode/scripts/04-train-model/run_training.py --project <project> --entrypoint <file> --execute
-python .opencode/scripts/04-train-model/run_training.py --project <project> --entrypoint run.py --execute
+python .opencode\scripts\04-train-model\run_training.py --project <project> --entrypoint <file> --execute
+python .opencode\scripts\04-train-model\run_training.py --project <project> --entrypoint run.py --execute
 
 선택 모델 준비:
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project>
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project> --model 1 --execute
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <project> --model data/torch/model.pt --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project>
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model 1 --execute
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project <project> --model data/torch/model.pt --execute
 
 AI Studio/MLflow 연결부 보강 dry-run:
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <project> --entrypoint <file>
+python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <project> --entrypoint <file>
 
 AI Studio/MLflow 연결부 실제 보강:
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <project> --entrypoint <file> --execute
+python .opencode\scripts\04-train-model\adapt_ai_studio.py --project <project> --entrypoint <file> --execute
 ```
 
 ## Artifact Map
@@ -187,10 +187,13 @@ blocked:
 3. 환경변수/requirements 갱신
    필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
 4. 템플릿 변환
-   템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
+   3번 완료 후 자동실행. 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
 5. 원격 MLflow 등록 실행
+   사용자가 5번을 선택했을 때만 실행
 6. 추론 테스트
+   사용자가 6번을 선택했을 때만 실행
 7. 오류 재실행
+   사용자가 7번을 선택했을 때만 실행
 ```
 
 샘플 모델 흐름:

@@ -32,11 +32,11 @@ def normalize_todo_statuses(statuses: list[str] | tuple[str, ...] | None = None)
     default_statuses = (
         "대기",
         "대기",
-        "대기",
-        "3번 완료 후",
-        "4번 완료 후",
-        "선택 시",
-        "오류 시",
+        "사용자 선택",
+        "3번 후 자동실행",
+        "사용자 선택",
+        "사용자 선택",
+        "사용자 선택",
     )
     if statuses is None:
         return default_statuses

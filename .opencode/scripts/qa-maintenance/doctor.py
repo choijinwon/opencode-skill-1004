@@ -2,7 +2,7 @@
 """One-page maintenance and QA diagnostic for the OpenCode MLflow workflow.
 
 This script intentionally stays stdlib-only so it can run on closed-network
-Windows/WSL machines before dependencies are installed. It summarizes package
+Windows machines before dependencies are installed. It summarizes package
 health, sample scaffold status, MLflow setting status, and output artifacts.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ EXPECTED_PACKAGE_VERSIONS = {
     "torch": "==2.12.1",
     "numpy": "==1.26.4",
     "kserve": "==0.15.0",
-    "pandas": "==2.23",
+    "pandas": "==2.2.3",
 }
 
 SKILL_FOLDERS = [
@@ -359,6 +359,19 @@ def parse_python_settings(path: Path) -> dict[str, str]:
     return values
 
 
+def parse_env_settings(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    for raw_line in read_text(path).splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        record_setting(values, key.strip(), value.strip().strip('"').strip("'"))
+    return values
+
+
 def unique_paths(paths: list[Path]) -> list[Path]:
     unique = []
     seen = set()
@@ -552,11 +565,11 @@ def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorChec
 
     if missing:
         copy_command = (
-            f"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project {project} "
+            f"python .opencode\\scripts\\02-sample-bootstrap\\bootstrap_sample_project.py --project {project} "
             f"--sample {sample} --scaffold-existing --execute"
         )
         if project == workspace:
-            copy_command = f"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample {sample} --scaffold-existing --execute"
+            copy_command = f"python .opencode\\scripts\\02-sample-bootstrap\\bootstrap_sample_project.py --project . --sample {sample} --scaffold-existing --execute"
         return DoctorCheck(
             "샘플 규격 확인/보충",
             "warn",
@@ -571,21 +584,21 @@ def check_sample_spec(project: Path, workspace: Path, sample: str) -> DoctorChec
 
 
 def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorCheck:
-    setting_file = find_setting_file(project, setting_file_arg)
-    if setting_file is None:
+    env_file = project / ".env"
+    if not env_file.exists():
         return DoctorCheck(
             "환경 변수 입력/export",
             "warn",
-            "MLflow/AI Studio 설정을 읽을 실행 파일을 찾지 못했습니다.",
+            "MLflow 설정을 읽을 .env 파일을 찾지 못했습니다.",
             [],
             [
-                "실행 파일을 찾지 못했거나 후보가 여러 개입니다.",
-                "사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣거나 --entrypoint <file>로 지정하세요.",
+                "현재 워크스페이스 루트에 .env 파일을 만들고 MLflow 5개 값을 입력하세요.",
+                "필수 키: mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name",
             ],
         )
 
-    values = parse_python_settings(setting_file)
-    evidence = [rel(setting_file, project)]
+    values = parse_env_settings(env_file)
+    evidence = [rel(env_file, project)]
     missing = []
     for source_key in MLFLOW_SOURCE_KEYS:
         value = values.get(source_key, "")
@@ -610,12 +623,12 @@ def check_env_settings(project: Path, setting_file_arg: str | None) -> DoctorChe
             "필수 MLflow 설정값이 아직 미입력 상태입니다.",
             [f"missing: {item}" for item in missing] + evidence,
             [
-                f"{rel(setting_file, project)} 설정 블록에 tracking URL, username, password를 직접 입력하세요.",
+                ".env에 tracking URL, username, password, experiment name, register model name을 직접 입력하세요.",
                 "mlflow_tracking_uri은 원격 MLflow/리포트 URI(http:// 또는 https://)만 사용합니다.",
                 "password 값은 화면에 출력하지 말고 set/missing 상태만 확인하세요.",
             ],
         )
-    return DoctorCheck("환경 변수 입력/export", "pass", "MLflow 입력값 3개와 자동값 2개가 확인됐습니다.", evidence)
+    return DoctorCheck("환경 변수 입력/export", "pass", ".env MLflow 5개 값이 확인됐습니다.", evidence)
 
 
 def check_ai_studio_code(project: Path, setting_file_arg: str | None) -> DoctorCheck:
@@ -652,7 +665,7 @@ def check_ai_studio_code(project: Path, setting_file_arg: str | None) -> DoctorC
     if export_markers:
         evidence.append("MLFLOW export/env markers: " + ", ".join(export_markers))
     else:
-        missing.append("MLFLOW_* export/env mapping")
+        missing.append("MLFLOW_* export/env settings")
 
     if "artifact_path=\"ai_studio\"" in text or "artifact_path='ai_studio'" in text or "ai_studio/code" in text or "ai_studio/metrics" in text:
         evidence.append("AI Studio artifact/output path: found")
@@ -710,7 +723,7 @@ def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck
         evidence,
         [
             "실행 파일 후보가 여러 개입니다. 사용자가 실제 사용하는 파일명을 직접 지정해야 합니다.",
-            "예: python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <project> --entrypoint run.py",
+            "예: python .opencode\\scripts\\qa-maintenance\\doctor.py --workspace . --project <project> --entrypoint run.py",
         ],
     )
 

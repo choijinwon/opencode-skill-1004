@@ -20,8 +20,8 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 
 ## Skill Script Overview
 
-스킬 목록 기준 사람이 읽는 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`입니다.
-도구가 읽는 스킬-스크립트 매핑의 단일 기준은 `.opencode/scripts/skill_script_map.json`입니다.
+스킬 목록 기준 사람이 읽는 정리표는 `.opencode\scripts\SCRIPT_INDEX.md`입니다.
+도구가 읽는 스킬-스크립트 매핑의 단일 기준은 `.opencode\scripts\skill_script_map.json`입니다.
 실제 구현 파일은 스킬 목록 기준 폴더에 두고, 실행도 해당 폴더 경로를 직접 사용합니다.
 문서를 수정할 때는 아래 표, `SCRIPT_INDEX.md`, JSON을 함께 맞춥니다.
 
@@ -64,7 +64,7 @@ QA / Maintenance
 - 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
 - 실행 파일이 ai Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
 - 샘플 규격 폴더/파일 누락을 찾습니다.
-- MLflow 입력값 3개와 자동값 2개를 소스 또는 환경 변수에서 확인합니다.
+- `.env`의 MLflow 5개 값을 확인합니다.
 - 산출물 후보를 확인합니다.
 
 주요 수정 위치:
@@ -179,8 +179,8 @@ build_tod_guide()          복사 후 사용자에게 보여줄 TODO 단계
 - Python 버전, venv, dependency 파일, 설치 패키지를 확인합니다.
 - `requirements.txt`의 필요 패키지, 요구 버전, 현재 설치 버전, 미설치/버전 불일치를 확인합니다.
 - 환경 변수 `MLFLOW_*` 상태를 확인합니다.
-- `run_model.py` 또는 `runtest.py` 안의 설정 블록을 AST로 파싱합니다.
-- 사용자가 직접 소스에 입력해야 하는 값만 알려줍니다.
+- 현재 워크스페이스 루트의 `.env` 값을 파싱합니다.
+- 사용자가 직접 `.env`에 입력해야 하는 값만 알려줍니다.
 
 주요 수정 위치:
 
@@ -197,7 +197,7 @@ REQUIREMENT_OPERATORS      자동 비교할 버전 연산자
 
 주의:
 
-- `ai_studio.env`는 보조 확인용입니다. 현재 흐름은 소스 직접 입력을 우선합니다.
+- 환경변수 체크 기준 파일은 현재 워크스페이스 루트의 `.env`입니다.
 - `run.py`처럼 이름이 다른 단일 Python 파일도 설정 파일 후보로 사용합니다.
 - AST 파싱은 문자열 literal만 안전하게 읽습니다. 동적 표현식은 값을 추론하지 않습니다.
 - password는 값이 있어도 `set`만 출력합니다.
@@ -325,17 +325,17 @@ test_sample()              샘플별 테스트 순서
 코드 수정 후 아래를 확인합니다.
 
 ```text
-python -m py_compile .opencode/scripts/*.py
+python -m py_compile .opencode\scripts\*.py
 python -m json.tool .opencode/opencode.json
-python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .opencode/samples/pytorch_sample --entrypoint run_model.py
-python .opencode/scripts/03-environment-check/response_speed_check.py --project .
+python .opencode\scripts\qa-maintenance\doctor.py --workspace . --project .opencode/samples/pytorch_sample --entrypoint run_model.py
+python .opencode\scripts\03-environment-check\response_speed_check.py --project .
 ```
 
 샘플 복사 로직을 바꿨다면 추가로 확인합니다.
 
 ```text
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --list
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project /tmp/opencode-sample-qa --sample pytorch
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --list
+python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project /tmp/opencode-sample-qa --sample pytorch
 ```
 
 ## Common Failure Meaning

@@ -20,6 +20,8 @@ if str(SCRIPT_ROOT) not in sys.path:
 
 from ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
 
+ROOT = Path(__file__).resolve().parents[2]
+PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 
 ENV_KEYS = [
     "MLFLOW_TRACKING_URI",
@@ -37,6 +39,7 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+ENV_SETTING_FILE_NAMES = [".env"]
 AUTO_DEFAULT_SETTING_KEYS = {
     "mlflow_experiment_name",
     "mlflow_register_model_name",
@@ -250,6 +253,10 @@ REMOTE_MLFLOW_VERSION_ENDPOINTS = [
     "api/2.0/mlflow/version",
 ]
 REMOTE_MLFLOW_TIMEOUT_SECONDS = 3
+PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_environment.py --project . --entrypoint runtest_2.py"
+PS_PREPARE_SELECTED_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model selected --execute"
+PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
+PS_INFERENCE_COMMAND = r"python .\local_serving\localservingtest.py"
 
 
 @dataclass
@@ -323,6 +330,9 @@ class EnvironmentReport:
     requirements_updated: list[str] = field(default_factory=list)
     package_auto_fix_attempted: bool = False
     package_auto_fix_return_code: int | None = None
+    template_auto_run_attempted: bool = False
+    template_auto_run_return_code: int | None = None
+    template_auto_run_output: list[str] = field(default_factory=list)
 
 
 def package_version(name: str) -> str | None:
@@ -382,7 +392,7 @@ def server_deploy_error_items(failures: list[str], blocked_summary: list[str]) -
         elif failure == "missing_dependency_file":
             items.append("의존성 파일 없음 → requirements.txt, pyproject.toml, environment.yml 중 하나를 확인하세요.")
         elif failure.startswith("missing_model_settings_file:"):
-            items.append("MLflow/AI Studio 설정 파일 또는 실행 파일 설정 블록 없음 → 실제 entrypoint에 설정값을 입력하세요.")
+            items.append("MLflow 설정 파일 없음 → 현재 워크스페이스 루트의 .env에 5개 값을 입력하세요.")
 
     if missing_env_names:
         items.append("환경변수 입력 필요 → " + ", ".join(sorted(set(missing_env_names))))
@@ -840,6 +850,23 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def parse_setting_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for key, value in parse_env_file(path).items():
+        setting_key = ALIAS_TO_SETTING.get(key)
+        if setting_key is not None:
+            values[setting_key] = value
+    return values
+
+
+def setting_env_file(project: Path) -> Path:
+    for name in ENV_SETTING_FILE_NAMES:
+        path = project / name
+        if path.exists():
+            return path
+    return project / ".env"
+
+
 def usable_setting_value(value: str | None) -> str | None:
     if value is None or value == "" or todo_placeholder(value):
         return None
@@ -848,16 +875,6 @@ def usable_setting_value(value: str | None) -> str | None:
 
 def resolved_mlflow_settings(project: Path, entrypoint_name: str | None = None) -> dict[str, str]:
     values: dict[str, str] = {}
-    env_file_values = parse_env_file(project / "ai_studio.env")
-    for key in AI_STUDIO_ENV_KEYS:
-        value = usable_setting_value(env_file_values.get(key))
-        if value is not None:
-            values[key] = value
-
-    for setting_key, env_key in EXPORT_ENV_MAP.items():
-        value = usable_setting_value(os.environ.get(env_key))
-        if value is not None:
-            values[setting_key] = value
 
     setting_file = resolve_setting_file(project, entrypoint_name)
     if setting_file is not None and setting_file.exists():
@@ -866,6 +883,17 @@ def resolved_mlflow_settings(project: Path, entrypoint_name: str | None = None) 
             value = usable_setting_value(source_values.get(key))
             if value is not None:
                 values[key] = value
+
+    for setting_key, env_key in EXPORT_ENV_MAP.items():
+        value = usable_setting_value(os.environ.get(env_key))
+        if value is not None:
+            values[setting_key] = value
+
+    env_file_values = parse_setting_env_file(setting_env_file(project))
+    for key in AI_STUDIO_ENV_KEYS:
+        value = usable_setting_value(env_file_values.get(key))
+        if value is not None:
+            values[key] = value
     return values
 
 
@@ -992,8 +1020,8 @@ def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = Non
 
 
 def ai_studio_env_status(project: Path) -> EnvFileStatus:
-    path = project / "ai_studio.env"
-    values = parse_env_file(path)
+    path = setting_env_file(project)
+    values = parse_setting_env_file(path)
     statuses = []
     for key in AI_STUDIO_ENV_KEYS:
         status = setting_value_status(key, values.get(key) if key in values else None)
@@ -1072,14 +1100,10 @@ def model_settings_status(project: Path, entrypoint_name: str | None = None) -> 
 
 
 def export_ready_status(project: Path, entrypoint_name: str | None = None) -> list[EnvVarStatus]:
-    path = resolve_setting_file(project, entrypoint_name)
-    if path is None or not path.exists():
-        return []
-    values = parse_python_string_assignments(path)
+    values = resolved_mlflow_settings(project, entrypoint_name)
     statuses = []
     for setting_key, env_key in EXPORT_ENV_MAP.items():
         value = values.get(setting_key)
-        env_value = os.environ.get(env_key)
         if value:
             status = "set"
         elif env_status(env_key) == "set":
@@ -1157,7 +1181,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     ai_env = ai_studio_env_status(project)
     model_settings = model_settings_status(project, entrypoint_name)
     export_ready = export_ready_status(project, entrypoint_name)
-    source_input_required = source_input_required_status(model_settings)
+    source_input_required = source_input_required_status(ai_env)
     remote_mlflow = check_remote_mlflow_version(project, entrypoint_name)
     effective_expected_package_versions = dict(EXPECTED_PACKAGE_VERSIONS)
     if remote_mlflow.server_version:
@@ -1189,7 +1213,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
             f"2. {AI_STUDIO_PROCESS_STEPS[1]}: prepare_selected_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
-            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: {entrypoint_display}의 MLflow 입력값과 requirements.txt 필수/추가 패키지를 확인한다.",
+            f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 requirements.txt 필수/추가 패키지를 확인한다.",
             f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/samples/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
             f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
@@ -1208,7 +1232,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
         tod_guide = [
             "1. 환경 검증: 현재 출력의 Python, dependency, MLflow, 설정 상태를 확인한다.",
             f"2. 샘플 규격 확인/보충: {project}에 복사된 템플릿 폴더 내부 파일들을 확인한다. 대표 예시: aiu_custom/, local_serving/, saved_model/, requirements.txt, input_example.json",
-            f"3. 환경 변수 입력/export: {entrypoint_display}의 설정 블록 값을 직접 입력하고 실행 시 MLFLOW_*로 export한다.",
+            "3. 환경 변수 입력/export: 현재 워크스페이스 루트의 .env 5개 값을 확인하고 실행 시 MLFLOW_*로 export한다.",
             "4. 패키지 설치: requirements.txt 기준으로 내부 http:// PyPI/Nexus 미러를 사용해 설치한다. SSL/HTTPS 인덱스 직접 설치는 사용하지 않는다.",
             f"5. 모델 실행 및 원격 MLflow 기록: python {entrypoint_display}",
             "6. 산출물 확인: MLflow artifact_path='ai_studio' 아래 ai_studio/code 또는 로컬 ai_studio/metrics, ai_studio/code 생성 여부를 확인한다.",
@@ -1261,22 +1285,22 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
                 )
                 next_steps.append(f"requirements.txt의 mlflow 요구 버전을 mlflow=={remote_mlflow.server_version}로 수정하세요.")
                 break
-    tracking_ready = any(item.name == "MLFLOW_TRACKING_URI" and item.status in {"set", "exported"} for item in export_ready)
+    tracking_ready = any(item.name == "mlflow_tracking_uri" and item.status == "set" for item in ai_env.key_status)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
-        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_uri에 원격 MLflow/리포트 URI를 직접 입력하세요.")
+        next_steps.append(".env의 mlflow_tracking_uri에 원격 MLflow/리포트 URI를 직접 입력하세요.")
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
-        next_steps.append(f"사용자가 직접 소스에 입력해야 하는 값: {required_names}.")
-    setting_source = model_settings or ai_env
+        next_steps.append(f"사용자가 직접 .env에 입력해야 하는 값: {required_names}.")
     if entrypoint_name and model_settings is None:
         failures.append(f"entrypoint_not_found:{entrypoint_name}")
         next_steps.append(f"지정한 실행 파일 경로를 찾지 못했습니다: {entrypoint_name}")
-    if model_settings is None and not (project / "ai_studio.env").exists():
-        failures.append("missing_model_settings_file:entrypoint_or_ai_studio_env")
+    if not Path(ai_env.path).exists():
+        failures.append("missing_model_settings_file:.env")
         if existing_model_flow and entrypoint is None:
-            next_steps.append("실행 파일을 직접 넣고 확정한 뒤 해당 파일의 MLflow/AI Studio 설정 블록에 값을 입력하세요.")
+            next_steps.append("현재 워크스페이스 루트에 .env 파일을 만들고 MLflow 5개 값을 입력하세요.")
         else:
-            next_steps.append("Fill MLflow/AI Studio settings directly in the confirmed entrypoint file.")
+            next_steps.append("현재 워크스페이스 루트의 .env 파일에 MLflow 5개 값을 입력하세요.")
+    setting_source = ai_env
     for item in setting_source.key_status:
         if item.status in {"missing", "empty"}:
             failures.append(f"missing_env:{item.name}")
@@ -1369,18 +1393,14 @@ def print_text(report: EnvironmentReport):
     print("\nEnvironment variables:")
     for item in report.env_vars:
         print(f"- {item.name}: {item.status}")
-    if report.ai_studio_env and Path(report.ai_studio_env.path).exists():
-        print(f"\nai_studio.env: {report.ai_studio_env.path}")
+    if report.ai_studio_env:
+        print(f"\n.env 설정 파일: {report.ai_studio_env.path}")
         for item in report.ai_studio_env.key_status:
             print(f"- {item.name}: {item.status}")
-    if report.model_settings:
-        print(f"\nModel settings: {report.model_settings.path}")
-        for item in report.model_settings.key_status:
-            print(f"- {item.name}: {item.status}")
     if report.source_input_required:
-        source_path = report.model_settings.path if report.model_settings else "run_model.py, runtest.py 또는 run_test.py"
+        source_path = report.ai_studio_env.path if report.ai_studio_env else str(Path(report.project_path) / ".env")
         print(f"\n입력이 필요한 {len(report.source_input_required)}개 값:")
-        print(f"- 사용자가 직접 소스에 입력: {source_path}")
+        print(f"- 사용자가 직접 .env에 입력: {source_path}")
         for item in report.source_input_required:
             suffix = " (값은 출력하지 않음)" if item.name == "mlflow_tracking_password" else ""
             print(f"- {item.name}: {item.status}{suffix}")
@@ -1391,8 +1411,9 @@ def print_text(report: EnvironmentReport):
     if report.tod_guide:
         settings_ready = not report.source_input_required
         step3_status = "완료" if settings_ready else "입력 필요"
-        step5_status = "다음" if settings_ready else "3번 완료 후"
-        print(format_todo_guide(("완료", "완료", step3_status, "완료", step5_status, "선택 시", "오류 시")))
+        step4_status = "자동실행 완료" if report.template_auto_run_return_code == 0 else ("자동실행 실패" if report.template_auto_run_attempted else "3번 후 자동실행")
+        step5_status = "사용자 선택" if settings_ready else "3번 완료 후"
+        print(format_todo_guide(("완료", "완료", step3_status, step4_status, step5_status, "사용자 선택", "사용자 선택")))
     if report.blocked_summary:
         print("\n차단 항목 요약:")
         for index, item in enumerate(report.blocked_summary, start=1):
@@ -1440,6 +1461,32 @@ def run_package_auto_fix(project: Path) -> int:
     return proc.returncode
 
 
+def should_auto_run_template_conversion(report: EnvironmentReport) -> bool:
+    if report.source_input_required:
+        return False
+    if not report.selected_model_path:
+        return False
+    if not PREPARE_SELECTED_MODEL_SCRIPT.is_file():
+        return False
+    return True
+
+
+def run_template_auto_conversion(project: Path) -> tuple[int, list[str]]:
+    command = [
+        sys.executable,
+        str(PREPARE_SELECTED_MODEL_SCRIPT),
+        "--project",
+        str(project),
+        "--model",
+        "selected",
+        "--execute",
+    ]
+    proc = subprocess.run(command, cwd=str(project), text=True, capture_output=True)
+    output = (proc.stdout + "\n" + proc.stderr).strip()
+    lines = output.splitlines()[-20:] if output else []
+    return proc.returncode, lines
+
+
 def print_action_items(report: EnvironmentReport) -> None:
     package_issues = package_action_items(report)
     python_issue = report.python_version_status == "version_mismatch"
@@ -1459,9 +1506,15 @@ def print_action_items(report: EnvironmentReport) -> None:
 
     if actionable_count == 0:
         print("\n처리해야 할 항목: 없음")
+        if report.template_auto_run_attempted:
+            status = "완료" if report.template_auto_run_return_code == 0 else "실패"
+            print(f"\n4번 템플릿 변환 자동실행: {status}")
+            if report.template_auto_run_output:
+                for line in report.template_auto_run_output[-8:]:
+                    print(f"- {line}")
         print("\n처리 완료 후 실행:")
-        print("- 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
-        print("- 추론 테스트는 사용자가 선택할 때만 실행: python local_serving/localservingtest.py")
+        print(f"- 원격 MLflow 등록 실행: {PS_RUN_TRAINING_COMMAND}")
+        print(f"- 추론 테스트는 사용자가 선택할 때만 실행: {PS_INFERENCE_COMMAND}")
         return
 
     print("\n처리해야 할 항목:")
@@ -1490,24 +1543,27 @@ def print_action_items(report: EnvironmentReport) -> None:
             print(f"    요구 버전: {item.required_version}")
             print(f"    설치 버전: {installed}")
     if needs_mlflow_input:
-        source_path = "runtest_2.py"
-        if report.model_settings:
+        source_path = ".env"
+        if report.ai_studio_env:
             try:
-                source_path = str(Path(report.model_settings.path).resolve().relative_to(Path(report.project_path).resolve()))
+                source_path = str(Path(report.ai_studio_env.path).resolve().relative_to(Path(report.project_path).resolve()))
             except ValueError:
-                source_path = Path(report.model_settings.path).name
-        print(f"- 직접 입력 필요: {source_path} 설정 블록")
+                source_path = Path(report.ai_studio_env.path).name
+        print(f"- 직접 입력 필요: {source_path}")
         print("  mlflow_tracking_uri — 원격 MLflow 서버 URI (http://... 또는 https://...)")
         print("  mlflow_tracking_username")
         print("  mlflow_tracking_password (secret — 출력하지 않음)")
 
     print("\n처리 완료 후 실행:")
-    print("- 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
-    print("- 추론 테스트는 사용자가 선택할 때만 실행: python local_serving/localservingtest.py")
+    if report.template_auto_run_attempted:
+        status = "완료" if report.template_auto_run_return_code == 0 else "실패"
+        print(f"- 4번 템플릿 변환 자동실행: {status}")
+    print(f"- 원격 MLflow 등록 실행: {PS_RUN_TRAINING_COMMAND}")
+    print(f"- 추론 테스트는 사용자가 선택할 때만 실행: {PS_INFERENCE_COMMAND}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check local ML project execution environment and ai_studio.env settings.")
+    parser = argparse.ArgumentParser(description="Check local ML project execution environment and .env settings.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--entrypoint", help="actual local training/model creation file, such as run.py")
     parser.add_argument("--fix-packages", action="store_true", help="install requirements.txt automatically when packages are missing or mismatched")
@@ -1529,6 +1585,14 @@ def main():
             report.package_auto_fix_return_code = package_fix_return_code
         elif args.fix_packages and not args.json:
             print("패키지 자동 처리: 불일치/미설치 항목이 없습니다.")
+    if not args.json and should_auto_run_template_conversion(report):
+        print("\n4번 템플릿 변환 자동실행:")
+        print(PS_PREPARE_SELECTED_COMMAND)
+        template_return_code, template_output = run_template_auto_conversion(project)
+        report = build_report(project, args.entrypoint)
+        report.template_auto_run_attempted = True
+        report.template_auto_run_return_code = template_return_code
+        report.template_auto_run_output = template_output
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

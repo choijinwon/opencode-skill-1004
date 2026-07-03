@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+PS_BOOTSTRAP_COMMAND = r"python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py"
 
 # The skill pack does not require a fixed file name. These common names are
 # used only as hints when detecting a registration or inference entrypoint.
@@ -42,7 +44,7 @@ TRAINING_ENTRYPOINT_NAMES = [
 ]
 
 CONFIG_NAMES = [
-    "ai_studio.env",
+    ".env",
                     ]
 
 INPUT_EXAMPLE_NAMES = [
@@ -63,6 +65,19 @@ ARTIFACT_SUFFIXES = [
     ".ubj",
     ".safetensors",
 ]
+
+ARTIFACT_KIND_BY_SUFFIX = {
+    ".keras": "tensorflow_keras",
+    ".h5": "tensorflow_h5",
+    ".pt": "pytorch",
+    ".pth": "pytorch",
+    ".safetensors": "safetensors",
+    ".onnx": "onnx",
+    ".pkl": "sklearn_pickle",
+    ".joblib": "sklearn_joblib",
+    ".bst": "xgboost_bst",
+    ".ubj": "xgboost_ubj",
+}
 
 ARTIFACT_DIR_HINTS = [
     "saved_model",
@@ -179,6 +194,22 @@ def safe_relative(path: Path, base: Path) -> str:
         return str(path.relative_to(base))
     except ValueError:
         return str(path)
+
+
+def normalize_path_text(value: str) -> str:
+    return value.replace("\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+
+
+def artifact_kind(path: Path) -> str | None:
+    return ARTIFACT_KIND_BY_SUFFIX.get(path.suffix.lower())
+
+
+def model_sort_key(path: Path, project: Path) -> str:
+    try:
+        relative = path.resolve().relative_to(project.resolve())
+    except ValueError:
+        relative = path
+    return normalize_path_text(str(relative)).lower()
 
 
 def has_project_markers(path: Path) -> bool:
@@ -298,7 +329,7 @@ def find_artifacts(path: Path, max_depth: int = 4) -> list[Path]:
             artifacts.append(file_path)
         if file_path.name in ARTIFACT_DIR_HINTS:
             artifacts.append(file_path)
-    return sorted(set(artifacts))
+    return sorted(set(artifacts), key=lambda item: model_sort_key(item, path))
 
 
 def detect_framework(project: Path, requirements_text: str, artifacts: list[Path]) -> tuple[str, list[str]]:
@@ -366,34 +397,32 @@ def parse_env_file(path: Path) -> dict[str, str]:
 
 
 def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
-    path = project / "ai_studio.env"
+    path = project / ".env"
     values = parse_env_file(path)
     evidence = []
     missing = []
     if safe_exists(path):
-        evidence.append("ai_studio.env")
-    evidence.extend(code_settings)
+        evidence.append(".env")
     for key in AI_STUDIO_ENV_KEYS:
         found_in_env = key in values and values[key] != ""
-        found_in_code = any(key in item for item in code_settings)
-        if key in AUTO_DEFAULT_SETTING_KEYS and not found_in_env and not found_in_code:
+        if key in AUTO_DEFAULT_SETTING_KEYS and not found_in_env:
             evidence.append(f"{key}: auto_default")
             continue
-        if not found_in_env and not found_in_code:
+        if not found_in_env:
             missing.append(key)
         elif found_in_env:
             evidence.append(f"{key}: set")
     if missing:
         return Check(
-            "ai_studio.env required settings",
+            ".env required settings",
             "block",
             "required MLflow settings are missing or empty",
             [f"missing_or_empty: {', '.join(missing)}"] + evidence,
         )
     return Check(
-        "ai_studio.env required settings",
+        ".env required settings",
         "pass",
-        "required MLflow settings are available from entrypoint code or ai_studio.env",
+        "required MLflow settings are available from .env",
         evidence,
     )
 
@@ -803,7 +832,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     next_steps = []
     if artifacts:
         next_steps.append("Data/root model found. Select one model by number or path before automatic preparation.")
-        next_steps.append("Run: python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute")
+        next_steps.append(f"Run: {PS_PREPARE_MODEL_COMMAND}")
     if any(check.status == "block" for check in checks):
         next_steps.append("Resolve blocked checks before MLflow registration.")
     if not has_mlflow_dep:
@@ -822,12 +851,12 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             f"Sample spec scaffold missing: {', '.join(missing_spec)}."
         )
         next_steps.append(
-            f"Copy missing scaffold without overwriting existing model files: python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project {project} --sample {sample_key} --scaffold-existing --execute"
+            f"Copy missing scaffold without overwriting existing model files: {PS_BOOTSTRAP_COMMAND} --project {project} --sample {sample_key} --scaffold-existing --execute"
         )
     if not prepare_found:
         next_steps.append("Confirm a prepare-only or preflight behavior before registration.")
     if not local_remote_evidence:
-        next_steps.append("runtest_2.py 설정 블록에 원격 MLflow/리포트 URI, username, password를 직접 입력하세요.")
+        next_steps.append(".env에 원격 MLflow/리포트 URI, username, password를 직접 입력하세요.")
     if not next_steps:
         next_steps.append("Proceed to local/remote MLflow registration guidance.")
 

@@ -27,7 +27,7 @@ This applies regardless of the first user message. Examples:
 After printing the guide on the first response, immediately analyze the current workspace and decide `model_found` before asking any follow-up question.
 
 - Treat any first user message as an entry trigger, even if it is only one vague word.
-- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/04-train-model/prepare_selected_model.py --project .` to inspect the current workspace and model list.
+- Use `agent-mlflow-skill-project-analyze` or run `.opencode\scripts\04-train-model\prepare_selected_model.py --project .` to inspect the current workspace and model list.
 - Do not analyze `.opencode/`; it is the bundled skill/package source and may contain large dependency folders.
 - Report whether a model exists before continuing.
 - If `model_found: true`, continue with the discovered model project path and do not ask the user to choose a sample.
@@ -76,11 +76,11 @@ AI Studio TODO Guide - 7단계
 4. 모델 있음 7단계
    1 모델 목록 확인
    2 모델 선택
-   3 환경변수/requirements 갱신
-   4 템플릿 변환
-   5 원격 MLflow 등록 실행
-   6 추론 테스트
-   7 오류 재실행
+   3 환경변수/requirements 갱신 (사용자 선택)
+   4 템플릿 변환 (3번 후 자동실행)
+   5 원격 MLflow 등록 실행 (사용자 선택)
+   6 추론 테스트 (사용자 선택)
+   7 오류 재실행 (사용자 선택)
 ```
 
 ## Work Rules
@@ -121,7 +121,7 @@ agent-mlflow-skill-sample-bootstrap
   - copying the selected sample folder into the workspace
 
 agent-mlflow-skill-environment-check
-  - Python, dependency, MLflow, ai_studio.env, environment variable checks
+  - Python, dependency, MLflow, `.env`, environment variable checks
 
 agent-mlflow-skill-train-model
   - local training, runtest.py or run_model.py, model artifact creation, saved_model checks
@@ -151,7 +151,7 @@ When the user types only a number, decide by the latest visible context:
    Execute:
 
    ```text
-   python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <number> --execute
+   python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <number> --execute
    ```
 
    This is model selection plus preparation, not inference. It must read the existing workspace-root `runtest.py` as the reference and create/refresh only `runtest_2.py` for the selected model.
@@ -160,7 +160,7 @@ When the user types only a number, decide by the latest visible context:
    For Step 5, execute the guarded registration command so the selected model runtime is checked and re-transformed before MLflow registration:
 
    ```text
-   python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
+   python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute
    ```
 
 3. If `model_found: false` and the sample choices are active, treat `1`, `2`, `3` as `sklearn`, `pytorch`, `tensorflow` sample choices.

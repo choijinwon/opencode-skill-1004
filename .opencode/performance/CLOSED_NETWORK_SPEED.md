@@ -5,8 +5,8 @@
 ## Quick Fix
 
 ```text
-python .opencode/scripts/response_speed_check.py --project .
-python .opencode/scripts/apply_index_ignore.py --project .
+python .opencode\scripts\03-environment-check\response_speed_check.py --project .
+python .opencode\scripts\03-environment-check\apply_index_ignore.py --project .
 ```
 
 그 다음 OpenCode 세션을 다시 열거나 워크스페이스를 다시 로드합니다.
@@ -15,7 +15,7 @@ python .opencode/scripts/apply_index_ignore.py --project .
 
 ```text
 ai Studio 모드:
-  1. ai Studio Guide 출력
+  1. AI Studio TODO Guide 출력
   2. workspace 분석
   3. model_found 결과와 다음 1개 행동만 안내
 
@@ -41,22 +41,26 @@ datasets/
 *.safetensors
 ```
 
-## Windows / WSL
+## Windows
 
 ```text
 Windows PowerShell:
+  python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
   python .opencode\scripts\response_speed_check.py --project .
   python .opencode\scripts\apply_index_ignore.py --project .
+```
 
-WSL:
-  python .opencode/scripts/response_speed_check.py --project .
-  python .opencode/scripts/apply_index_ignore.py --project .
+PowerShell에서 실패 메시지가 필요하면 `||` 대신 아래처럼 확인합니다.
+
+```powershell
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
+if ($LASTEXITCODE -ne 0) { "script_not_found" }
 ```
 
 ## Notes
 
 - Bun은 사용하지 않습니다.
 - JavaScript 프로젝트에서 `package.json`이 있으면 `npm i`만 사용합니다.
-- 폐쇄망 WSL 패키지는 WSL 설치 가이드의 wheelhouse 절차를 우선합니다.
+- 폐쇄망 패키지는 `requirements.txt`와 내부 `http://` PyPI/Nexus 미러를 우선합니다.
 - `.opencode` 폴더는 스킬 번들이므로 워크스페이스 분석/인덱싱에서는 제외합니다.
 - 데이터셋이나 모델 바이너리를 분석해야 할 때는 폴더 전체를 열지 말고 필요한 파일명만 지정합니다.

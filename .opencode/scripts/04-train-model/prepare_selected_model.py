@@ -65,6 +65,9 @@ PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_s
 RUN_TRAINING_SCRIPT = ROOT / "scripts" / "04-train-model" / "run_training.py"
 PYTORCH_REFERENCE_DIR = ROOT / "samples" / "pytorch_sample"
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
+PS_CHECK_ENV_COMMAND = r"python .opencode\scripts\03-environment-check\check_environment.py --project . --entrypoint runtest_2.py"
+PS_RUN_TRAINING_COMMAND = r"python .opencode\scripts\04-train-model\run_training.py --project . --entrypoint runtest_2.py --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --execute"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
     "pytorch": PYTORCH_REFERENCE_ENTRYPOINT,
@@ -1578,7 +1581,7 @@ _aiu_missing_mlflow_settings = [
     if not str(_aiu_value).strip()
 ]
 if _aiu_missing_mlflow_settings:
-    print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 MLflow 설정을 .env에 직접 입력하세요.")
     print("missing settings:")
     for _aiu_name in _aiu_missing_mlflow_settings:
         print(f"- {{_aiu_name}}")
@@ -2056,12 +2059,41 @@ if hasattr(sys.stdout, "buffer"):
 # MLflow 환경 설정
 # ------------------------------------------------------------
 # 할당받은 MLflow Tracking Server URI / 계정 정보 기재
-mlflow_tracking_uri = ""
-mlflow_tracking_username = ""
-mlflow_tracking_password = ""
+project_dir = os.path.dirname(os.path.abspath(__file__))
 
-mlflow_experiment_name = {default_experiment_name!r}
-mlflow_register_model_name = {default_register_model_name!r}
+
+def load_env_file(path):
+    values = {{}}
+    if not os.path.isfile(path):
+        return values
+    with open(path, "r", encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+for _env_key, _env_value in load_env_file(os.path.join(project_dir, ".env")).items():
+    _export_name = {{
+        "mlflow_tracking_uri": "MLFLOW_TRACKING_URI",
+        "mlflow_tracking_username": "MLFLOW_TRACKING_USERNAME",
+        "mlflow_tracking_password": "MLFLOW_TRACKING_PASSWORD",
+        "mlflow_experiment_name": "MLFLOW_EXPERIMENT_NAME",
+        "mlflow_register_model_name": "MLFLOW_REGISTER_MODEL_NAME",
+    }}.get(_env_key, _env_key)
+    if _env_value and not os.environ.get(_export_name):
+        os.environ[_export_name] = _env_value
+
+
+mlflow_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "")
+mlflow_tracking_username = os.environ.get("MLFLOW_TRACKING_USERNAME", "")
+mlflow_tracking_password = os.environ.get("MLFLOW_TRACKING_PASSWORD", "")
+
+mlflow_experiment_name = os.environ.get("MLFLOW_EXPERIMENT_NAME", {default_experiment_name!r})
+mlflow_register_model_name = os.environ.get("MLFLOW_REGISTER_MODEL_NAME", {default_register_model_name!r})
 
 os.environ["MLFLOW_TRACKING_INSECURE_TLS"] = "TRUE"
 os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_tracking_username
@@ -2109,33 +2141,6 @@ def mlflow_artifact_uri(path):
     return normalize_local_path(path)
 
 
-def validate_mlflow_tracking_uri(value):
-    tracking_uri = str(value).strip()
-    lowered = tracking_uri.lower()
-    if not tracking_uri:
-        raise ValueError("mlflow_tracking_uri_required: 원격 MLflow Tracking Server URI를 입력하세요.")
-    if lowered.startswith(("sqlite:", "file:")):
-        raise ValueError(
-            "mlflow_tracking_uri_invalid: sqlite/file 로컬 tracking은 사용하지 않습니다. "
-            "원격 MLflow 서버 URI(http:// 또는 https://)을 입력하세요."
-        )
-    if not lowered.startswith(("http://", "https://")):
-        raise ValueError("mlflow_tracking_uri_invalid: http:// 또는 https:// URI만 사용할 수 있습니다.")
-    if lowered.startswith((
-        "http://127.",
-        "https://127.",
-        "http://localhost",
-        "https://localhost",
-        "http://0.0.0.0",
-        "https://0.0.0.0",
-    )):
-        raise ValueError(
-            "mlflow_tracking_uri_invalid: 5번 원격 MLflow 등록 실행에는 원격 서버 URI가 필요합니다. "
-            "localhost/127.0.0.1/0.0.0.0 대신 원격 http:// 또는 https:// URI를 입력하세요."
-        )
-    return tracking_uri
-
-
 def handle_mlflow_connection_error(exc):
     message = str(exc)
     if "sqlite3.OperationalError" in message and "disk I/O error" in message:
@@ -2158,14 +2163,13 @@ missing_mlflow_settings = [
 ]
 
 if missing_mlflow_settings:
-    print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 MLflow 설정을 .env에 직접 입력하세요.")
     print("missing settings:")
     for name in missing_mlflow_settings:
         print(f"- {{name}}")
     print("비밀번호 값은 출력하지 않습니다.")
     raise SystemExit(0)
 
-mlflow_tracking_uri = validate_mlflow_tracking_uri(mlflow_tracking_uri)
 try:
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
@@ -2176,7 +2180,6 @@ except Exception as exc:
 # ------------------------------------------------------------
 # 데이터 준비
 # ------------------------------------------------------------
-project_dir = os.path.dirname(os.path.abspath(__file__))
 selected_model_relative_path = {selected_relative!r}
 selected_model_linux_path = selected_model_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
 selected_model_windows_url = selected_model_linux_path.replace("/", "\\\\")
@@ -2433,7 +2436,7 @@ MODEL_PATH = MODEL_DIR / "model.pt"'''
             text = text.replace("configure_utf8_stdio()\n", "configure_utf8_stdio()\n\n" + selected_connection_block.strip() + "\n", 1)
     text = text.replace('mlflow_experiment_name = "pytorch_sample"', f"mlflow_experiment_name = {default_experiment_name!r}")
     text = text.replace('mlflow_register_model_name = "pytorch_sample_model"', f"mlflow_register_model_name = {default_register_model_name!r}")
-    text = text.replace("runtest.py에 직접 입력하세요.", "runtest_2.py에 직접 입력하세요.")
+    text = text.replace("runtest.py에 직접 입력하세요.", ".env에 직접 입력하세요.")
     text = text.replace(
         "    export_mlflow_environment()\n    mlflow.set_tracking_uri(mlflow_tracking_uri)",
         "    try:\n"
@@ -2642,7 +2645,7 @@ def generated_runtest_text(project: Path, selected_model: Path, kind: str, refer
         transformed = insert_preserved_data_prep_block(transformed, kind)
     transformed = transformed.replace(
         "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.",
-        "원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.",
+        "원격 MLflow 등록 실행을 위해 MLflow 설정을 .env에 직접 입력하세요.",
     )
     transformed = normalize_existing_code_paths(transformed)
     transformed = ensure_workspace_code_paths(transformed)
@@ -3532,7 +3535,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터로 판단합니다. Python 실행파일을 모델 생성/등록 entrypoint로 사용하세요.")
             report.next_steps.append(f"감지된 CSV 데이터: {', '.join(data_paths[:5])}")
             report.next_steps.append(f"감지된 Python 실행파일: {', '.join(entrypoint_paths[:5])}")
-            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode\\scripts\\04-train-model\\run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         elif data_files:
             report.failures.append("csv_data_without_model_entrypoint")
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터입니다. 모델을 생성/로드/등록하는 Python 실행파일을 프로젝트 루트에 넣어주세요.")
@@ -3540,7 +3543,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         elif entrypoints:
             report.failures.append("entrypoint_without_model_artifact")
             report.next_steps.append("모델 artifact는 없지만 Python 실행파일이 있습니다. 해당 파일이 모델 생성/등록 entrypoint인지 확인해 실행하세요.")
-            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode\\scripts\\04-train-model\\run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         else:
             report.failures.append("model_artifact_paths_empty")
             report.next_steps.append("현재 프로젝트 루트 바로 아래 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
@@ -3549,7 +3552,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                "모델 선택 후 자동 준비 실행: python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
+                r"모델 선택 후 자동 준비 실행: python .opencode\scripts\04-train-model\prepare_selected_model.py --project <model-project-folder> --model <번호|경로> --execute"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -3668,13 +3671,13 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if args.execute and not report.failures:
         report.next_steps.extend(
             [
-                "자동 준비 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
+                "모델 선택 완료: 모델 목록 확인 -> 모델 선택",
                 f"선택 모델 유지: {rel(selected_model, project)}",
                 "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
-                "python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py",
-                "3번 환경변수/requirements 갱신 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
-                "python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute",
-                "6번 추론 테스트는 자동 실행하지 않습니다. 사용자가 6번을 선택했을 때만 진행합니다.",
+                f"3번은 사용자가 선택해 실행합니다: {PS_CHECK_ENV_COMMAND}",
+                "4번 템플릿 변환은 3번 완료 후 자동실행됩니다.",
+                "5번 원격 MLflow 등록 실행은 사용자가 선택했을 때만 진행합니다.",
+                "6번 추론 테스트와 7번 오류 재실행도 사용자가 선택했을 때만 진행합니다.",
             ]
         )
     elif not report.failures:
@@ -3715,11 +3718,11 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
     return [
         model_list_status,
         "완료" if model_selected else "대기",
-        "다음" if runtime_ready else "2번 완료 후",
-        "완료" if runtime_ready else ("진행중" if auto_ready else "대기"),
-        "3번 완료 후",
-        "선택 시",
-        "오류 시",
+        "사용자 선택" if model_selected else "2번 완료 후",
+        "3번 후 자동실행",
+        "사용자 선택",
+        "사용자 선택",
+        "사용자 선택",
     ]
 
 
@@ -3760,7 +3763,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             print("- 숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
             for index, path in enumerate(report.model_artifact_paths, start=1):
                 print(f"  {index}. {path}")
-            print("- 실행 예: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
+            print(f"- 실행 예: {PS_PREPARE_MODEL_COMMAND}")
             print("- 선택 후 자동 진행: 템플릿 복사 -> runtest_2.py 생성 -> input_example.json 생성 -> 선택 모델 기준 연결부 변환")
 
     print_todo_guide(report)
@@ -3793,9 +3796,10 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             else:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
-            print("- 3번 환경변수/requirements 갱신: python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py")
-            print("- 5번 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
-            print("- 6번 추론 테스트: python local_serving/localservingtest.py")
+            print(f"- 3번 환경변수/requirements 갱신은 사용자가 선택: {PS_CHECK_ENV_COMMAND}")
+            print("- 4번 템플릿 변환은 3번 완료 후 자동실행")
+            print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {PS_RUN_TRAINING_COMMAND}")
+            print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")
         elif report.next_steps:
             for step in report.next_steps[:3]:
                 print(f"- {step}")

@@ -18,6 +18,8 @@ from ai_studio_process import AI_STUDIO_PROCESS_STEPS
 
 SAMPLES_DIR = ROOT / "samples"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode\scripts\02-sample-bootstrap\bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode\scripts\04-train-model\prepare_selected_model.py --project . --model <번호 또는 경로> --execute"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = [
@@ -42,6 +44,7 @@ AI_STUDIO_ENV_KEYS = [
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 ]
+ENV_SETTING_FILE_NAMES = [".env"]
 AUTO_DEFAULT_SETTING_KEYS = {
     "mlflow_experiment_name",
     "mlflow_register_model_name",
@@ -278,6 +281,23 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def parse_setting_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for key, value in parse_env_file(path).items():
+        setting_key = ALIAS_TO_SETTING.get(key)
+        if setting_key is not None:
+            values[setting_key] = value
+    return values
+
+
+def setting_env_file(project: Path) -> Path:
+    for name in ENV_SETTING_FILE_NAMES:
+        path = project / name
+        if path.exists():
+            return path
+    return project / ".env"
+
+
 def literal_string(node: ast.AST) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
@@ -333,23 +353,8 @@ def find_model_settings(project: Path, entrypoint: Path | None = None) -> dict[s
     return {}
 
 
-def missing_ai_studio_env(project: Path, entrypoint: Path | None = None) -> list[str]:
-    path = project / "ai_studio.env"
-    values = find_model_settings(project, entrypoint) or parse_env_file(path)
-    missing = []
-    if not values:
-        missing.append("entrypoint_or_ai_studio_env_settings")
-    for key in AI_STUDIO_ENV_KEYS:
-        if key in AUTO_DEFAULT_SETTING_KEYS:
-            continue
-        if key not in values or values[key] == "":
-            missing.append(key)
-    return missing
-
-
-def remote_tracking_uri_failure(project: Path, entrypoint: Path | None = None) -> str | None:
-    values = find_model_settings(project, entrypoint) or parse_env_file(project / "ai_studio.env")
-    tracking_uri = str(values.get("mlflow_tracking_uri") or "").strip()
+def validate_mlflow_tracking_url(value: str) -> str | None:
+    tracking_uri = str(value or "").strip()
     if not tracking_uri:
         return None
 
@@ -364,6 +369,28 @@ def remote_tracking_uri_failure(project: Path, entrypoint: Path | None = None) -
     if hostname in {"localhost", "0.0.0.0", "::1"} or hostname.startswith("127."):
         return "invalid_remote_tracking_uri:local_address"
     return None
+
+
+def missing_ai_studio_env(project: Path, entrypoint: Path | None = None) -> list[str]:
+    path = setting_env_file(project)
+    values = parse_setting_env_file(path)
+    missing = []
+    if not path.exists():
+        missing.append(".env")
+    if not values:
+        missing.append(".env_settings")
+    for key in AI_STUDIO_ENV_KEYS:
+        if key in AUTO_DEFAULT_SETTING_KEYS:
+            continue
+        if key not in values or values[key] == "":
+            missing.append(key)
+    return missing
+
+
+def remote_tracking_uri_failure(project: Path, entrypoint: Path | None = None) -> str | None:
+    values = parse_setting_env_file(setting_env_file(project))
+    tracking_uri = str(values.get("mlflow_tracking_uri") or "").strip()
+    return validate_mlflow_tracking_url(tracking_uri)
 
 
 def checklist_status(condition: bool) -> str:
@@ -429,7 +456,7 @@ def sync_selected_model_runtime_before_registration(project: Path, python_bin: s
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run local training for an existing project after ai_studio.env checks.")
+    parser = argparse.ArgumentParser(description="Run local training for an existing project after .env checks.")
     parser.add_argument("--project", default=".", help="user-specified model project folder")
     parser.add_argument("--python", default=sys.executable, help="Python interpreter to use")
     parser.add_argument("--execute", action="store_true", help="actually run the selected command")
@@ -457,7 +484,7 @@ def main():
     if not model_found:
         failures.append("model_not_found")
         failures.append("sample_bootstrap_required: choose one of sklearn, pytorch, tensorflow and copy the sample folder first")
-        next_steps.append("python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute")
+        next_steps.append(PS_BOOTSTRAP_SKLEARN_COMMAND)
 
     entrypoint = None
     entrypoint_candidates: list[Path] = []
@@ -486,7 +513,7 @@ def main():
         if sync_failures:
             failures.extend(sync_failures)
             next_steps.append("먼저 모델 선택 단계로 돌아가 선택 모델을 다시 준비하세요.")
-            next_steps.append("python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <번호 또는 경로> --execute")
+            next_steps.append(PS_PREPARE_MODEL_COMMAND)
 
     missing_env = missing_ai_studio_env(work_path, entrypoint)
     remote_uri_failure = remote_tracking_uri_failure(work_path, entrypoint)
@@ -497,13 +524,13 @@ def main():
     elif args.execute and cmd and remote_uri_failure:
         failures.append(remote_uri_failure)
         next_steps.append("5번 원격 MLflow 등록 실행에는 원격 MLflow URL이 필요합니다.")
-        next_steps.append("runtest_2.py 설정 블록의 mlflow_tracking_uri에 원격 http:// 또는 https:// URI를 직접 입력하세요.")
+        next_steps.append(".env의 mlflow_tracking_uri에 원격 http:// 또는 https:// URI를 직접 입력하세요.")
         next_steps.append("localhost, 127.0.0.1, 0.0.0.0, file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
     elif args.execute and cmd and missing_env:
         failures.append("execution_blocked_missing_env")
         next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
         next_steps.append(
-            "runtest_2.py 설정 블록에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password를 직접 입력한 뒤 다시 실행하세요."
+            ".env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password를 직접 입력한 뒤 다시 실행하세요."
         )
     elif args.execute and cmd:
         return_code = run_command(cmd, cwd=work_path)
@@ -523,15 +550,15 @@ def main():
 
     existing_model_flow = model_found and not is_sample_project(work_path)
     if existing_model_flow:
-        mlflow_run_status = "blocked" if (missing_env or remote_uri_failure) else ("done" if args.execute and return_code == 0 else "pending")
+        mlflow_run_status = "blocked" if (missing_env or remote_uri_failure) else ("done" if args.execute and return_code == 0 else "사용자 선택")
         step_statuses = (
             "done" if artifacts else "needs_input",
             "done" if artifacts else "needs_input",
             "done" if not (missing_env or remote_uri_failure) else "needs_input",
             "done" if (work_path / "runtest_2.py").exists() and (work_path / "requirements.txt").exists() else "pending",
             mlflow_run_status,
-            "selectable",
-            "needed" if failures else "pending",
+            "사용자 선택",
+            "needed" if failures else "사용자 선택",
         )
         process_checklist = [
             EnvVarStatus(f"{index}. {title}", status)
