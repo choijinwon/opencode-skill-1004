@@ -562,7 +562,7 @@ def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, 
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
         return None, None, "selected_model_config_model_missing"
-    source_path = model.get("path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
+    source_path = model.get("source_path") or model.get("original_path") or model.get("path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path")
     kind = model.get("model_kind") or model.get("kind")
     if not isinstance(source_path, str) or not source_path.strip():
         return None, kind if isinstance(kind, str) else None, "selected_model_config_source_path_missing"
@@ -806,12 +806,17 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
         "selected_model_name": selected_model_display_name(project, selected_model),
         "model_suffix": selected_model.suffix.lower(),
         "model_kind": kind,
-        "url": windows_url,
-        "path": linux_path,
-        "model_relative_path": linux_path,
-        "runtime_model_path": linux_path,
+        "url": saved_model_windows_url,
+        "path": saved_model_windows_url,
+        "model_relative_path": saved_model_windows_url,
+        "runtime_model_path": saved_model_windows_url,
         "saved_model_url": saved_model_windows_url,
-        "saved_model_path": saved_model_linux_path,
+        "saved_model_path": saved_model_windows_url,
+        "source_url": windows_url,
+        "source_path": windows_url,
+        "linux_path": linux_path,
+        "linux_saved_model_path": saved_model_linux_path,
+        "linux_source_path": linux_path,
         "model_parent": rel(selected_model.parent, project),
         "required_package": details.get("required_package", "unknown"),
         "load_hint": details.get("load_hint", "custom loader required"),
@@ -1844,9 +1849,12 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
     else:
         payload = {"inputs": []}
     payload["model_kind"] = kind
-    payload["url"] = windows_relative_path(selected_model, project)
-    payload["path"] = rel(selected_model, project)
+    selected_windows_path = windows_relative_path(selected_model, project)
+    saved_model_windows_path = f"saved_model\\{selected_model.name}"
+    payload["url"] = saved_model_windows_path
+    payload["path"] = saved_model_windows_path
     payload["model_path"] = payload["path"]
+    payload["source_path"] = selected_windows_path
     return payload
 
 
@@ -1865,9 +1873,10 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
             "datatype": first_input.get("datatype"),
         },
         "model_kind": kind,
-        "url": windows_relative_path(selected_model, project),
-        "path": rel(selected_model, project),
-        "model_path": rel(selected_model, project),
+        "url": f"saved_model\\{selected_model.name}",
+        "path": f"saved_model\\{selected_model.name}",
+        "model_path": f"saved_model\\{selected_model.name}",
+        "source_path": windows_relative_path(selected_model, project),
     }
 
 
@@ -1975,9 +1984,10 @@ request_input_example = {
         }
     ],
     "model_kind": model_kind,
-    "url": selected_model_windows_url,
-    "path": selected_model_linux_path,
-    "model_path": selected_model_linux_path,
+    "url": selected_model_runtime_windows_path,
+    "path": selected_model_runtime_windows_path,
+    "model_path": selected_model_runtime_windows_path,
+    "source_path": selected_model_source_windows_path,
 }
 '''
     return f'''request_input_example = {repr(input_example)}
@@ -2019,6 +2029,10 @@ def reference_style_loader_code(kind: str) -> str:
 
 def generated_constant_free_runtest_text(project: Path, selected_model: Path, kind: str, reference: Path | None = None) -> str:
     selected_relative = rel(selected_model, project)
+    selected_windows_relative = windows_relative_path(selected_model, project)
+    saved_model_relative = f"saved_model/{selected_model.name}"
+    saved_model_windows_relative = saved_model_relative.replace("/", "\\")
+    saved_model_windows_relative = f"saved_model\\{selected_model.name}"
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     profile = model_profile(project, selected_model, kind)
     input_example = selected_model_input_example_data(project, selected_model, kind)
@@ -2180,13 +2194,20 @@ except Exception as exc:
 # ------------------------------------------------------------
 # 데이터 준비
 # ------------------------------------------------------------
-selected_model_relative_path = {selected_relative!r}
-selected_model_linux_path = selected_model_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+selected_model_source_relative_path = {selected_windows_relative!r}
+selected_model_runtime_relative_path = {saved_model_windows_relative!r}
+selected_model_relative_path = selected_model_runtime_relative_path
+selected_model_linux_path = selected_model_runtime_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+selected_model_source_linux_path = selected_model_source_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
 selected_model_windows_url = selected_model_linux_path.replace("/", "\\\\")
+selected_model_windows_path = selected_model_windows_url
+selected_model_runtime_windows_path = selected_model_windows_path
+selected_model_source_windows_path = selected_model_source_linux_path.replace("/", "\\\\")
 selected_model_path = first_existing_file(
     "selected_model",
     [
-        workspace_relative_path(selected_model_relative_path),
+        workspace_relative_path(selected_model_runtime_relative_path),
+        workspace_relative_path(selected_model_source_relative_path),
         workspace_path("saved_model", relative_basename(selected_model_relative_path)),
         workspace_path(relative_basename(selected_model_relative_path)),
     ],
@@ -2227,9 +2248,12 @@ config_path = workspace_path(config_dir, "config.json")
 
 params = {config_literal}
 params["model"]["url"] = selected_model_windows_url
-params["model"]["path"] = selected_model_linux_path
-params["model"]["runtime_model_path"] = selected_model_linux_path
-params["model"]["model_relative_path"] = selected_model_linux_path
+params["model"]["path"] = selected_model_windows_path
+params["model"]["runtime_model_path"] = selected_model_windows_path
+params["model"]["model_relative_path"] = selected_model_windows_path
+params["model"]["linux_path"] = selected_model_linux_path
+params["model"]["source_path"] = selected_model_source_windows_path
+params["model"]["linux_source_path"] = selected_model_source_linux_path
 
 with open(config_path, "w", encoding="utf-8") as f:
     json.dump(params, f, indent=4, ensure_ascii=False)
@@ -2312,7 +2336,7 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
             "model_name": params["model"]["model_name"],
             "model_kind": model_kind,
             "model_url": selected_model_windows_url,
-            "model_path": selected_model_linux_path,
+            "model_path": selected_model_windows_path,
         }}
     )
 
@@ -2690,6 +2714,8 @@ def generated_minimal_localservingtest_text(template_text: str, project: Path, s
 
 def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path, template_text: str | None = None) -> str:
     selected_relative = rel(selected_model, project)
+    selected_windows_relative = windows_relative_path(selected_model, project)
+    saved_model_windows_relative = f"saved_model\\{selected_model.name}"
     reference_entrypoint = rel(reference, project) if reference.is_relative_to(project) else reference_display_path(reference)
     profile = model_profile(project, selected_model, kind)
     details = MODEL_KIND_DETAILS.get(kind, {})
@@ -2736,9 +2762,10 @@ def workspace_relative_path(value):
     return AI_STUDIO_DIR.joinpath(*parts) if parts else AI_STUDIO_DIR / str(value)
 
 
-ORIGINAL_MODEL_PATH = workspace_relative_path({selected_relative!r})
-SAVED_MODEL_PATH = AI_STUDIO_DIR / "saved_model" / ORIGINAL_MODEL_PATH.name
-MODEL_PATH_CANDIDATES = [ORIGINAL_MODEL_PATH, SAVED_MODEL_PATH]
+SOURCE_MODEL_ORIGINAL_PATH = workspace_relative_path({selected_windows_relative!r})
+SAVED_MODEL_PATH = workspace_relative_path({saved_model_windows_relative!r})
+ORIGINAL_MODEL_PATH = SAVED_MODEL_PATH
+MODEL_PATH_CANDIDATES = [SAVED_MODEL_PATH, SOURCE_MODEL_ORIGINAL_PATH]
 MODEL_KIND = "{kind}"
 MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
 ai_REQUIRED_PACKAGE = "{required_package}"
@@ -3380,6 +3407,9 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         return [], ["selected_model_conversion_verification:dry_run"], []
 
     selected_relative = rel(selected_model, project)
+    selected_windows_relative = windows_relative_path(selected_model, project)
+    saved_model_relative = f"saved_model/{selected_model.name}"
+    saved_model_windows_relative = saved_model_relative.replace("/", "\\")
     required_text_files = [
         project / "runtest_2.py",
         project / "aiu_custom" / "model.py",
@@ -3403,7 +3433,14 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             continue
 
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if display_path in direct_selected_path_files and selected_relative not in text:
+        normalized_text = normalize_path_text(text)
+        if (
+            display_path in direct_selected_path_files
+            and selected_relative not in normalized_text
+            and saved_model_relative not in normalized_text
+            and selected_windows_relative not in text
+            and saved_model_windows_relative not in text
+        ):
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_relative}")
         if display_path == "runtest_2.py":
             has_selected_path_connection = (
@@ -3412,7 +3449,12 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             )
             if "def load_selected_model(" not in text or not has_selected_path_connection:
                 failures.append("runtest_2_selected_model_loader_missing:runtest_2.py")
-            if selected_relative not in text:
+            if (
+                selected_relative not in normalized_text
+                and saved_model_relative not in normalized_text
+                and selected_windows_relative not in text
+                and saved_model_windows_relative not in text
+            ):
                 failures.append("runtest_2_selected_artifact_path_missing:runtest_2.py")
             forbidden_runtest2_markers = [
                 "PROJECT_DIR = Path(__file__).resolve().parent",
@@ -3452,11 +3494,14 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 config = {}
             model_config = config.get("model", {}) if isinstance(config, dict) else {}
             config_path = model_config.get("path") or model_config.get("model_relative_path") or model_config.get("runtime_model_path")
+            config_source_path = model_config.get("source_path") or model_config.get("original_path")
             config_kind = model_config.get("model_kind")
-            if normalize_path_text(str(config_path or "")) != normalize_path_text(selected_relative):
-                failures.append(f"selected_model_config_path_mismatch:{config_path}->{selected_relative}")
+            if normalize_path_text(str(config_path or "")) != normalize_path_text(saved_model_relative):
+                failures.append(f"selected_model_config_path_mismatch:{config_path}->{saved_model_relative}")
+            if normalize_path_text(str(config_source_path or "")) != normalize_path_text(selected_relative):
+                failures.append(f"selected_model_config_source_path_mismatch:{config_source_path}->{selected_relative}")
             config_url = model_config.get("url")
-            expected_url = selected_relative.replace("/", "\\")
+            expected_url = saved_model_relative.replace("/", "\\")
             if config_url != expected_url:
                 failures.append(f"selected_model_config_url_mismatch:{config_url}->{expected_url}")
             if config_kind != kind:
@@ -3862,6 +3907,17 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             print(f"- {step}")
 
 
+def normalize_argv(argv: list[str]) -> list[str]:
+    normalized: list[str] = []
+    for arg in argv:
+        match = re.fullmatch(r"--model(.+)", arg)
+        if match and match.group(1) and not match.group(1).startswith(("=", "-")):
+            normalized.extend(["--model", match.group(1)])
+        else:
+            normalized.append(arg)
+    return normalized
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate workspace-root runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
@@ -3871,7 +3927,7 @@ def main() -> int:
     parser.add_argument("--sync-runtime", action="store_true", help="reuse the selected model and transform runtime folders/files for that model")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     parser.add_argument("--verbose", action="store_true", help="print detailed model lists, prepared files, warnings, and next steps")
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_argv(sys.argv[1:]))
 
     report = build_report(args)
     if args.json:
