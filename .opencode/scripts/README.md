@@ -7,7 +7,7 @@
 `data/` 아래 폴더명은 고정값이 아니며 사용자 프로젝트마다 다를 수 있다.
 예: `model.joblib`, `data/<임의폴더>/model.joblib`, `data/sklearn/model.pkl`, `data/checkpoints/model.pt`
 모델 있음 흐름에서는 기존 `runtest.py`를 워크스페이스 루트에서 읽기 전용으로 참조하고, 선택 모델 기준 `runtest_2.py`만 생성/갱신한다.
-모델 선택 단계는 사용할 모델만 확정한다. 4번 템플릿 변환을 사용자가 선택하면 `.opencode/samples/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `input_example.json`을 선택 모델 기준으로 준비한다. 템플릿의 `data/`와 `requirements.txt`는 복사하지 않고, 환경검증 단계에서 워크스페이스 루트 `requirements.txt`를 생성/갱신한다.
+모델 선택 단계는 사용할 모델만 확정한다. 4번 템플릿 변환을 사용자가 선택하면 `.opencode/scripts/04-train-model/templates/pytorch_sample/` 내부 템플릿을 워크스페이스 루트로 복사한 뒤, `aiu_custom/`, `local_serving/`, `saved_model/`, `config/config.json`, `input_example.json`을 선택 모델 기준으로 준비한다. 템플릿의 `data/`와 `requirements.txt`는 복사하지 않고, 환경검증 단계에서 워크스페이스 루트 `requirements.txt`를 생성/갱신한다.
 모델 선택 명령은 1~2번에서 선택 모델을 확정한다. 3번 환경검증은 환경변수/requirements만 처리하고 템플릿을 복사하지 않는다. 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
@@ -171,7 +171,7 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model
 현재 프로젝트 루트 바로 아래와 `data/**` 아래 모델 파일 목록을 만들고, 사용자가 선택한 모델 기준으로 기존 `runtest.py`를 참조해 `runtest_2.py`만 생성/갱신한다.
 `runtest_2.py`는 외부 데이터셋을 다운로드하지 않고 MODEL_KIND에 맞는 synthetic `input_example.json`을 생성한다.
 기존 `runtest.py`는 수정하지 않고 참조만 한다.
-PyTorch/safetensors 모델은 `.opencode/samples/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다. 샘플 `requirements.txt`는 참조하지 않는다.
+PyTorch/safetensors 모델은 `.opencode/scripts/04-train-model/templates/pytorch_sample/` 내부를 참조해서 선택 모델 실행/등록에 필요한 연결부만 안전하게 변환한다. 샘플 `requirements.txt`는 참조하지 않는다.
 선택 모델 경로와 `MODEL_KIND`를 반영한다.
 `runtest_2.py` 생성 시퀀스는 `모델 선택 -> 모델 형식 확인 -> 기존 runtest.py 읽기 전용 참조 -> 선택 모델 경로와 MODEL_KIND를 반영한 연결부 변환 -> 변환 결과 검증` 순서로 수행한다.
 

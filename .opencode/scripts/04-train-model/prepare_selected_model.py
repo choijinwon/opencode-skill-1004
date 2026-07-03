@@ -58,12 +58,13 @@ if str(SCRIPT_ROOT) not in sys.path:
 from ai_studio_process import format_model_selection_hint, format_todo_guide
 
 TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
-TEMPLATE_SAMPLE_DIR = ROOT / "samples" / TEMPLATE_SAMPLE_DIR_NAME
+TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "scripts" / "04-train-model" / "templates"
+TEMPLATE_SAMPLE_DIR = TRAIN_MODEL_TEMPLATE_ROOT / TEMPLATE_SAMPLE_DIR_NAME
 REQUIRED_REQUIREMENTS_FILE = ROOT / "scripts" / "03-environment-check" / "requirements.required.txt"
 CHECK_ENVIRONMENT_SCRIPT = ROOT / "scripts" / "03-environment-check" / "check_environment.py"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 RUN_TRAINING_SCRIPT = ROOT / "scripts" / "04-train-model" / "run_training.py"
-PYTORCH_REFERENCE_DIR = ROOT / "samples" / "pytorch_sample"
+PYTORCH_REFERENCE_DIR = TEMPLATE_SAMPLE_DIR
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
 PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
 PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
@@ -871,7 +872,7 @@ def conversion_reference_step(kind: str, reference: Path) -> str:
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        "2. pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
+        "2. 04-train-model/templates/pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
         f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
         "4. runtest.py 참조해서 runtest_2.py 생성",
         "5. 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
@@ -924,7 +925,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
                     "runtest.py_selected_model_constants_forbidden:"
                     + ",".join(forbidden_markers)
                 )
-    copied.append(".opencode/samples/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
+    copied.append(".opencode/scripts/04-train-model/templates/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
     return copied, skipped, failures
 
 

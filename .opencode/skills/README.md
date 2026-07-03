@@ -72,7 +72,7 @@ Step 3. 환경 검증
         변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 4. 템플릿 변환
         사용자가 4번을 선택했을 때만 실행한다.
-        pytorch_sample/ 템플릿을 먼저 복사한다.
+        04-train-model/templates/pytorch_sample/ 템플릿을 먼저 복사한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
         `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때 사용한다.
