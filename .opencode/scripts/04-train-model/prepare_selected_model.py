@@ -100,7 +100,7 @@ SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
     "input_example.json",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
-    "local_serving/localservingtest.py",
+    "inferencetest.py",
     "config/config.json",
 }
 MODEL_SCAN_SKIP_DIRS = {
@@ -1913,7 +1913,7 @@ def selected_model_config_data(project: Path, selected_model: Path, kind: str) -
             "model_entrypoint": "aiu_custom/model.py",
             "predict_entrypoint": "aiu_custom/predict.py",
             "input_example": "input_example.json",
-            "local_serving_test": "local_serving/localservingtest.py",
+            "inference_test": "inferencetest.py",
         },
         "policy": {
             "copy_model_to_ai_studio": False,
@@ -2712,188 +2712,35 @@ def replace_function_block(text: str, function_name: str, replacement: str) -> s
     return text.rstrip() + "\n\n" + replacement.rstrip() + "\n"
 
 
-def generated_minimal_localservingtest_text(template_text: str, project: Path, selected_model: Path, kind: str) -> str:
-    selected_relative = rel(selected_model, project)
-    details = MODEL_KIND_DETAILS.get(kind, {})
-    loader = details.get(
-        "loader",
-        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
-    )
-    loader = loader.replace("MODEL_PATH", "DATA_MODEL_PATH")
-
-    text = template_text
-    text = rewrite_top_level_assignment(text, "PROJECT_DIR", "LOCAL_SERVING_DIR.parent")
-    text = rewrite_top_level_assignment(text, "SOURCE_MODEL_PATH", f"PROJECT_DIR / {selected_relative!r}")
-    text = rewrite_top_level_assignment(text, "DATA_MODEL_PATH", "SOURCE_MODEL_PATH")
-    text = rewrite_top_level_assignment(text, "MODEL_PATH", "DATA_MODEL_PATH")
-    text = rewrite_top_level_assignment(text, "MODEL_KIND", repr(kind))
-    text = replace_function_block(text, "load_selected_model", loader)
-    return text.rstrip() + "\n"
-
-
-def generated_localservingtest_text(project: Path, selected_model: Path, kind: str, reference: Path, template_text: str | None = None) -> str:
-    selected_relative = rel(selected_model, project)
-    selected_windows_relative = windows_relative_path(selected_model, project)
-    saved_model_windows_relative = f"saved_model\\{selected_model.name}"
-    reference_entrypoint = rel(reference, project) if reference.is_relative_to(project) else reference_display_path(reference)
-    profile = model_profile(project, selected_model, kind)
-    details = MODEL_KIND_DETAILS.get(kind, {})
-    required_package = details.get("required_package", "unknown")
-    load_hint = details.get("load_hint", "custom loader required")
-    loader = details.get(
-        "loader",
-        """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
-    )
+def generated_inferencetest_text() -> str:
     return f'''#!/usr/bin/env python3
-from __future__ import annotations
-
-import importlib.util
-import contextlib
-import io
 import json
-import re
-import warnings
-from pathlib import Path
+import requests
 
 
-warnings.filterwarnings(
-    "ignore",
-    message=r".*Add type hints to the `predict` method.*",
-    category=UserWarning,
-)
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
-    module="mlflow[.]pyfunc[.]utils[.]data_validation",
-)
-
-LOCAL_SERVING_DIR = Path(__file__).resolve().parent
-AI_STUDIO_DIR = LOCAL_SERVING_DIR.parent
+req_url = ""
 
 
-def split_relative_path(value):
-    text = str(value).replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
-    return [part for part in text.split("/") if part and part != "."]
+if not req_url.strip():
+    raise SystemExit("req_url 값을 입력한 뒤 다시 실행하세요.")
 
+with open("input_example.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-def workspace_relative_path(value):
-    parts = split_relative_path(value)
-    return AI_STUDIO_DIR.joinpath(*parts) if parts else AI_STUDIO_DIR / str(value)
+req_msg = json.dumps(data)
+headers = {{}}
 
+resp = requests.post(req_url, headers=headers, data=req_msg)
 
-SOURCE_MODEL_ORIGINAL_PATH = workspace_relative_path({selected_windows_relative!r})
-SAVED_MODEL_PATH = workspace_relative_path({saved_model_windows_relative!r})
-ORIGINAL_MODEL_PATH = SAVED_MODEL_PATH
-MODEL_PATH_CANDIDATES = [SAVED_MODEL_PATH, SOURCE_MODEL_ORIGINAL_PATH]
-MODEL_KIND = "{kind}"
-MODEL_PROFILE = {json.dumps(profile, ensure_ascii=False, indent=4)}
-ai_REQUIRED_PACKAGE = "{required_package}"
-ai_LOAD_HINT = "{load_hint}"
-REFERENCE_ENTRYPOINT = {reference_entrypoint!r}
-
-# ai Studio 변환: 선택 모델 {selected_relative} 기준 추론 테스트입니다.
-# 추론 테스트는 선택 모델 원본 경로와 saved_model/ 복사본 후보를 확인합니다.
-# MODEL_KIND={kind}, loader={load_hint}
-
-
-def first_existing_model_path():
-    for candidate in MODEL_PATH_CANDIDATES:
-        if candidate.is_file() or candidate.is_dir():
-            return candidate
-    print("선택 모델 파일 또는 폴더를 찾을 수 없습니다.")
-    print("확인한 경로:")
-    for candidate in MODEL_PATH_CANDIDATES:
-        print(f"- {{candidate}}")
-    raise FileNotFoundError("selected model not found")
-
-
-SOURCE_MODEL_PATH = first_existing_model_path()
-DATA_MODEL_PATH = SOURCE_MODEL_PATH
-MODEL_PATH = SOURCE_MODEL_PATH
-
-{loader}
-
-
-def load_input_example():
-    for name in ["input_example.json", "sample_input.json", "example.json"]:
-        candidate = AI_STUDIO_DIR / name
-        if candidate.is_file():
-            return json.loads(candidate.read_text(encoding="utf-8"))
-    return {{}}
-
-
-def load_aiu_custom_wrapper():
-    # AI Studio 배포 경로와 동일하게 predict.py를 먼저 사용합니다.
-    for relative in ["aiu_custom/predict.py", "aiu_custom/model.py", "aiu_custom/model_wrapper.py"]:
-        wrapper_path = AI_STUDIO_DIR / relative
-        if not wrapper_path.is_file():
-            continue
-        spec = importlib.util.spec_from_file_location("aiu_custom_model_wrapper", wrapper_path)
-        if spec is None or spec.loader is None:
-            continue
-        module = importlib.util.module_from_spec(spec)
-        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
-            warnings.simplefilter("ignore", UserWarning)
-            spec.loader.exec_module(module)
-        wrapper_class = getattr(module, "ModelWrapper", None)
-        if wrapper_class is not None:
-            return wrapper_class()
-    return None
-
-
-def run_inference():
-    payload = load_input_example()
-    wrapper = load_aiu_custom_wrapper()
-    if wrapper is not None:
-        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
-            warnings.simplefilter("ignore", UserWarning)
-            return wrapper.predict(None, payload)
-
-    model = load_selected_model()
-    if hasattr(model, "predict"):
-        return model.predict(payload)
-    if callable(model):
-        return model(payload)
-    return {{
-        "status": "loaded",
-        "model_kind": MODEL_KIND,
-        "model_path": str(MODEL_PATH),
-        "input_example": payload,
-    }}
-
-
-def _shorten(value):
-    if isinstance(value, list):
-        if len(value) > 10:
-            return [_shorten(item) for item in value[:10]] + [f"... {{len(value) - 10}} more"]
-        return [_shorten(item) for item in value]
-    if isinstance(value, dict):
-        hidden_keys = {{"input", "inputs", "input_example", "data"}}
-        return {{key: _shorten(item) for key, item in value.items() if key not in hidden_keys}}
-    return value
-
-
-def compact_result(result):
-    compact = _shorten(result)
-    if isinstance(compact, dict):
-        compact.setdefault("model_kind", MODEL_KIND)
-        compact.setdefault("model_path", str(MODEL_PATH))
-        return compact
-    return {{
-        "status": "completed",
-        "model_kind": MODEL_KIND,
-        "model_path": str(MODEL_PATH),
-        "result": compact,
-    }}
-
-
-def main():
-    result = run_inference()
-    print(json.dumps(compact_result(result), ensure_ascii=False, indent=2, default=str))
+print("status_code:", resp.status_code)
+try:
+    print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+except ValueError:
+    print(resp.text)
 
 
 if __name__ == "__main__":
-    main()
+    pass
 '''
 
 
@@ -3207,7 +3054,8 @@ def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], lis
         "xgboost_bst": ["xgboost==3.0.2"],
         "xgboost_ubj": ["xgboost==3.0.2"],
     }
-    additional = extras_by_kind.get(kind, [])
+    inference_requirements = ["requests==2.32.4"]
+    additional = inference_requirements + extras_by_kind.get(kind, [])
     packages = required + additional
     unique_packages: list[str] = []
     seen: set[str] = set()
@@ -3336,25 +3184,20 @@ def write_config_json(project: Path, selected_model: Path, kind: str, execute: b
     return changed, skipped, failures
 
 
-def write_localservingtest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
-    target = project / "local_serving" / "localservingtest.py"
+def write_inferencetest(project: Path, selected_model: Path, kind: str, reference: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    target = project / "inferencetest.py"
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
     existed_before = target.exists()
     if execute:
         reference_digest_before = file_sha256(reference)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        copied_text = target.read_text(encoding="utf-8", errors="ignore") if target.is_file() else None
-        target.write_text(
-            generated_localservingtest_text(project, selected_model, kind, reference, copied_text),
-            encoding="utf-8",
-        )
+        target.write_text(generated_inferencetest_text(), encoding="utf-8")
         reference_digest_after = file_sha256(reference)
         if reference_digest_after != reference_digest_before:
             failures.append(f"reference_entrypoint_modified:{rel(reference, project)}")
             return changed, skipped, failures
-    changed.append("local_serving/localservingtest.py minimal selected-model connection (refreshed)" if existed_before else "local_serving/localservingtest.py minimal selected-model connection")
+    changed.append("inferencetest.py remote inference request template (refreshed)" if existed_before else "inferencetest.py remote inference request template")
     return changed, skipped, failures
 
 
@@ -3406,10 +3249,11 @@ def sync_selected_model_runtime(
     runtime_steps = [
         ensure_aiu_custom_template_copied(project, execute),
         ensure_runtime_directories(project, execute),
+        write_requirements(project, kind, execute),
         write_input_example(project, selected_model, kind, execute),
         write_config_json(project, selected_model, kind, execute),
         write_saved_model(project, selected_model, execute),
-        write_localservingtest(project, selected_model, kind, runtime_reference, execute),
+        write_inferencetest(project, selected_model, kind, runtime_reference, execute),
         write_aiu_model(project, selected_model, kind, execute),
         write_aiu_predict(project, selected_model, kind, execute),
     ]
@@ -3435,7 +3279,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     required_text_files = [
         project / "runtest_2.py",
         project / "aiu_custom" / "model.py",
-        project / "local_serving" / "localservingtest.py",
+        project / "inferencetest.py",
         project / "input_example.json",
         project / "config" / "config.json",
     ]
@@ -3443,7 +3287,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     failures: list[str] = []
     direct_selected_path_files = {
         "runtest_2.py",
-        "local_serving/localservingtest.py",
         "input_example.json",
         "config/config.json",
     }
@@ -3511,6 +3354,10 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append("aiu_custom_model_selected_path_resolver_missing:aiu_custom/model.py")
             if kind not in text:
                 failures.append(f"aiu_custom_model_kind_not_reflected:aiu_custom/model.py:{kind}")
+        if display_path == "inferencetest.py":
+            for marker in ['req_url = ""', 'requests.post(req_url', 'input_example.json']:
+                if marker not in text:
+                    failures.append(f"inferencetest_template_missing:{marker}")
         if display_path == "config/config.json":
             try:
                 config = json.loads(text)
@@ -3588,7 +3435,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         model_kind=selected_kind,
         reference_entrypoint=None,
         generated_entrypoint="runtest_2.py",
-        generated_inference_test="local_serving/localservingtest.py",
+        generated_inference_test="inferencetest.py",
         execute=args.execute,
         requested_model_path=rel(requested_model, project) if requested_model else None,
         model_selection_locked=model_selection_locked,
@@ -3785,7 +3632,7 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
         for path in [
             "aiu_custom/model.py",
             "aiu_custom/predict.py",
-            "local_serving/localservingtest.py",
+            "inferencetest.py",
             "input_example.json",
             "config/config.json",
             "requirements.txt",
@@ -3836,7 +3683,7 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
         print("- 완료: 템플릿 복사 후 선택 모델 형식에 맞게 변환")
         print("- 변환: runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py")
-        print("- 변환: local_serving/localservingtest.py, config/config.json, input_example.json")
+        print("- 변환: inferencetest.py, config/config.json, input_example.json, requirements.txt")
         return
 
     print(f"Project: {report.project_path}")

@@ -60,7 +60,7 @@
       "06-inference-test/test_inference.py"
     ],
     "generated_entrypoints": [
-      "local_serving/localservingtest.py"
+      "inferencetest.py"
     ],
     "purpose": "run selected-model local serving smoke test and inference contract checks"
   },

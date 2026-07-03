@@ -8,7 +8,7 @@
 | 2 | `02-agent-mlflow-skill-sample-bootstrap` | 샘플/템플릿 복사 | `02-sample-bootstrap/*` | 샘플 파일, 템플릿 파일 |
 | 3 | `03-agent-mlflow-skill-environment-check` | Python, 패키지, MLflow 설정 점검 | `03-environment-check/*` | 환경 점검 결과, `requirements.txt` 갱신 |
 | 4 | `04-agent-mlflow-skill-train-model` | 모델 선택, `runtest_2.py` 생성, 템플릿 변환, 원격 MLflow 등록 실행 | `04-train-model/*` | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
-| 6 | `06-agent-mlflow-skill-inference-test` | 로컬 추론 테스트 | `06-inference-test/*` | 추론 테스트 결과 |
+| 6 | `06-agent-mlflow-skill-inference-test` | 원격 추론 URL 테스트 | `06-inference-test/*` | 추론 테스트 결과 |
 
 ## 2. 모델 있을 때 프로세스
 
@@ -19,7 +19,7 @@
 | 3 | 환경변수/requirements 갱신 | 사용자가 3번 선택 시 `python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py` | MLflow 입력값 확인, `requirements.txt` 갱신 |
 | 4 | 템플릿 변환 | 사용자가 4번 선택 시 `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute` | 템플릿 복사 후, 선택 모델 연결부 수정 및 `input_example.json` 생성 |
 | 5 | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute` | 선택 모델 기준 재검증/변환 후 원격 MLflow 서버에 기록/등록 |
-| 6 | 추론 테스트 | 사용자가 6번 선택 시 `python .\local_serving\localservingtest.py` | `input_example.json` 기반 입력/출력 추론 테스트 |
+| 6 | 추론 테스트 | 사용자가 6번 선택 시 `python inferencetest.py` | `input_example.json` 기반 원격 추론 URL 호출 |
 | 7 | 오류 재실행 | 사용자가 7번 선택 시 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 실패한 단계부터 다시 실행 |
 
 ## 3. 3번 단계 상세
@@ -41,7 +41,7 @@
 | 복사 제외 | `data/`, `runtest_2.py`, `requirements.txt`는 템플릿에서 복사하지 않음 |
 | 참조 기준 | 기존 `runtest.py`를 읽기 전용으로 참조 |
 | 생성 파일 | `runtest_2.py` |
-| 변환 대상 예시 | `aiu_custom/predict.py`, `aiu_custom/model.py`, `config/config.json`, `local_serving/localservingtest.py`, `input_example.json` |
+| 변환 대상 예시 | `aiu_custom/predict.py`, `aiu_custom/model.py`, `config/config.json`, `inferencetest.py`, `input_example.json` |
 | 모델 파일 복사 | 선택 모델 파일 자체는 복사하지 않음. 현재 프로젝트 안 원본 경로를 그대로 연결 |
 
 ## 5. 오류 시 재실행 기준

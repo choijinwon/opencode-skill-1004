@@ -133,7 +133,7 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project <mod
 
 05 Inference Test
    06-inference-test/test_inference.py
-   generated: local_serving/localservingtest.py
+   generated: inferencetest.py
 
 QA / Maintenance
    qa-maintenance/doctor.py

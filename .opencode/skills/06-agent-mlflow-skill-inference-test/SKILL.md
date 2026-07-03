@@ -1,6 +1,6 @@
 ---
 name: agent-mlflow-skill-inference-test
-description: Use only when the user explicitly asks "추론 테스트", selects step 6, "input_example.json", "predict.py", "aiu_custom 테스트", "local_serving", or inference test after selected-model preparation is complete; loads the prepared model wrapper and verifies predict contract and response schema. Do not use for model number selection.
+description: Use only when the user explicitly asks "추론 테스트", selects step 6, "input_example.json", "inferencetest.py", or inference test after selected-model preparation is complete; posts input_example.json to the user-provided remote inference URL. Do not use for model number selection.
 license: MIT
 compatibility: opencode
 metadata:
@@ -18,7 +18,7 @@ metadata:
 현재 단계: 추론 테스트
 진행 조건: 사용자가 6번을 선택했을 때만 실행
 현재 대상: trained model project
-핵심 판단: config/config.json 선택 모델, input_example, load mode, predict contract, output schema
+핵심 판단: input_example.json, req_url 입력 여부, HTTP request/response schema
 다음 단계: 7. 오류 재실행
 ```
 
@@ -38,12 +38,12 @@ metadata:
 
 ```text
 1. input_example.json을 확인한다.
-2. local_serving/localservingtest.py를 확인한다.
-3. config/config.json의 선택 모델 경로와 MODEL_KIND를 확인한다.
-4. localservingtest.py의 load_selected_model()과 predict contract를 확인한다.
-5. Windows native load는 보조 확인으로만 둔다.
-6. 결과가 JSON serializable인지 확인한다.
-7. predict_2.py는 생성하지 않는다. 추론 테스트는 local_serving/localservingtest.py를 사용한다.
+2. inferencetest.py를 확인한다.
+3. inferencetest.py의 req_url 값이 비어 있으면 사용자가 직접 입력하도록 안내한다.
+4. inferencetest.py가 input_example.json을 읽고 requests.post(req_url, headers, data)를 호출하는지 확인한다.
+5. 응답 status_code와 JSON/text 출력이 가능한지 확인한다.
+6. 로컬 모델 로드는 수행하지 않는다.
+7. predict_2.py는 생성하지 않는다. 추론 테스트는 inferencetest.py를 사용한다.
 8. 자동 실행하지 않는다. 사용자가 6번을 선택하거나 명시적으로 추론 테스트를 요청한 경우에만 실행한다.
 ```
 
@@ -53,8 +53,8 @@ metadata:
 반드시 보여줄 값:
 - 판단 결과
 - 사용한 input example
-- 추론 entrypoint: local_serving/localservingtest.py
-- 모델 로드 방식
+- 추론 entrypoint: inferencetest.py
+- req_url 상태
 - predict 결과 요약
 - response schema
 - result_path: not written, unless --output is set
@@ -66,18 +66,17 @@ metadata:
 ```text
 판단 결과: pass
 input_example: input_example.json
-load mode: aiu_custom wrapper
+req_url: set
 schema: JSON serializable
 result_path: not written
-next: MLflow verify
+next: 오류 재실행
 ```
 
 ## Commands
 
 ```text
 실제 추론 실행:
-cd '<selected-project-path>\local_serving'
-python localservingtest.py
+python inferencetest.py
 
 보조 스크립트:
 python .opencode/scripts/06-inference-test/test_inference.py --project <project> --execute
@@ -89,12 +88,12 @@ python .opencode/scripts/06-inference-test/test_inference.py --project <project>
 ```text
 pass:
 - input example 있음
-- 모델 로드 성공
-- predict 성공
+- req_url 입력됨
+- HTTP 요청 성공
 - output schema 확인됨
 
 warn:
-- native load는 실패했지만 pyfunc/custom wrapper로 우회 가능
+- HTTP 응답은 왔지만 JSON 파싱은 실패해 text로 출력함
 - 결과가 길어 요약 출력함
 
 needs_user_input:
@@ -102,8 +101,8 @@ needs_user_input:
 - 어떤 추론 entrypoint를 사용할지 모호함
 
 blocked:
-- 모델 로드 실패
-- predict 실행 실패
+- req_url이 비어 있음
+- HTTP 요청 실패
 - 응답을 직렬화할 수 없음
 ```
 
@@ -113,9 +112,9 @@ blocked:
 <summary>문제 해결 보기</summary>
 
 ```text
-증상: native load 실패
-원인: Windows x86_64 native/standalone 실행 불안정
-조치: mlflow.pyfunc.load_model, aiu_custom wrapper, run_model.py/runtest.py 기반 검증으로 우회
+증상: req_url 값을 입력하라는 메시지가 나옴
+원인: inferencetest.py의 req_url이 빈 문자열
+조치: 배포된 추론 URL을 req_url에 직접 입력한 뒤 다시 실행
 
 증상: input_example 없음
 원인: 테스트 입력 누락
@@ -143,12 +142,12 @@ runtest.py
 serving/test script
 ```
 
-모델 로드 우선순위:
+inferencetest.py 기본 형태:
 
 ```text
-1. mlflow.pyfunc.load_model
-2. aiu_custom custom wrapper load
-3. framework native load, Windows에서는 보조 확인만
+req_url = ""
+input_example.json 로드
+requests.post(req_url, headers=headers, data=req_msg)
 ```
 
 </details>
@@ -157,7 +156,7 @@ serving/test script
 <summary>Safety 규칙 보기</summary>
 
 - secret 또는 개인정보가 포함된 입력 예제를 그대로 출력하지 않는다.
-- 추론 결과가 길면 schema 중심으로 요약한다.
+- 추론 결과가 길면 status_code와 응답 schema 중심으로 요약한다.
 - 외부 LLM endpoint 호출이 필요한 경우 endpoint와 인증 설정 존재 여부를 먼저 확인한다.
 - 사용자가 별도로 요청하지 않는 한 native executable 실행 명령을 안내하지 않는다.
 - `predict_2.py` 같은 별도 추론 파일을 생성하지 않는다.

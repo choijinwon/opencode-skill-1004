@@ -67,7 +67,7 @@ Primary scripts:
 
 Generated runtime entrypoint:
 
-- `local_serving/localservingtest.py` - 4번 템플릿 변환이 프로젝트 루트에 생성
+- `inferencetest.py` - 4번 템플릿 변환이 프로젝트 루트에 생성
 
 ## Fixed 7-Step Process Map
 
@@ -77,7 +77,7 @@ Generated runtime entrypoint:
 3. 환경변수/requirements 갱신      -> 03-environment-check/check_environment.py
 4. 템플릿 변환                     -> 04-train-model/prepare_selected_model.py --model selected --execute
 5. 원격 MLflow 등록 실행           -> 04-train-model/run_training.py --execute
-6. 추론 테스트                     -> local_serving/localservingtest.py
+6. 추론 테스트                     -> inferencetest.py
 7. 오류 재실행                     -> 실패 단계 스크립트 재실행
 ```
 

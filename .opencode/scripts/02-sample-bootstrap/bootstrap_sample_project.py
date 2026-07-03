@@ -67,6 +67,7 @@ SCAFFOLD_ROOT_NAMES = {
     "saved_model",
     "requirements.txt",
     "input_example.json",
+    "inferencetest.py",
     "config.json",
     "model_config.json",
     "mlflow_config.json",
@@ -90,7 +91,7 @@ SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
     "input_example.json",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
-    "local_serving/localservingtest.py",
+    "inferencetest.py",
     "config/config.json",
 }
 SAMPLE_COPY_IGNORE_FILES = {

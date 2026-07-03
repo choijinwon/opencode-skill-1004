@@ -61,7 +61,7 @@ QA / Maintenance
 3 환경변수/requirements 갱신      -> check_environment.py
 4 템플릿 변환                     -> prepare_selected_model.py --model selected --execute
 5 원격 MLflow 등록 실행           -> run_training.py --execute
-6 추론 테스트                     -> local_serving/localservingtest.py
+6 추론 테스트                     -> inferencetest.py
 7 오류 재실행                     -> 실패 단계 스크립트 재실행
 ```
 

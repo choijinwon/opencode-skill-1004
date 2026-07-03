@@ -29,7 +29,7 @@ REQUIRED_GENERATED_PATHS = [
     "runtest_2.py",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
-    "local_serving/localservingtest.py",
+    "inferencetest.py",
     "config/config.json",
     "input_example.json",
     "requirements.txt",
@@ -258,7 +258,7 @@ def main() -> int:
     assert_contains(step4.stdout, "준비 결과:", "step 4 template conversion result")
     verify_generated_files(project)
     verify_selected_model_is_preserved(project, selected_source_path)
-    results.append(StepResult(4, "템플릿 변환", "PASS", "사용자 선택 실행 및 runtest_2.py/config/input/local_serving/saved_model 검증"))
+    results.append(StepResult(4, "템플릿 변환", "PASS", "사용자 선택 실행 및 runtest_2.py/config/input/inferencetest/saved_model 검증"))
 
     # 5. 원격 MLflow 등록 실행
     if args.run_remote:
@@ -281,10 +281,10 @@ def main() -> int:
 
     # 6. 추론 테스트
     if args.run_inference and not args.skip_inference:
-        step6 = run_command([sys.executable, str(project / "local_serving" / "localservingtest.py")], project)
-        assert_contains(step6.stdout, '"status": "completed"', "step 6 inference status")
-        assert_contains(step6.stdout, "saved_model", "step 6 saved_model runtime")
-        results.append(StepResult(6, "추론 테스트", "PASS", "saved_model 기준 로컬 추론 성공"))
+        step6 = run_command([sys.executable, "inferencetest.py"], project, allow_failure=True)
+        combined = step6.stdout + step6.stderr
+        assert_contains(combined, "req_url 값을 입력", "step 6 req_url gate")
+        results.append(StepResult(6, "추론 테스트", "PASS", "inferencetest.py URL 입력 게이트 확인"))
     else:
         results.append(StepResult(6, "추론 테스트", "SKIP", "사용자가 6번 또는 --run-inference를 선택하지 않아 실행하지 않음"))
 

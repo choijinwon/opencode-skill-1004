@@ -228,7 +228,7 @@ IMPORT_REQUIREMENT_MAP = {
     "onnxruntime": "onnxruntime",
     "pandas": "pandas==2.2.3",
     "PIL": "pillow",
-    "requests": "requests",
+    "requests": "requests==2.32.4",
     "requests_oauthlib": "requests-oauthlib",
     "safetensors": "safetensors==0.5.3",
     "sklearn": "scikit-learn==1.7.0",
@@ -246,7 +246,7 @@ REQUIREMENT_SCAN_FILES = [
     "runtest_2.py",
     "aiu_custom/model.py",
     "aiu_custom/predict.py",
-    "local_serving/localservingtest.py",
+    "inferencetest.py",
 ]
 REQUIREMENT_OPERATORS = ["==", "!=", ">=", "<=", "~=", ">", "<"]
 REMOTE_MLFLOW_VERSION_ENDPOINTS = [
@@ -257,7 +257,7 @@ REMOTE_MLFLOW_TIMEOUT_SECONDS = 3
 PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
 PS_PREPARE_SELECTED_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute"
 PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
-PS_INFERENCE_COMMAND = r"python .\local_serving\localservingtest.py"
+PS_INFERENCE_COMMAND = r"python inferencetest.py"
 
 
 def windows_path_text(path: str | Path) -> str:
@@ -1260,7 +1260,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 MLflow 5개 값과 requirements.txt 필수/추가 패키지를 확인한다.",
             f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/samples/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
-            f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 local_serving/localservingtest.py 로 입력/출력 스키마를 확인한다.",
+            f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 inferencetest.py 로 원격 추론 URL을 호출한다.",
             f"7. {AI_STUDIO_PROCESS_STEPS[6]}: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
         ]
         if entrypoint is None:
