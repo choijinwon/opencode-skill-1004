@@ -1029,19 +1029,19 @@ def assignment_line(name: str, expression: str, comment: str) -> str:
 
 def converted_assignment_comment(name: str, selected_relative: str, kind: str, load_hint: str, required_package: str) -> str | None:
     if name in {"MODEL_KIND"}:
-        return f"# ai Studio 변환: 선택 모델 종류 {kind}"
+        return f"# Ai Studio 변환: 선택 모델 종류 {kind}"
     if name in {"MODEL_LOAD_HINT", "model_load_hint"}:
-        return f"# ai Studio 변환: 선택 모델 로더 {load_hint}"
+        return f"# Ai Studio 변환: 선택 모델 로더 {load_hint}"
     if name in {"REQUIRED_PACKAGE", "required_package"}:
-        return f"# ai Studio 변환: 선택 모델 필요 패키지 {required_package}"
+        return f"# Ai Studio 변환: 선택 모델 필요 패키지 {required_package}"
     if name in DATA_PREP_VARIABLE_NAMES:
-        return f"# ai Studio 변환: 선택 모델 {kind} 기준 데이터 준비 값"
+        return f"# Ai Studio 변환: 선택 모델 {kind} 기준 데이터 준비 값"
     if name in MODEL_PREP_VARIABLE_NAMES:
-        return f"# ai Studio 변환: 선택 모델 {kind} 기준 모델 준비 값"
+        return f"# Ai Studio 변환: 선택 모델 {kind} 기준 모델 준비 값"
     if name in SUMMARY_VARIABLE_NAMES:
-        return f"# ai Studio 변환: 선택 모델 {kind} 기준 요약 산출물"
+        return f"# Ai Studio 변환: 선택 모델 {kind} 기준 요약 산출물"
     if name in MODEL_RELATED_SETTING_NAMES:
-        return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 경로"
+        return f"# Ai Studio 변환: 선택 모델 {selected_relative} 기준 경로"
     return None
 
 
@@ -1061,14 +1061,14 @@ def text_contains_model_path(value: str) -> bool:
 def rewrite_model_comment(comment: str, selected_relative: str, kind: str, load_hint: str) -> str:
     if not text_contains_model_path(comment):
         if MODEL_COMMENT_HINT_PATTERN.search(comment):
-            return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
+            return f"# Ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
         return comment
     prefix = "#"
     body = comment[1:].strip() if comment.lstrip().startswith("#") else comment.strip()
     converted = MODEL_PATH_REFERENCE_PATTERN.sub(selected_relative, body)
     if converted == body:
-        return f"# ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
-    return f"{prefix} ai Studio 변환: {converted}"
+        return f"# Ai Studio 변환: 선택 모델 {selected_relative} 기준 (MODEL_KIND={kind}, loader={load_hint})"
+    return f"{prefix} Ai Studio 변환: {converted}"
 
 
 def model_path_literal_expression(token_text: str) -> str | None:
@@ -1197,7 +1197,7 @@ def rewrite_model_loader_line(line: str, kind: str, load_hint: str) -> str:
         converted_code = f"{indent}{lhs} = load_selected_model()"
     else:
         converted_code = f"{indent}load_selected_model()"
-    converted_comment = f"# ai Studio 변환: 선택 모델 종류 {kind}, 로더 {load_hint}"
+    converted_comment = f"# Ai Studio 변환: 선택 모델 종류 {kind}, 로더 {load_hint}"
     return f"{converted_code}  {converted_comment}{suffix}"
 
 
@@ -1208,7 +1208,7 @@ def rewrite_data_prep_call_line(line: str, kind: str) -> str:
     suffix = "\n" if line.endswith("\n") else ""
     indent = code[: len(code) - len(code.lstrip())]
     stripped_code = code.strip()
-    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 synthetic input_example 사용"
+    converted_comment = f"# Ai Studio 변환: 선택 모델 {kind} 기준 synthetic input_example 사용"
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
         name = lhs.split(",", 1)[0].strip()
@@ -1231,14 +1231,14 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
 
     if MODEL_TRAIN_CALL_PATTERN.search(code):
         return (
-            f"{indent}# ai Studio 변환: 선택 모델 {kind}은 이미 학습된 모델을 로드하므로 원본 학습 호출을 실행하지 않습니다.{suffix}"
+            f"{indent}# Ai Studio 변환: 선택 모델 {kind}은 이미 학습된 모델을 로드하므로 원본 학습 호출을 실행하지 않습니다.{suffix}"
             f"{indent}# {stripped_code}{suffix}"
         )
 
     if not MODEL_PREP_CALL_PATTERN.search(code):
         return line
 
-    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용"
+    converted_comment = f"# Ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용"
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
         first_name = lhs.split(",", 1)[0].strip()
@@ -1246,7 +1246,7 @@ def rewrite_model_prep_line(line: str, kind: str) -> str:
             return line
         return f"{indent}{lhs} = load_selected_model()  {converted_comment}{suffix}"
     return (
-        f"{indent}# ai Studio 변환: 선택 모델 {kind}은 load_selected_model()으로 준비됩니다.{suffix}"
+        f"{indent}# Ai Studio 변환: 선택 모델 {kind}은 load_selected_model()으로 준비됩니다.{suffix}"
         f"{indent}# {stripped_code}{suffix}"
     )
 
@@ -1286,7 +1286,7 @@ def collapse_multiline_model_prep_calls(text: str, kind: str) -> str:
 
         output.append(
             f"{indent}{name} = load_selected_model()  "
-            f"# ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용\n"
+            f"# Ai Studio 변환: 선택 모델 {kind} 기준 load_selected_model() 사용\n"
         )
         for skipped_line in skipped:
             if skipped_line.strip():
@@ -1305,7 +1305,7 @@ def rewrite_summary_line(line: str, kind: str) -> str:
 
     suffix = "\n" if line.endswith("\n") else ""
     indent = code[: len(code) - len(code.lstrip())]
-    converted_comment = f"# ai Studio 변환: 선택 모델 {kind} 기준 요약으로 대체"
+    converted_comment = f"# Ai Studio 변환: 선택 모델 {kind} 기준 요약으로 대체"
 
     if "=" in stripped_code:
         lhs = stripped_code.split("=", 1)[0].strip()
@@ -1320,7 +1320,7 @@ def rewrite_summary_line(line: str, kind: str) -> str:
         return f"{indent}print(_aiu_model_summary())  {converted_comment}{suffix}"
 
     return (
-        f"{indent}# ai Studio 변환: 원본 summary 호출은 선택 모델 요약으로 대체합니다.{suffix}"
+        f"{indent}# Ai Studio 변환: 원본 summary 호출은 선택 모델 요약으로 대체합니다.{suffix}"
         f"{indent}_aiu_model_summary()  {converted_comment}{suffix}"
     )
 
@@ -1353,7 +1353,7 @@ def rewrite_model_import_line(line: str, required_package: str) -> str:
     indent = line[: len(line) - len(line.lstrip())]
     original = line.rstrip("\n")
     return (
-        f"{indent}# ai Studio 변환: 선택 모델 로더는 {required_package} 기준이라 {module_name} import를 비활성화합니다.{suffix}"
+        f"{indent}# Ai Studio 변환: 선택 모델 로더는 {required_package} 기준이라 {module_name} import를 비활성화합니다.{suffix}"
         f"{indent}# {original.lstrip()}{suffix}"
     )
 
@@ -1483,7 +1483,7 @@ def transform_reference_text(
             continue
 
         if not preserve_code and name in MLFLOW_SETTING_NAMES and not indent:
-            output.append(f"# ai Studio preserved original assignment; value is defined in the conversion block above.\n")
+            output.append(f"# Ai Studio preserved original assignment; value is defined in the conversion block above.\n")
             output.append(f"# {line.rstrip()}\n")
             continue
         if not preserve_code and name in MLFLOW_SETTING_NAMES:
@@ -1537,7 +1537,7 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
     )
     return f'''
 
-# --- ai Studio selected model conversion ---
+# --- Ai Studio selected model conversion ---
 # 선택된 모델을 먼저 판별하고, 원본 모델 경로를 직접 읽도록 변환합니다.
 # MODEL_KIND에 맞는 load_selected_model()을 생성해 워크스페이스 템플릿 코드를 선택 모델 기준으로 갱신합니다.
 # 이 블록은 자동 변환되지만 아래 원본 runtest.py 구조와 주석은 최대한 유지합니다.
@@ -1626,7 +1626,7 @@ def _aiu_print_existing_model_tod():
     print({todo_guide_text!r})
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
-# --- /ai Studio selected model conversion ---
+# --- /Ai Studio selected model conversion ---
 
 '''
 
@@ -1828,7 +1828,7 @@ def selected_model_input_example_block(kind: str) -> str:
     payload = selected_model_input_example_payload(kind)
     return f'''
 def selected_model_input_example():
-    # ai Studio 변환: 선택 모델 종류에 맞는 배포용 synthetic input_example입니다.
+    # Ai Studio 변환: 선택 모델 종류에 맞는 배포용 synthetic input_example입니다.
     return {payload}
 
 
@@ -2873,7 +2873,7 @@ MODEL_KIND = _model_kind()
 ai_REQUIRED_PACKAGE = str(_config_model().get("required_package") or "{required_package}")
 ai_LOAD_HINT = str(_config_model().get("load_hint") or "{load_hint}")
 
-# ai Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
+# Ai Studio 변환: model.py에는 선택 모델 경로 설정을 직접 쓰지 않습니다.
 # 모델 위치와 종류는 선택 모델 정보에서 읽습니다.
 # MODEL_KIND={kind}, loader={load_hint}
 

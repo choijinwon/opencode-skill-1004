@@ -1,4 +1,4 @@
-"""Fixed AI Studio process contract.
+"""Fixed Ai Studio process contract.
 
 Do not rename, reorder, add, or remove steps without also updating the
 official process image and all user-facing documentation.
@@ -15,10 +15,10 @@ AI_STUDIO_PROCESS_STEPS = (
 )
 
 if len(AI_STUDIO_PROCESS_STEPS) != 7:
-    raise RuntimeError("AI Studio process must stay exactly 7 steps")
+    raise RuntimeError("Ai Studio process must stay exactly 7 steps")
 
 TODO_GUIDE_BORDER = "=" * 60
-TODO_GUIDE_TITLE = "AI Studio TODO Guide - 7단계"
+TODO_GUIDE_TITLE = "Ai Studio - 7단계"
 TODO_GUIDE_HINT = "숫자키로 단계 실행 가능 / 모델 목록 화면에서는 숫자=모델 번호"
 ANSI_YELLOW_BOLD = "\033[1;33m"
 ANSI_RESET = "\033[0m"

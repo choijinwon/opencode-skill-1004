@@ -241,7 +241,7 @@ def main() -> int:
         project,
         allow_failure=True,
     )
-    assert_contains(step3.stdout, "AI Studio TODO Guide - 7단계", "step 3 TODO guide")
+    assert_contains(step3.stdout, "Ai Studio - 7단계", "step 3 TODO guide")
     assert_contains(step3.stdout, "[3] 환경 검증", "step 3 status")
     assert_contains(step3.stdout, "4번 템플릿 변환은 사용자가 선택", "step 4 manual template execution")
     assert_contains(step3.stdout, f"path: {selected_source_path}", "step 3 selected model preservation")

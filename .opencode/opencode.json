@@ -3,7 +3,7 @@
   "default_agent": "aistudio",
   "agent": {
     "aistudio": {
-      "description": "ai Studio 모드: guide, workspace analysis, and build actions",
+      "description": "Ai Studio 모드: guide, workspace analysis, and build actions",
       "mode": "primary"
     }
   },

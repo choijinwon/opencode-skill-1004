@@ -1,4 +1,4 @@
-# ai Studio Skill Table
+# Ai Studio Skill Table
 
 ## 1. 스킬 문서 요약
 

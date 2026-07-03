@@ -1,7 +1,7 @@
 # Launch Guide
 
 ```text
-AI Studio TODO Guide - 7단계
+Ai Studio - 7단계
 
 1. 먼저 워크스페이스를 분석합니다.
    model_found: true | false

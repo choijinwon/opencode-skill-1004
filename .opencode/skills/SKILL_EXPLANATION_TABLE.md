@@ -1,4 +1,4 @@
-# ai Studio Skill Explanation Table
+# Ai Studio Skill Explanation Table
 
 ## 1. 스킬 문서 설명
 

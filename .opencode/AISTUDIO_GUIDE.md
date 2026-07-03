@@ -1,7 +1,7 @@
-# AI Studio TODO Guide
+# Ai Studio
 
 ```text
-AI Studio TODO Guide - 7단계
+Ai Studio - 7단계
 
 1. 먼저 워크스페이스를 분석합니다.
    model_found: true | false
@@ -23,7 +23,7 @@ AI Studio TODO Guide - 7단계
    data/ 원본에는 생성하지 않습니다.
 
 3. 모델 없음
-   ai Studio에서 샘플 선택: 1 sklearn / 2 pytorch / 3 tensorflow
+   Ai Studio에서 샘플 선택: 1 sklearn / 2 pytorch / 3 tensorflow
    숫자 키 1/2/3을 누르면 해당 샘플을 바로 선택합니다.
    자연어로 "sklearn 샘플", "파이토치 샘플", "tensorflow 샘플"처럼 요청해도 됩니다.
 ```

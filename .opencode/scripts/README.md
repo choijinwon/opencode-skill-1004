@@ -77,7 +77,7 @@ QA / Maintenance
 여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 현재 선택 모델 하나만 기준으로 수행한다.
 `runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
 
-기존 모델 흐름에서 `runtest_2.py`가 있으면 ai Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
+기존 모델 흐름에서 `runtest_2.py`가 있으면 Ai Studio 빌드 모드 숫자 입력은 TODO 단계로 처리한다.
 
 ```text
 1 -> python .opencode/scripts/launch_workspace_summary.py .
@@ -145,7 +145,7 @@ python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .
 
 ### doctor.py
 
-ai Studio/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
+Ai Studio/빌드/skills/sample/env 상태를 한 화면에서 점검한다. 주니어 QA나 폐쇄망 Windows에서 먼저 실행하기 좋다.
 
 ```text
 python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .
@@ -162,7 +162,7 @@ python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model
 3. requirements.txt 패키지 설치/버전 상태
 4. model_artifact_paths와 MODEL_KIND
 5. 실행 파일 확정
-6. ai Studio 코드 적합성
+6. Ai Studio 코드 적합성
 7. `.env` MLflow 5개 값과 requirements.txt 상태
 ```
 
@@ -214,7 +214,7 @@ generated_entrypoint: runtest_2.py
 
 ### adapt_ai_studio.py
 
-사용자가 가져온 임의 Python 실행 파일을 ai Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
+사용자가 가져온 임의 Python 실행 파일을 Ai Studio/MLflow 연결 형식에 맞게 보강한다. 기본은 dry-run이며, `--execute`를 붙인 경우에만 실제 파일을 수정한다.
 실행 파일을 찾지 못하면 자동 생성하지 않는다. 사용자가 실제 학습/모델 생성 Python 파일을 프로젝트에 직접 넣고 `--entrypoint <file>`로 지정해야 한다.
 파일 후보가 여러 개일 때도 추측하지 않고 사용자가 직접 지정한다.
 

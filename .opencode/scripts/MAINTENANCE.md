@@ -5,8 +5,8 @@
 ## Design Rule
 
 ```text
-ai Studio 모드  -> 읽기/분석/안내만 수행
-ai Studio 빌드 모드   -> 복사/수정/설치/실행 가능
+Ai Studio 모드  -> 읽기/분석/안내만 수행
+Ai Studio 빌드 모드   -> 복사/수정/설치/실행 가능
 scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 ```
 
@@ -75,7 +75,7 @@ QA / Maintenance
 - `requirements.txt` 기준 pip 패키지 설치/버전 상태를 요약합니다.
 - 선택 모델 변환은 고정 파일 목록만을 전제로 설명하지 말고, 복사된 템플릿 폴더 내부에서 실제 존재하는 파일과 선택 모델 실행/등록에 필요한 연결부를 기준으로 설명합니다.
 - 실행 파일 후보를 확정하거나 사용자 입력 필요 상태를 표시합니다.
-- 실행 파일이 ai Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
+- 실행 파일이 Ai Studio/MLflow 규격에 맞게 수정이 필요한지 확인합니다.
 - 샘플 규격 폴더/파일 누락을 찾습니다.
 - `.env`의 MLflow 5개 값을 확인합니다.
 - 산출물 후보를 확인합니다.
@@ -106,7 +106,7 @@ SETTING_ALIASES            사용자가 다르게 쓴 설정명 허용 목록
 - 사용자가 가져온 `run.py`, `train.py`, `main.py` 등 임의 실행 파일을 분석합니다.
 - 프레임워크 후보를 추정합니다.
 - dry-run에서 수정 계획만 출력합니다.
-- `--execute`일 때만 entrypoint를 백업하고 ai Studio/MLflow adapter block을 삽입합니다.
+- `--execute`일 때만 entrypoint를 백업하고 Ai Studio/MLflow adapter block을 삽입합니다.
 - 부족한 scaffold 파일을 새로 만듭니다.
 
 주요 수정 위치:
@@ -116,7 +116,7 @@ FRAMEWORK_RULES             프레임워크 추정 규칙
 REQUIREMENT_BY_FRAMEWORK    프레임워크별 최소 requirements
 requirements.required.txt   생성 requirements.txt의 필수 패키지 기준
 ENTRYPOINT_HINTS            실행 파일 후보
-adapter_block()             entrypoint에 삽입할 ai Studio/MLflow helper
+adapter_block()             entrypoint에 삽입할 Ai Studio/MLflow helper
 model_wrapper_template()    aiu_custom/predict.py 템플릿
 local_serving_template()    local_serving/serve.py 템플릿
 adapt_entrypoint()          백업 생성과 adapter block 삽입
@@ -128,7 +128,7 @@ adapt_entrypoint()          백업 생성과 adapter block 삽입
 - 실행 파일을 찾지 못하면 새 실행 파일을 만들지 않습니다. 사용자가 실제 파일을 직접 넣고 `--entrypoint <file>`로 지정해야 합니다.
 - entrypoint 수정 전 `<file>.ai_studio.bak` 백업을 만듭니다.
 - 기존 adapter block이 있으면 `--force` 없이는 다시 쓰지 않습니다.
-- 모델별 학습/추론 로직은 자동으로 해석하지 않습니다. adapter block과 wrapper TODO를 넣어 ai Studio 연결부를 보강합니다.
+- 모델별 학습/추론 로직은 자동으로 해석하지 않습니다. adapter block과 wrapper TODO를 넣어 Ai Studio 연결부를 보강합니다.
 - secret 값은 생성하지 않습니다. 사용자가 소스의 설정 블록에 직접 입력합니다.
 
 ## validate_mlflow_project.py
@@ -223,7 +223,7 @@ REQUIREMENT_OPERATORS      자동 비교할 버전 연산자
 - entrypoint 후보를 찾습니다.
 - 실행 전 체크리스트를 만듭니다.
 - `--execute`가 있을 때만 실제 학습/모델 생성 명령을 실행합니다.
-- 실행 후 모델 산출물과 ai Studio 산출물 여부를 확인합니다.
+- 실행 후 모델 산출물과 Ai Studio 산출물 여부를 확인합니다.
 
 주요 수정 위치:
 
@@ -231,7 +231,7 @@ REQUIREMENT_OPERATORS      자동 비교할 버전 연산자
 ENTRYPOINTS                실행 파일 후보
 REQUIRED_DIRS              실행 전 확인할 샘플 폴더
 ARTIFACT_DIRS              산출물 폴더 후보
-MLFLOW_OUTPUT_DIRS         MLflow/ai Studio 출력 폴더 후보
+MLFLOW_OUTPUT_DIRS         MLflow/Ai Studio 출력 폴더 후보
 AI_STUDIO_ENV_KEYS         실행 전 필요한 설정 키
 MODEL_SETTING_FILES        설정 파일 후보
 ```

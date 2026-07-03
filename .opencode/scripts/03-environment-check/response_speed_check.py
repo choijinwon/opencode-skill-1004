@@ -311,8 +311,8 @@ def render_text(project: Path, findings: list[Finding]) -> None:
     print("Recommended fast path:")
     print("1. python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .")
     print("2. Restart/Open OpenCode after ignore files are applied.")
-    print("3. In ai Studio 모드, answer with model_found + one next action only.")
-    print("4. In ai Studio 빌드 모드, run scripts directly instead of re-scanning the full tree.")
+    print("3. In Ai Studio 모드, answer with model_found + one next action only.")
+    print("4. In Ai Studio 빌드 모드, run scripts directly instead of re-scanning the full tree.")
     if has_warn_or_fail:
         print("")
         print("TODO:")

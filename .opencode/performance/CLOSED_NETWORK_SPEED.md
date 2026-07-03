@@ -14,12 +14,12 @@ python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .
 ## Fast Operating Rule
 
 ```text
-ai Studio 모드:
-  1. AI Studio TODO Guide 출력
+Ai Studio 모드:
+  1. Ai Studio 출력
   2. workspace 분석
   3. model_found 결과와 다음 1개 행동만 안내
 
-ai Studio 빌드 모드:
+Ai Studio 빌드 모드:
   1. 필요한 스크립트만 직접 실행
   2. 전체 폴더 재스캔 반복 금지
   3. 샘플/모델 산출물은 ignore 대상 폴더에 유지
