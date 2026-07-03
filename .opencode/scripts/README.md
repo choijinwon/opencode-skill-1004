@@ -76,7 +76,8 @@ QA / Maintenance
 모델 목록이 표시되면 맨 처음에 `사용자는 숫자 예시 1번부터 선택합니다`를 강조해서 보여준다.
 자연어로도 선택할 수 있다. 예: `첫 번째 모델`, `파이토치 모델`, `data/... 사용`.
 모델 선택 명령에서 `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>`를 실행하면 그 모델을 새 선택값으로 반영한다.
-이후 `--model` 없이 진행하는 단계는 저장된 선택 모델을 재사용하고, 나머지 단계도 같은 모델 기준으로 진행한다.
+이후 단계는 저장된 선택 모델을 재사용하고, 4번 템플릿 변환은 반드시 `--model selected`로 실행한다.
+이미 선택된 모델이 있을 때 `prepare_selected_model.py --model <다른번호> --execute`가 들어오면 모델을 바꾸지 않고 2번 선택 스크립트로 다시 선택하도록 차단한다.
 여러 모델이 있어도 `runtest_2.py`, `aiu_custom/`, `local_serving/`, `config/`, `input_example.json` 변환은 현재 선택 모델 하나만 기준으로 수행한다.
 `runtest_2.py` 안의 모델 경로는 변환 결과물일 뿐 선택 기준으로 사용하지 않는다.
 

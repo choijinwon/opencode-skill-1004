@@ -91,8 +91,8 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_saved_model": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
-ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "data", "metrics", "tracking"}
-ai_STUDIO_COPY_IGNORE_FILES = {"runtest.py", "runtest_2.py", "requirements.txt"}
+ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
+ai_STUDIO_COPY_IGNORE_FILES = {"runtest.py", "runtest_2.py", "requirements.txt", "input_example.json"}
 FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
     "PROJECT_DIR = Path(__file__).resolve().parent",
     "SOURCE_MODEL_PATH",
@@ -569,8 +569,8 @@ def training_code_run_hint(project: Path, training_code_paths: list[str]) -> str
     python_entrypoints = [path for path in training_code_paths if Path(path).suffix.lower() == ".py"]
     if python_entrypoints:
         return (
-            "실행 예: python .opencode/scripts/04-train-model/run_training.py --project "
-            f"{powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(python_entrypoints[0]))} --execute"
+            "실행 예: python .opencode/scripts/04-train-model/run_training.py --project . "
+            f"--entrypoint {powershell_quote_path(Path(python_entrypoints[0]))} --execute"
         )
     return "노트북 학습 코드는 먼저 .py entrypoint로 변환한 뒤 run_training.py --entrypoint <파일.py>로 실행하세요."
 
@@ -3529,7 +3529,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터로 판단합니다. Python 실행파일을 모델 생성/등록 entrypoint로 사용하세요.")
             report.next_steps.append(f"감지된 CSV 데이터: {', '.join(data_paths[:5])}")
             report.next_steps.append(f"감지된 Python 실행파일: {', '.join(entrypoint_paths[:5])}")
-            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         elif data_files:
             report.failures.append("csv_data_without_model_entrypoint")
             report.next_steps.append("CSV 파일은 모델이 아니라 데이터입니다. 모델을 생성/로드/등록하는 Python 실행파일을 프로젝트 루트에 넣어주세요.")
@@ -3537,7 +3537,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         elif entrypoints:
             report.failures.append("entrypoint_without_model_artifact")
             report.next_steps.append("모델 artifact는 없지만 Python 실행파일이 있습니다. 해당 파일이 모델 생성/등록 entrypoint인지 확인해 실행하세요.")
-            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project {powershell_quote_path(project)} --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
+            report.next_steps.append(f"실행 예: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint {powershell_quote_path(Path(entrypoint_paths[0]))} --execute")
         else:
             report.failures.append("model_artifact_paths_empty")
             report.next_steps.append("현재 프로젝트 루트 바로 아래 또는 data/** 아래에 .pkl, .joblib, .pt, .pth, .onnx, .keras, .h5, .safetensors, .bst, .ubj 모델 파일을 넣어주세요.")
@@ -3546,7 +3546,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         if models:
             report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
-                r"2번 모델 선택 실행: python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model <번호|경로>"
+                r"2번 모델 선택 실행: python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
@@ -3560,6 +3560,28 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if not args.model and current_selected is not None and selected_model is not None and current_selected.resolve() == selected_model.resolve():
         report.warnings.append(f"selected_model_reused_automatically:{rel(selected_model, project)}")
         report.next_steps.append(f"TODO 2는 이미 완료되어 현재 선택 모델을 자동 재사용합니다: {rel(selected_model, project)}")
+    explicit_model_selection = bool(args.model and not is_selected_model_alias(args.model) and not args.sync_runtime)
+    if (
+        explicit_model_selection
+        and not args.select_only
+        and current_selected is not None
+        and selected_model is not None
+        and current_selected.resolve() != selected_model.resolve()
+    ):
+        attempted = rel(selected_model, project)
+        report.selected_model_path = rel(current_selected, project)
+        report.model_kind = model_kind(current_selected)
+        report.locked_model_path = rel(current_selected, project)
+        report.warnings.append(f"selected_model_change_blocked:{rel(current_selected, project)}!={attempted}")
+        report.failures.append("selected_model_change_blocked_use_step2")
+        report.next_steps.append(
+            "이미 선택된 모델이 있습니다. 모델을 바꾸려면 2번 모델 선택 스크립트를 먼저 실행하세요: "
+            "python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>"
+        )
+        report.next_steps.append(
+            "4번 템플릿 변환은 처음 선택한 모델을 유지하므로 항상 --model selected로 실행합니다."
+        )
+        return report
     if (
         args.model
         and current_selected is not None
@@ -3571,7 +3593,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         )
         report.next_steps.append(f"선택 모델을 새 값으로 변경합니다: {rel(selected_model, project)}")
 
-    explicit_model_selection = bool(args.model and not is_selected_model_alias(args.model) and not args.sync_runtime)
     if args.select_only or explicit_model_selection:
         changed, skipped, failures = write_config_json(project, selected_model, selected_kind, args.execute)
         report.prepared_paths.extend(["selected_model locked"] + changed)
@@ -3793,7 +3814,10 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                     print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
         if report.model_artifact_paths:
             print("- 목록은 선택한 워크스페이스 기준 상대경로 알파벳 순서입니다.")
-            print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
+            if report.selected_model_path:
+                print("- 아래 목록은 확인용입니다. 모델 변경은 2번 모델 선택 스크립트로만 진행합니다.")
+            else:
+                print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
             print("  모델 artifact 후보:")
             for index, path in enumerate(report.model_artifact_paths, start=1):
                 marker = " <선택됨>" if normalize_path_text(path) == selected_model_path else ""

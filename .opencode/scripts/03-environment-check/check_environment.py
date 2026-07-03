@@ -1396,7 +1396,9 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
 
 
 def print_text(report: EnvironmentReport):
-    print(f"Project: {report.project_path}")
+    project_root = Path(report.project_path).resolve()
+    print("Project: .")
+    print("Scope: 선택한 워크스페이스 루트 기준")
     print(f"OS: {report.os}")
     print(f"Python: {report.python_version} ({report.python_executable})")
     print(f"Expected Python: {report.expected_python_version} ({report.python_version_status})")
@@ -1453,11 +1455,20 @@ def print_text(report: EnvironmentReport):
     for item in report.env_vars:
         print(f"- {item.name}: {item.status}")
     if report.ai_studio_env:
-        print(f"\n.env 설정 파일: {report.ai_studio_env.path}")
+        try:
+            env_display_path = Path(report.ai_studio_env.path).resolve().relative_to(project_root).as_posix()
+        except ValueError:
+            env_display_path = Path(report.ai_studio_env.path).name
+        print(f"\n.env 설정 파일: {env_display_path}")
         for item in report.ai_studio_env.key_status:
             print(f"- {item.name}: {item.status}")
     if report.source_input_required:
-        source_path = report.ai_studio_env.path if report.ai_studio_env else str(Path(report.project_path) / ".env")
+        source_path = ".env"
+        if report.ai_studio_env:
+            try:
+                source_path = Path(report.ai_studio_env.path).resolve().relative_to(project_root).as_posix()
+            except ValueError:
+                source_path = Path(report.ai_studio_env.path).name
         print(f"\n입력이 필요한 {len(report.source_input_required)}개 값:")
         print(f"- 사용자가 직접 .env에 입력: {source_path}")
         for item in report.source_input_required:
@@ -1498,6 +1509,7 @@ def package_action_items(report: EnvironmentReport) -> list[RequirementStatus]:
 
 
 def print_action_items(report: EnvironmentReport) -> None:
+    project_root = Path(report.project_path).resolve()
     package_issues = package_action_items(report)
     python_issue = report.python_version_status == "version_mismatch"
     actionable_count = len(package_issues) + (1 if python_issue else 0)
@@ -1551,7 +1563,7 @@ def print_action_items(report: EnvironmentReport) -> None:
         source_path = ".env"
         if report.ai_studio_env:
             try:
-                source_path = str(Path(report.ai_studio_env.path).resolve().relative_to(Path(report.project_path).resolve()))
+                source_path = Path(report.ai_studio_env.path).resolve().relative_to(project_root).as_posix()
             except ValueError:
                 source_path = Path(report.ai_studio_env.path).name
         print(f"- 직접 입력 필요: {source_path}")

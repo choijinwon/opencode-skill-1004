@@ -143,7 +143,7 @@ If the user says `sklearn`, `pytorch`, `tensorflow`, `샘플 생성`, `폴더째
 
 When the user types only a number, decide by the latest visible context:
 
-1. If `model_artifact_paths` or a model list was just shown, treat the number as the model list index.
+1. If `model_artifact_paths` or a model list was just shown and no model has been selected yet, treat the number as the model list index.
    The model list order is exactly the project-relative alphabetical order displayed to the user.
    Do not re-sort by framework, model kind, file extension, or any hidden internal priority.
    Do not say that the selected model changed because of an internal sorting difference.
@@ -151,12 +151,19 @@ When the user types only a number, decide by the latest visible context:
    Execute:
 
    ```text
-   python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <number> --execute
+   python .opencode/scripts/02-model-select/select_model.py --project . --model <number>
    ```
 
-   This is model selection plus preparation, not inference. It must read the existing workspace-root `runtest.py` as the reference and create/refresh only `runtest_2.py` for the selected model.
+   This is model selection only, not automatic preparation and not inference. It must keep all displayed paths relative to the selected workspace root. Do not print `C:\...` or any other absolute workspace path in the user-facing response.
 
-2. If no model list is active and the TODO Guide is active, treat the number as a TODO step.
+2. If `선택 결과`, `준비 결과`, or the TODO Guide is active, treat the number as a TODO step.
+   Do not reinterpret `4` as the fourth model after Step 2 has already selected a model.
+   Step 4 must always reuse the initially selected model with:
+
+   ```text
+   python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute
+   ```
+
    For Step 5, execute the guarded registration command so the selected model runtime is checked and re-transformed before MLflow registration:
 
    ```text

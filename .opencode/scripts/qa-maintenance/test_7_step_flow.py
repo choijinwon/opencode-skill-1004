@@ -219,10 +219,12 @@ def main() -> int:
 
     verify_process_contract()
     results: list[StepResult] = []
+    runtest_2_preexisting = (project / "runtest_2.py").exists()
 
     # 1. 모델 목록 확인
     step1 = run_command([sys.executable, str(LAUNCH_SUMMARY_SCRIPT), str(project), "--json"], project, allow_failure=True)
     assert_contains(step1.stdout, '"model_artifact_paths"', "step 1 model list")
+    model_paths = json.loads(step1.stdout).get("model_artifact_paths", [])
     results.append(StepResult(1, "모델 목록 확인", "PASS", "model_artifact_paths 출력 확인"))
 
     # 2. 모델 선택
@@ -232,6 +234,8 @@ def main() -> int:
     )
     assert_contains(step2.stdout, "선택 결과:", "step 2 selection result")
     assert_contains(step2.stdout, "완료: 선택 모델 고정", "step 2 selected model lock")
+    if str(project) in step2.stdout:
+        raise AssertionError("step 2 output must not print the absolute workspace path")
     selected_source_path = selected_model_from_prepare_output(step2.stdout)
     verify_selected_model_is_preserved(project, selected_source_path)
     results.append(StepResult(2, "모델 선택", "PASS", f"모델 {args.model} 선택 고정 성공"))
@@ -246,13 +250,38 @@ def main() -> int:
     assert_contains(step3.stdout, "[3] 환경 검증", "step 3 status")
     assert_contains(step3.stdout, "4번 템플릿 변환은 사용자가 선택", "step 4 manual template execution")
     assert_contains(step3.stdout, "로컬 자동 설치", "step 3 dependency install must be skipped")
+    if str(project) in step3.stdout:
+        raise AssertionError("step 3 output must not print the absolute workspace path")
     assert_contains(step3.stdout, f"path: {selected_source_path}", "step 3 selected model preservation")
     verify_selected_model_is_preserved(project, selected_source_path)
-    if (project / "runtest_2.py").exists():
+    if not runtest_2_preexisting and (project / "runtest_2.py").exists():
         raise AssertionError("step 3 must not create runtest_2.py; template conversion belongs to step 4")
     results.append(StepResult(3, "환경 검증", "PASS", "처음 선택 모델 유지 및 requirements 점검 출력 확인"))
 
     # 4. 템플릿 변환
+    wrong_model_index = next(
+        (
+            index
+            for index, path in enumerate(model_paths, start=1)
+            if normalized_windows_path(path) != selected_source_path
+        ),
+        None,
+    )
+    if wrong_model_index is not None:
+        wrong_step4 = run_command(
+            [sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", str(wrong_model_index), "--execute"],
+            project,
+            allow_failure=True,
+        )
+        if wrong_step4.returncode == 0:
+            raise AssertionError("step 4 must not change the selected model when another model number is passed")
+        assert_contains(
+            wrong_step4.stdout + wrong_step4.stderr,
+            "selected_model_change_blocked_use_step2",
+            "step 4 wrong model guard",
+        )
+        verify_selected_model_is_preserved(project, selected_source_path)
+
     step4 = run_command(
         [sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--model", "selected", "--execute"],
         project,

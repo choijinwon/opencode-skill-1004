@@ -19,7 +19,7 @@ if len(AI_STUDIO_PROCESS_STEPS) != 7:
 
 TODO_GUIDE_BORDER = "=" * 60
 TODO_GUIDE_TITLE = "Ai Studio - 7단계"
-TODO_GUIDE_HINT = "숫자키로 단계 실행 가능 / 모델 목록 화면에서는 숫자=모델 번호"
+TODO_GUIDE_HINT = "숫자키로 단계 실행 가능 / 모델 선택 화면에서만 숫자=모델 번호"
 ANSI_YELLOW_BOLD = "\033[1;33m"
 ANSI_RESET = "\033[0m"
 MODEL_SELECTION_HINT_LINES = (
