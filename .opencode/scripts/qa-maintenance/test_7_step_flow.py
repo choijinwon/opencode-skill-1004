@@ -19,6 +19,7 @@ from pathlib import Path
 
 OPENCODE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_ROOT = OPENCODE_ROOT / "scripts"
+LAUNCH_SUMMARY_SCRIPT = SCRIPTS_ROOT / "launch_workspace_summary.py"
 PREPARE_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "prepare_selected_model.py"
 ENV_SCRIPT = SCRIPTS_ROOT / "03-environment-check" / "check_environment.py"
 RUN_TRAINING_SCRIPT = SCRIPTS_ROOT / "04-train-model" / "run_training.py"
@@ -205,8 +206,8 @@ def main() -> int:
     results: list[StepResult] = []
 
     # 1. 모델 목록 확인
-    step1 = run_command([sys.executable, str(PREPARE_SCRIPT), "--project", str(project), "--verbose"], project, allow_failure=True)
-    assert_contains(step1.stdout, "model_artifact_paths:", "step 1 model list")
+    step1 = run_command([sys.executable, str(LAUNCH_SUMMARY_SCRIPT), str(project), "--json"], project, allow_failure=True)
+    assert_contains(step1.stdout, '"model_artifact_paths"', "step 1 model list")
     results.append(StepResult(1, "모델 목록 확인", "PASS", "model_artifact_paths 출력 확인"))
 
     # 2. 모델 선택

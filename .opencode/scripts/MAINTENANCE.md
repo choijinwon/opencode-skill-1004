@@ -28,6 +28,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 ```text
 01 Project Analyze
   01-project-analyze/validate_mlflow_project.py      상세 프로젝트 분석
+  launch_workspace_summary.py                        Windows 런치 분석 명령 호환
   04-train-model/prepare_selected_model.py           모델 목록 확인/모델 선택
 
 02 Sample Bootstrap
