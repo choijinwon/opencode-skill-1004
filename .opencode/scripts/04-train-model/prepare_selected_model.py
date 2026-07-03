@@ -899,7 +899,7 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
         "runtime_model_path": saved_model_windows_path,
         "saved_model_url": saved_model_linux_path,
         "saved_model_path": saved_model_windows_path,
-        "source_url": windows_url,
+        "source_url": linux_path,
         "source_path": windows_url,
         "linux_path": linux_path,
         "linux_saved_model_path": saved_model_linux_path,
@@ -2057,7 +2057,13 @@ def constant_free_loader_text(kind: str) -> str:
 '''
 
 
-def reference_style_input_example_code(kind: str, input_example: dict, saved_model_path: str, source_model_path: str) -> str:
+def reference_style_input_example_code(
+    kind: str,
+    input_example: dict,
+    saved_model_url: str,
+    saved_model_path: str,
+    source_model_path: str,
+) -> str:
     if kind in {"pytorch", "safetensors"}:
         return f'''sample_shape = [1, 1, 28, 28]
 sample_data = [0.0] * 784
@@ -2072,7 +2078,7 @@ request_input_example = {{
         }}
     ],
     "model_kind": model_kind,
-    "url": {saved_model_path!r},
+    "url": {saved_model_url!r},
     "path": {saved_model_path!r},
     "model_path": {saved_model_path!r},
     "source_path": {source_model_path!r},
@@ -2132,6 +2138,7 @@ def generated_constant_free_runtest_text(project: Path, selected_model: Path, ki
     input_example_code = reference_style_input_example_code(
         kind,
         input_example,
+        saved_model_linux_relative,
         saved_model_windows_relative,
         selected_windows_relative,
     ).rstrip()
