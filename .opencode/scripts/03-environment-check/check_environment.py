@@ -917,6 +917,15 @@ def setting_env_file(project: Path) -> Path:
     return project / ".env"
 
 
+def ensure_setting_env_file(project: Path) -> Path:
+    path = project / ".env"
+    if path.exists():
+        return path
+    content = "\n".join(f'{key}=""' for key in AI_STUDIO_ENV_KEYS) + "\n"
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
 def usable_setting_value(value: str | None) -> str | None:
     if value is None or value == "" or todo_placeholder(value):
         return None
@@ -1226,6 +1235,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
     python_version = platform.python_version()
     selected_path, selected_kind, selected_required_package, selected_package_status = selected_model_status(project)
     env_vars = [EnvVarStatus(key, env_status(key)) for key in ENV_KEYS]
+    ensure_setting_env_file(project)
     ai_env = ai_studio_env_status(project)
     model_settings = model_settings_status(project, entrypoint_name)
     export_ready = export_ready_status(project, entrypoint_name)

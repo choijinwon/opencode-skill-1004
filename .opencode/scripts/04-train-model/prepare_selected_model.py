@@ -92,7 +92,7 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_saved_model": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
-ai_STUDIO_COPY_IGNORE_FILES = {"runtest.py", "runtest_2.py", "requirements.txt", "input_example.json"}
+ai_STUDIO_COPY_IGNORE_FILES = {".env", "runtest.py", "runtest_2.py", "requirements.txt", "input_example.json"}
 FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
     "PROJECT_DIR = Path(__file__).resolve().parent",
     "SOURCE_MODEL_PATH",
@@ -887,18 +887,18 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
     linux_path = rel(selected_model, project)
     windows_url = windows_relative_path(selected_model, project)
     saved_model_linux_path = f"saved_model/{selected_model.name}"
-    saved_model_windows_url = saved_model_linux_path.replace("/", "\\")
+    saved_model_windows_path = saved_model_linux_path.replace("/", "\\")
     return {
         "model_name": selected_model.name,
         "selected_model_name": selected_model_display_name(project, selected_model),
         "model_suffix": selected_model.suffix.lower(),
         "model_kind": kind,
-        "url": saved_model_windows_url,
-        "path": saved_model_windows_url,
-        "model_relative_path": saved_model_windows_url,
-        "runtime_model_path": saved_model_windows_url,
-        "saved_model_url": saved_model_windows_url,
-        "saved_model_path": saved_model_windows_url,
+        "url": saved_model_linux_path,
+        "path": saved_model_windows_path,
+        "model_relative_path": saved_model_windows_path,
+        "runtime_model_path": saved_model_windows_path,
+        "saved_model_url": saved_model_linux_path,
+        "saved_model_path": saved_model_windows_path,
         "source_url": windows_url,
         "source_path": windows_url,
         "linux_path": linux_path,
@@ -1937,8 +1937,9 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
         payload = {"inputs": []}
     payload["model_kind"] = kind
     selected_windows_path = windows_relative_path(selected_model, project)
+    saved_model_linux_path = f"saved_model/{selected_model.name}"
     saved_model_windows_path = f"saved_model\\{selected_model.name}"
-    payload["url"] = saved_model_windows_path
+    payload["url"] = saved_model_linux_path
     payload["path"] = saved_model_windows_path
     payload["model_path"] = payload["path"]
     payload["source_path"] = selected_windows_path
@@ -1960,7 +1961,7 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
             "datatype": first_input.get("datatype"),
         },
         "model_kind": kind,
-        "url": f"saved_model\\{selected_model.name}",
+        "url": f"saved_model/{selected_model.name}",
         "path": f"saved_model\\{selected_model.name}",
         "model_path": f"saved_model\\{selected_model.name}",
         "source_path": windows_relative_path(selected_model, project),
@@ -2252,6 +2253,13 @@ def mlflow_artifact_uri(path):
     return os.path.normpath(relative_path)
 
 
+def mlflow_config_artifact_uri(path):
+    # config uri는 MLflow/KServe 서버 해석과 문서 기준을 맞추기 위해 POSIX 상대경로를 사용합니다.
+    absolute_path = normalize_local_path(path)
+    relative_path = os.path.relpath(absolute_path, project_dir)
+    return relative_path.replace(chr(92), "/")
+
+
 def handle_mlflow_connection_error(exc):
     message = str(exc)
     if "sqlite3.OperationalError" in message and "disk I/O error" in message:
@@ -2335,7 +2343,7 @@ os.makedirs(config_dir_path, exist_ok=True)
 config_path = workspace_path(config_dir, "config.json")
 
 params = {config_literal}
-params["model"]["url"] = {saved_model_windows_relative!r}
+params["model"]["url"] = {saved_model_linux_relative!r}
 params["model"]["path"] = {saved_model_windows_relative!r}
 params["model"]["runtime_model_path"] = {saved_model_windows_relative!r}
 params["model"]["model_relative_path"] = {saved_model_windows_relative!r}
@@ -2423,7 +2431,7 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         {{
             "model_name": params["model"]["model_name"],
             "model_kind": model_kind,
-            "model_url": {saved_model_windows_relative!r},
+            "model_url": {saved_model_linux_relative!r},
             "model_path": {saved_model_windows_relative!r},
         }}
     )
@@ -2454,7 +2462,7 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         "code_paths": [aiu_custom_path],
         "artifacts": {{
             "model": mlflow_artifact_uri(model_path),
-            "config": mlflow_artifact_uri(config_path),
+            "config": mlflow_config_artifact_uri(config_path),
         }},
         "input_example": mlflow_input_example,
         "pip_requirements": "requirements.txt",
@@ -3442,7 +3450,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             if normalize_path_text(str(config_source_path or "")) != normalize_path_text(selected_relative):
                 failures.append(f"selected_model_config_source_path_mismatch:{config_source_path}->{selected_relative}")
             config_url = model_config.get("url")
-            expected_url = saved_model_relative.replace("/", "\\")
+            expected_url = saved_model_relative
             if config_url != expected_url:
                 failures.append(f"selected_model_config_url_mismatch:{config_url}->{expected_url}")
             if config_kind != kind:

@@ -11,7 +11,7 @@
 모델 선택 명령은 1~2번에서 선택 모델을 확정한다. 3번 환경검증은 환경변수/requirements만 처리하고 템플릿을 복사하지 않는다. 4번 템플릿 생성/변환은 사용자가 선택했을 때만 실행한다. `--sync-runtime`은 이미 생성된 `runtest_2.py` 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
 기존 `runtest.py`는 수정하지 않는다.
 선택 모델에 맞는 실행/등록 파일은 `runtest_2.py`로만 변환 생성한다.
-Windows에서 MLflow에 업로드할 원본 `uri`는 Windows native 경로를 유지한다. 예: `saved_model\cnn_model.pt`, `config\config.json`.
+Windows에서 MLflow에 업로드할 모델 원본 `path`는 Windows native 상대경로를 유지한다. 예: `saved_model\cnn_model.pt`. 모델 `url`과 config artifact `uri`는 KServe/서버 해석 기준과 맞추기 위해 `saved_model/cnn_model.pt`, `config/config.json` 형식으로 기록한다.
 KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 만든 `path: artifacts/...`이며, `aiu_custom/model.py`는 `context.artifacts`를 통해 이 Linux 경로를 읽는다.
 
 스킬 목록 기준 스크립트 정리는 `.opencode/scripts/SCRIPT_INDEX.md`를 먼저 본다.
@@ -114,7 +114,7 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
 `1~2`는 모델 목록 확인 -> 모델 선택 흐름이다. `3`은 환경 검증이며, 템플릿을 복사하지 않는다. `4` 템플릿 생성/변환은 사용자가 선택했을 때 실행되며, `input_example.json`, `config/config.json`도 선택 모델 기준으로 준비한다. 템플릿 복사에서는 `data/`와 `requirements.txt`를 복사하지 않는다.
 필수 패키지 기준은 `03-environment-check/requirements.required.txt`에서 관리한다.
 
-`3`은 모델 환경변수와 패키지 상태 체크다. 워크스페이스 루트에 `requirements.txt`가 없으면 필수 5개 기준으로 생성하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
+`3`은 모델 환경변수와 패키지 상태 체크다. 워크스페이스 루트에 `requirements.txt`가 없으면 필수 5개 기준으로 생성하고, 변환된 코드 import 기준 추가 Python 패키지가 필요하면 `requirements.txt`를 업데이트한다. 이때도 필수 패키지 5개는 절대 제거하지 않는다. 워크스페이스 루트에 `.env`가 없으면 MLflow 5개 키만 `""` 값으로 생성하고, 이미 있으면 복사하거나 덮어쓰지 않는다. MLflow 설정은 현재 워크스페이스 루트의 `.env` 5개 값을 `set`, `empty`, `missing` 상태로만 표시한다. secret 값은 출력하지 않는다.
 
 패키지 설치 기준:
 
@@ -375,7 +375,7 @@ mlflow_register_model_name -> MLFLOW_REGISTER_MODEL_NAME
 ```
 
 원격 배포 기본값은 `mlflow_tracking_uri = ""`이다. 자동 tracking URI나 로컬 테스트용 URI를 넣지 않으므로 사용자가 직접 원격 MLflow/리포트 URI를 입력해야 한다. MLflow artifact는 `artifact_path="ai_studio"` 아래 `ai_studio/code` 구조로 기록하고, 확인용 산출물은 `ai_studio/metrics/`, `ai_studio/code/`에 생성한다.
-Windows 워크스페이스 기준으로 준비/등록을 실행하며, MLflow에 전달하는 `code_paths`는 `aiu_custom`, artifact uri는 `saved_model\...`, `config\config.json` 같은 Windows 상대경로를 사용한다. KServe에 올라간 뒤에는 MLflow가 넘겨주는 Linux 컨테이너 내부 `context.artifacts["model"]`, `context.artifacts["config"]` 경로를 최우선으로 사용한다. Windows 로컬 절대경로는 KServe 런타임 경로로 사용하지 않는다.
+Windows 워크스페이스 기준으로 준비/등록을 실행하며, MLflow에 전달하는 `code_paths`는 `aiu_custom`, 모델 artifact uri는 `saved_model\...`, config artifact uri는 `config/config.json` 같은 상대경로를 사용한다. KServe에 올라간 뒤에는 MLflow가 넘겨주는 Linux 컨테이너 내부 `context.artifacts["model"]`, `context.artifacts["config"]` 경로를 최우선으로 사용한다. Windows 로컬 절대경로는 KServe 런타임 경로로 사용하지 않는다.
 
 PyTorch 샘플 기본값은 `mlflow_experiment_name=pytorch_sample`, `mlflow_register_model_name=pytorch_sample_model`이다.
 `mlflow_tracking_password` 값은 출력하지 않는다.
