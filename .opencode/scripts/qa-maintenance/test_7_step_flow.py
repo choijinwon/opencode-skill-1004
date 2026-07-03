@@ -34,6 +34,11 @@ REQUIRED_GENERATED_PATHS = [
     "input_example.json",
     "requirements.txt",
 ]
+FORBIDDEN_GENERATED_PATHS = [
+    "predict_2.py",
+    "aiu_custom/predict_2.py",
+    "local_serving/predict_2.py",
+]
 
 
 @dataclass
@@ -141,6 +146,10 @@ def verify_process_contract() -> None:
 
 
 def verify_generated_files(project: Path) -> None:
+    forbidden = [path for path in FORBIDDEN_GENERATED_PATHS if (project / path).exists()]
+    if forbidden:
+        raise AssertionError("forbidden generated files found: " + ", ".join(forbidden))
+
     missing = [path for path in REQUIRED_GENERATED_PATHS if not (project / path).exists()]
     saved_model_dir = project / "saved_model"
     if not saved_model_dir.is_dir() or not any(saved_model_dir.iterdir()):

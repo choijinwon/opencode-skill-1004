@@ -43,6 +43,7 @@ metadata:
 4. localservingtest.py의 load_selected_model()과 predict contract를 확인한다.
 5. Windows native load는 보조 확인으로만 둔다.
 6. 결과가 JSON serializable인지 확인한다.
+7. predict_2.py는 생성하지 않는다. 추론 테스트는 local_serving/localservingtest.py를 사용한다.
 ```
 
 ## Output Contract
@@ -158,5 +159,6 @@ serving/test script
 - 추론 결과가 길면 schema 중심으로 요약한다.
 - 외부 LLM endpoint 호출이 필요한 경우 endpoint와 인증 설정 존재 여부를 먼저 확인한다.
 - 사용자가 별도로 요청하지 않는 한 native executable 실행 명령을 안내하지 않는다.
+- `predict_2.py` 같은 별도 추론 파일을 생성하지 않는다.
 
 </details>
