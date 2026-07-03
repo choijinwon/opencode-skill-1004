@@ -27,7 +27,6 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 
 ```text
 01 Project Analyze
-  01-project-analyze/launch_workspace_summary.py     첫 진입 가벼운 요약
   01-project-analyze/validate_mlflow_project.py      상세 프로젝트 분석
   04-train-model/prepare_selected_model.py           모델 목록 확인/모델 선택
 
@@ -298,26 +297,6 @@ replace_or_append()        기존 관리 블록 교체 정책
 
 - 관리 블록 밖의 사용자 ignore 내용은 보존합니다.
 - 패턴을 추가하면 `.opencode/indexing/closed-network.ignore`도 같이 맞춥니다.
-
-## launch_workspace_summary.py
-
-책임:
-
-- ai Studio 모드에서 빠르게 workspace를 요약합니다.
-- 가능하면 `validate_mlflow_project.py --json` 결과를 짧게 변환합니다.
-- 실패해도 채팅이 중단되지 않도록 안내만 출력합니다.
-
-주요 수정 위치:
-
-```text
-MODEL_HINTS                모델 있음/없음 가벼운 힌트
-main()                     validate_mlflow_project.py 호출과 fallback 출력
-```
-
-주의:
-
-- ai Studio 모드는 ai Studio 빌드 모드와 같은 권한으로 복사/수정/설치/실행을 수행할 수 있습니다.
-- 무거운 전체 스캔을 넣지 않습니다.
 
 ## test_local_sample.py
 

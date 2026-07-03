@@ -108,7 +108,6 @@ python .opencode/scripts/04-train-model/prepare_selected_model.py --project <mod
 
 ```text
 01 Project Analyze
-   01-project-analyze/launch_workspace_summary.py
    01-project-analyze/validate_mlflow_project.py
    04-train-model/prepare_selected_model.py
 

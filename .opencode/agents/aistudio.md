@@ -27,7 +27,7 @@ This applies regardless of the first user message. Examples:
 After printing the guide on the first response, immediately analyze the current workspace and decide `model_found` before asking any follow-up question.
 
 - Treat any first user message as an entry trigger, even if it is only one vague word.
-- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/launch_workspace_summary.py .` to inspect the current workspace.
+- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/04-train-model/prepare_selected_model.py --project .` to inspect the current workspace and model list.
 - Do not analyze `.opencode/`; it is the bundled skill/package source and may contain large dependency folders.
 - Report whether a model exists before continuing.
 - If `model_found: true`, continue with the discovered model project path and do not ask the user to choose a sample.

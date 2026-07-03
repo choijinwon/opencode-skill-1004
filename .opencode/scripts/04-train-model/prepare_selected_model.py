@@ -3672,7 +3672,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 f"선택 모델 유지: {rel(selected_model, project)}",
                 "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
                 "python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py",
-                "환경 체크 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
+                "3번 환경변수/requirements 갱신 완료 후 5번 원격 MLflow 등록 실행을 진행하세요.",
                 "python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute",
                 "6번 추론 테스트는 자동 실행하지 않습니다. 사용자가 6번을 선택했을 때만 진행합니다.",
             ]
@@ -3793,8 +3793,8 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
             else:
                 print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
         elif report.selected_model_path:
-            print("- 4번 환경 체크: python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py")
-            print("- 5번 원격 MLflow 등록: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
+            print("- 3번 환경변수/requirements 갱신: python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py")
+            print("- 5번 원격 MLflow 등록 실행: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute")
             print("- 6번 추론 테스트: python local_serving/localservingtest.py")
         elif report.next_steps:
             for step in report.next_steps[:3]:

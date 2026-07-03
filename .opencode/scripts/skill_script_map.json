@@ -2,7 +2,6 @@
   "01-project-analyze": {
     "skill_folder": "01-agent-mlflow-skill-project-analyze",
     "primary_scripts": [
-      "01-project-analyze/launch_workspace_summary.py",
       "01-project-analyze/validate_mlflow_project.py",
       "04-train-model/prepare_selected_model.py"
     ],

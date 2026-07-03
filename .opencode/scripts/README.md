@@ -26,8 +26,7 @@ KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 
 
 ```text
 01 Project Analyze
-   01-project-analyze/launch_workspace_summary.py     첫 진입 가벼운 요약
-   01-project-analyze/validate_mlflow_project.py      상세 분석
+    01-project-analyze/validate_mlflow_project.py      상세 분석
    04-train-model/prepare_selected_model.py           모델 목록/선택
 
 02 Sample Bootstrap
@@ -96,17 +95,10 @@ cd '<selected-project-path>\local_serving'
 python localservingtest.py
 ```
 
-워크스페이스 첫 분석은 PowerShell에서 `||` 없이 실행한다.
+워크스페이스 첫 분석은 아래 명령으로 실행한다.
 
 ```powershell
-python .\.opencode\scripts\launch_workspace_summary.py .
-if ($LASTEXITCODE -ne 0) { "script_not_found" }
-```
-
-또는 PowerShell wrapper를 사용한다.
-
-```powershell
-.\.opencode\scripts\launch_workspace_summary.ps1 .
+python .opencode\scripts\04-train-model\prepare_selected_model.py --project .
 ```
 
 `1~3`은 모델 선택 명령 한 번으로 모델 목록 확인 -> 모델 선택 -> 템플릿 복사와 복사된 템플릿 기준 연결부 수정 흐름으로 진행한다. 이 단계에서 `input_example.json`, `config/config.json`, `requirements.txt`도 선택 모델 기준으로 준비한다. 필수 패키지 5개는 항상 유지하고, 모델별 추가 패키지만 뒤에 반영한다.

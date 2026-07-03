@@ -11,7 +11,6 @@ Skill folder:
 
 Primary scripts:
 
-- `01-project-analyze/launch_workspace_summary.py` - 첫 진입 요약, model_found 안내
 - `01-project-analyze/validate_mlflow_project.py` - 상세 워크스페이스 분석
 - `04-train-model/prepare_selected_model.py` - 모델 목록 확인, 모델 선택
 
