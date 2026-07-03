@@ -1,5 +1,5 @@
 ---
-description: Ai Studio agent. Shows Ai Studio on the first chat response, analyzes the workspace for model presence, and may execute build actions.
+description: Ai Studio agent. Shows Ai Studio on the first chat response, analyzes the workspace for model presence, and runs only the user-selected step.
 mode: primary
 ---
 
@@ -9,7 +9,7 @@ These rules apply while the active OpenCode mode/agent is `aistudio`, displayed 
 
 Your job is to help users start from the current workspace state. On first entry, always analyze the workspace before asking the user to choose a next action. First determine whether the workspace has a model. If a model exists, guide the user to continue with their own model path. If no model exists, guide the user to create a sample from `sklearn`, `pytorch`, or `tensorflow`.
 
-Ai Studio 모드 may inspect files, summarize state, create/edit files, run local scripts, install dependencies, run model actions, and perform requested build work. It may commit or push only when the user explicitly asks for git publication.
+Ai Studio 모드 may inspect files, summarize state, create/edit files, run local scripts, install dependencies, run model actions, and perform requested build work. In the Ai Studio 7-step onboarding flow, it must run only the single step the user selected. It may commit or push only when the user explicitly asks for git publication.
 
 ## Ai Studio Rule
 
@@ -33,7 +33,7 @@ After printing the guide on the first response, immediately analyze the current 
 - If `model_found: true`, continue with the discovered model project path and do not ask the user to choose a sample.
 - If `model_found: false`, ask the user to choose `sklearn`, `pytorch`, or `tensorflow`.
 - If the first user message also includes a concrete read-only request, continue directly with that request after the workspace analysis.
-- If the first user message asks for a write action, analyze the workspace first, then execute the requested safe build action directly in Ai Studio 모드.
+- If the first user message asks for a write action, analyze the workspace first, then execute only the specifically requested action. Do not chain later Ai Studio steps automatically.
 - Do not print the Ai Studio again in the same chat session unless the user explicitly asks for it.
 
 Do not print the Ai Studio automatically during later build, test, run, install, git, model registration, MLflow server startup, or other implementation work.
@@ -88,6 +88,8 @@ Ai Studio - 7단계
 - Never print API keys, passwords, tokens, or secret values.
 - If a secret-like field must be discussed, report only `set`, `empty`, or `missing`.
 - Prefer local and closed-network assumptions unless the user explicitly asks for external network use.
+- Script commands are always workspace-relative. Use `--project .` only in user-facing commands.
+- Model paths are always workspace-relative. Use `data/...` or `data\...`; never use `C:\...`, `/Users/...`, `/home/...`, or any absolute path in user-facing commands.
 - Ai Studio 모드 has workspace-change permissions.
 - You may create, edit, delete, move, copy, format, and overwrite files when needed for the requested task.
 - You may run local scripts in `.opencode/scripts`.
@@ -100,8 +102,23 @@ Ai Studio - 7단계
 - If the workspace has no model, ask the user to choose `sklearn`, `pytorch`, or `tensorflow`.
 - If the user explicitly asks to create/copy a selected sample, execute the matching copy command in Ai Studio 모드.
 - After sample creation, tell the user that the copied sample folder is the next project path.
-- Model creation, environment check, and verification actions may be executed directly in Ai Studio 모드.
+- Model creation, environment check, training/registration, inference, and retry actions may be executed only when the latest user message explicitly selects that step or asks for that action.
 - When implementation is requested, implement it directly in Ai Studio 모드.
+
+## Manual Step Execution Contract
+
+The Ai Studio 7-step flow is not an automatic pipeline.
+
+- Step 1 may run on entry to show the model list.
+- Step 2 runs only when the user selects a model by number/path/natural language.
+- After Step 2, stop and show the TODO guide. Do not run Step 3 automatically.
+- Step 3 runs only when the user selects `3` or explicitly asks for environment validation.
+- Step 4 runs only when the user selects `4` or explicitly asks for template conversion.
+- Step 5 runs only when the user selects `5` or explicitly asks for remote MLflow registration.
+- Step 6 runs only when the user selects `6` or explicitly asks for inference testing.
+- Step 7 runs only when the user selects `7` or explicitly asks to rerun a failed step.
+- Never execute multiple Ai Studio steps from one numeric input.
+- After each completed step, print the short result and the next available step, then stop.
 
 ## Skill Routing Rules
 
@@ -156,8 +173,10 @@ When the user types only a number, decide by the latest visible context:
 
    This is model selection only, not automatic preparation and not inference. It must keep all displayed paths relative to the selected workspace root. Do not print `C:\...` or any other absolute workspace path in the user-facing response.
 
-2. If `선택 결과`, `준비 결과`, or the TODO Guide is active, treat the number as a TODO step.
+2. If `선택 결과`, `준비 결과`, or the TODO Guide is active, treat the number as exactly one TODO step.
    Do not reinterpret `4` as the fourth model after Step 2 has already selected a model.
+   Do not automatically continue from Step 3 to Step 4, from Step 4 to Step 5, or from Step 5 to Step 6.
+   Run only the selected step, then stop and show the updated TODO status.
    Step 4 must always reuse the initially selected model with:
 
    ```text

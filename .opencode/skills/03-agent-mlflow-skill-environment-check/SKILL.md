@@ -107,9 +107,9 @@ requirements.txt 생성/갱신과 상태 표시만 수행한다.
 
 ```text
 환경 검증:
-python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path>
-python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file>
-python .opencode/scripts/03-environment-check/check_environment.py --project <selected_project_path> --entrypoint <file>
+python .opencode/scripts/03-environment-check/check_environment.py --project .
+python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint <file>
+python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint <file>
 
 폐쇄망 패키지 설치:
 필요 시 사용자 직접 설치:

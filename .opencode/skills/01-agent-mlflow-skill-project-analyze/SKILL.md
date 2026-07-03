@@ -166,9 +166,9 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 보충 명령:
 
 ```text
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
-python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model 1
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
+python .opencode/scripts/02-model-select/select_model.py --project . --model 1
+python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
 ```
 
 </details>

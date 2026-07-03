@@ -1202,7 +1202,7 @@ def build_report(project: Path, entrypoint_name: str | None = None) -> Environme
             export_ready=[],
             blocked_summary=["드라이브/파일시스템 루트 검색은 허용하지 않습니다."],
             failures=["drive_root_scan_not_allowed"],
-            next_steps=["현재 모델 프로젝트 폴더에서 실행하거나 --project <current-project-folder>를 지정하세요."],
+            next_steps=["선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요."],
             tod_guide=[],
             source_input_required=[],
         )

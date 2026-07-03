@@ -6,7 +6,9 @@ Ai Studio - 7단계
 실행 기준:
    Windows PowerShell에서 사용자가 선택한 워크스페이스 루트로 이동한 뒤 실행합니다.
    예: cd '<선택한 프로젝트 경로>'
-   모델 경로는 선택한 워크스페이스 기준 상대경로를 사용합니다.
+   스크립트는 항상 --project . 로 실행합니다.
+   모델 경로는 선택한 워크스페이스 기준 상대경로만 사용합니다.
+   절대경로(C:\..., /Users/..., /home/...)는 사용하지 않습니다.
 
 1. 먼저 워크스페이스를 분석합니다.
    model_found: true | false
@@ -25,6 +27,9 @@ Ai Studio - 7단계
    예: python .opencode/scripts/02-model-select/select_model.py --project . --model 1
    PowerShell 경로 예: python .opencode/scripts/02-model-select/select_model.py --project . --model 'data\pytorch_cnn\cnn_model.pt'
    경로 기준: Windows PowerShell에서 선택한 워크스페이스 루트 기준 상대경로만 사용합니다.
+   절대경로는 입력하지 않습니다.
+   모델 선택 직후에는 멈춥니다.
+   3~7번은 자동 실행하지 않고 사용자가 해당 숫자를 선택했을 때만 1개씩 실행합니다.
    템플릿 변환은 사용자가 4번을 선택했을 때 별도로 실행합니다.
    data/ 원본에는 생성하지 않습니다.
 

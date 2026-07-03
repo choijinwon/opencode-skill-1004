@@ -18,8 +18,8 @@ from ai_studio_process import AI_STUDIO_PROCESS_STEPS
 
 SAMPLES_DIR = ROOT / "samples"
 PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "04-train-model" / "prepare_selected_model.py"
-PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project <model-project-folder> --sample sklearn --execute"
-PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>"
+PS_BOOTSTRAP_SKLEARN_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample sklearn --execute"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 상대경로>"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
 SAMPLE_PROJECT_NAMES = {f"{name}_sample" for name in SAMPLE_OPTIONS}
 ENTRYPOINTS = [
@@ -477,7 +477,7 @@ def main():
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
     if is_filesystem_root(project):
-        raise ValueError("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
+        raise ValueError("drive/root scan is not allowed. 선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요.")
     if is_opencode_sample_source(project):
         raise ValueError(".opencode/는 번들 스킬 원본이라 실행/분석 대상이 아닙니다. 실제 모델 프로젝트 폴더를 --project로 지정하세요.")
 

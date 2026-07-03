@@ -723,7 +723,7 @@ def check_entrypoint(project: Path, setting_file_arg: str | None) -> DoctorCheck
         evidence,
         [
             "실행 파일 후보가 여러 개입니다. 사용자가 실제 사용하는 파일명을 직접 지정해야 합니다.",
-            "예: python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <project> --entrypoint run.py",
+            "예: python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project . --entrypoint run.py",
         ],
     )
 
@@ -841,7 +841,7 @@ def main() -> int:
     if not project.exists():
         raise SystemExit(f"project not found: {project}")
     if is_filesystem_root(project):
-        raise SystemExit("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
+        raise SystemExit("drive/root scan is not allowed. 선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요.")
 
     report = build_report(workspace, project, args.sample, args.entrypoint)
     if args.json:

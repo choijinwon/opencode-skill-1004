@@ -377,7 +377,7 @@ python .opencode/scripts/03-environment-check/response_speed_check.py --project 
 
 ```text
 python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --list
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project /tmp/opencode-sample-qa --sample pytorch
+python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample pytorch
 ```
 
 ## Common Failure Meaning

@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model <번호|경로>"
+PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|상대경로>"
 PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py"
 
 # The skill pack does not require a fixed file name. These common names are
@@ -836,7 +836,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Provide a valid --project path."])
     if is_filesystem_root(project):
         checks.append(Check("local model path selection", "block", "drive/root scan is not allowed", ["."]))
-        return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Run the command from the model project folder or pass --project <current-project-folder>."])
+        return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요."])
     if is_opencode_sample_source(project):
         checks.append(Check("local model path selection", "block", ".opencode/ is bundled skill source, not a user model project", ["."]))
         return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Use the actual selected model project folder as --project."])

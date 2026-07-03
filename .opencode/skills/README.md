@@ -28,7 +28,9 @@
 
 - 실행 기준은 Windows PowerShell이다. 사용자는 먼저 직접 선택한 워크스페이스 루트로 이동한 뒤 `python .opencode/scripts/...` 명령을 실행한다.
 - 예: `cd '<선택한 프로젝트 경로>'`
-- 모델 경로 입력은 선택한 워크스페이스 기준 상대경로를 사용한다. 예: `data\pytorch_cnn\cnn_model.pt`
+- 모든 스크립트 명령은 `--project .`로 실행한다. 절대경로를 넣지 않는다.
+- 모델 경로 입력은 선택한 워크스페이스 기준 상대경로만 사용한다. 예: `data\pytorch_cnn\cnn_model.pt`
+- 절대경로 예시인 `C:\...`, `/Users/...`, `/home/...`는 모델 선택/스크립트 명령에 사용하지 않는다.
 - 사용자가 가져온 모델 파일은 현재 프로젝트 루트 바로 아래 또는 현재 프로젝트의 `data/**` 하위 트리 어디에나 둘 수 있다.
 - 모델 검색은 사용자가 선택한 `--project` 폴더 안에서만 수행한다. 검색 범위는 선택한 워크스페이스 루트 바로 아래 모델 파일과 그 안의 `data/**` 트리다.
 - 모델 연결은 선택한 워크스페이스 경로 기준 상대경로를 사용한다.
@@ -68,6 +70,7 @@ Step 2. 모델 선택
         이미 준비된 선택 모델은 --model selected로 재사용한다.
         runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
+        모델 선택 후에도 3~7번을 자동 실행하지 않고, 사용자가 선택한 단계 1개만 실행한다.
 Step 3. 환경 검증
         사용자가 3번을 선택했을 때만 실행한다.
         현재 워크스페이스 루트의 .env 파일에서 MLflow 5개 값 상태를 확인한다.
@@ -77,7 +80,8 @@ Step 3. 환경 검증
         로컬 dependency 설치는 자동 실행하지 않는다.
 Step 4. 템플릿 변환
         사용자가 4번을 선택했을 때만 실행한다.
-        04-train-model/templates/pytorch_sample/ 템플릿을 먼저 복사한다.
+        .opencode/samples/pytorch_sample/ 템플릿을 먼저 복사한다.
+        복사된 모든 템플릿 파일을 다시 읽은 뒤 선택 모델 기준 연결부만 최소 변환한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
         `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때 사용한다.
@@ -96,8 +100,8 @@ Step 7. 오류 재실행
 ```
 
 ```text
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project <model-project-folder>
-python .opencode/scripts/02-model-select/select_model.py --project <model-project-folder> --model 1
+python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
+python .opencode/scripts/02-model-select/select_model.py --project . --model 1
 ```
 
 ## Folder Order
@@ -156,7 +160,7 @@ QA / Maintenance
 
 ```text
 python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .
-python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project <model-project-folder> --entrypoint runtest.py
+python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project . --entrypoint runtest.py
 ```
 
 doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물 상태를 한 화면에 보여줍니다.
@@ -167,8 +171,8 @@ doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물
 AI Studio/MLflow 연결부를 실제로 보강해야 하면 먼저 dry-run을 실행합니다.
 
 ```text
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <model-project-folder> --entrypoint <file>
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project <model-project-folder> --entrypoint <file> --execute
+python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file>
+python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file> --execute
 ```
 
 ## Common UI Pattern

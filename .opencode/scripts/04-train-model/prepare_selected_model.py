@@ -68,7 +68,7 @@ if str(SCRIPT_ROOT) not in sys.path:
 from ai_studio_process import format_model_selection_hint, format_todo_guide
 
 TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
-TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "scripts" / "04-train-model" / "templates"
+TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "samples"
 TEMPLATE_SAMPLE_DIR = TRAIN_MODEL_TEMPLATE_ROOT / TEMPLATE_SAMPLE_DIR_NAME
 REQUIRED_REQUIREMENTS_FILE = ROOT / "scripts" / "03-environment-check" / "requirements.required.txt"
 CHECK_ENVIRONMENT_SCRIPT = ROOT / "scripts" / "03-environment-check" / "check_environment.py"
@@ -92,7 +92,15 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_saved_model": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
 }
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
-ai_STUDIO_COPY_IGNORE_FILES = {".env", "runtest.py", "runtest_2.py", "requirements.txt", "input_example.json"}
+ai_STUDIO_COPY_IGNORE_FILES = {
+    ".env",
+    "runtest.py",
+    "runtest_2.py",
+    "run_model.py",
+    "runt_model.py",
+    "requirements.txt",
+    "input_example.json",
+}
 FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS = (
     "PROJECT_DIR = Path(__file__).resolve().parent",
     "SOURCE_MODEL_PATH",
@@ -110,7 +118,6 @@ SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
     "requirements.txt",
     "input_example.json",
     "aiu_custom/model.py",
-    "aiu_custom/predict.py",
     "inferencetest.py",
     "config/config.json",
 }
@@ -297,6 +304,7 @@ PATH_SEPARATOR_TRANSLATION = str.maketrans({
     "￦": "/",
     "₩": "/",
 })
+WINDOWS_ABSOLUTE_PATH_PATTERN = re.compile(r"^[A-Za-z]:/")
 
 
 def resolve_workspace_project(raw_project: str) -> Path:
@@ -429,6 +437,11 @@ def windows_relative_path(path: Path, base: Path) -> str:
 
 def normalize_path_text(value: str) -> str:
     return re.sub(r"/+", "/", value.translate(PATH_SEPARATOR_TRANSLATION))
+
+
+def is_absolute_model_selector(value: str) -> bool:
+    normalized = normalize_path_text(value.strip())
+    return normalized.startswith("/") or WINDOWS_ABSOLUTE_PATH_PATTERN.match(normalized) is not None
 
 
 def normalize_path_literal_text(value: str) -> str:
@@ -752,6 +765,9 @@ def resolve_model_selection(project: Path, models: list[Path], raw: str | None) 
             return models[index - 1], None
         return None, f"model_index_out_of_range:{value}"
 
+    if is_absolute_model_selector(value):
+        return None, "model_path_must_be_project_relative"
+
     candidate = Path(value).expanduser()
     if not candidate.is_absolute():
         candidate = project / candidate
@@ -771,6 +787,8 @@ def requested_model_path_from_raw(project: Path, models: list[Path], raw: str | 
         index = int(value)
         if 1 <= index <= len(models):
             return models[index - 1]
+        return None
+    if is_absolute_model_selector(value):
         return None
     candidate = Path(value).expanduser()
     if not candidate.is_absolute():
@@ -940,7 +958,7 @@ def conversion_reference_step(kind: str, reference: Path) -> str:
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        "2. 04-train-model/templates/pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
+        "2. samples/pytorch_sample/ 템플릿을 현재 워크스페이스 루트로 복사",
         f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
         "4. runtest.py 참조해서 runtest_2.py 생성",
         "5. 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
@@ -993,7 +1011,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
                     "runtest.py_selected_model_constants_forbidden:"
                     + ",".join(forbidden_markers)
                 )
-    copied.append(".opencode/scripts/04-train-model/templates/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
+    copied.append(".opencode/samples/pytorch_sample/* -> workspace root (data/, requirements.txt 제외)")
     return copied, skipped, failures
 
 
@@ -1023,6 +1041,50 @@ def ensure_aiu_custom_template_copied(project: Path, execute: bool) -> tuple[lis
         failures.append("aiu_custom_template_copy_missing:" + ",".join(missing))
         return changed, skipped, failures
     changed.append("aiu_custom/ template copied")
+    return changed, skipped, failures
+
+
+def copied_template_relative_files() -> list[str]:
+    if not TEMPLATE_SAMPLE_DIR.is_dir():
+        return []
+    files: list[str] = []
+    for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
+        if not source.is_file():
+            continue
+        relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
+        if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
+            continue
+        if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
+            continue
+        files.append(relative.as_posix())
+    return sorted(files)
+
+
+def read_copied_template_files(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    relative_files = copied_template_relative_files()
+    if not relative_files:
+        failures.append("copied_template_files_empty")
+        return changed, skipped, failures
+    if not execute:
+        skipped.append("copied template files read:dry_run")
+        return changed, skipped, failures
+    read_count = 0
+    for relative in relative_files:
+        path = project / relative
+        if not path.is_file():
+            failures.append(f"copied_template_file_missing:{relative}")
+            continue
+        try:
+            path.read_text(encoding="utf-8", errors="ignore")
+        except OSError as exc:
+            failures.append(f"copied_template_file_read_failed:{relative}:{exc}")
+            continue
+        read_count += 1
+    if not failures:
+        changed.append(f"copied template files re-read ({read_count})")
     return changed, skipped, failures
 
 
@@ -3060,60 +3122,183 @@ def predict(payload):
 '''
 
 
-def generated_predict_text(template_text: str) -> str:
-    return '''from __future__ import annotations
-
-import importlib.util
-import os
-
-import mlflow.pyfunc
-
-
-def _model_module_path():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.py")
-
-
-def _load_model_module():
-    model_module_path = _model_module_path()
-    if not os.path.isfile(model_module_path):
-        raise FileNotFoundError("aiu_custom/model.py is required for AI Studio deployment")
-
-    spec = importlib.util.spec_from_file_location("aiu_custom_selected_model", model_module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError("cannot load aiu_custom/model.py")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def replace_class_method_block(text: str, class_name: str, method_name: str, replacement: str) -> str:
+    pattern = re.compile(
+        rf"(?ms)^class\s+{re.escape(class_name)}\b.*?(?=^(?:class|def)\s+|\Z)"
+    )
+    class_match = pattern.search(text)
+    if not class_match:
+        return text
+    class_text = class_match.group(0)
+    method_pattern = re.compile(
+        rf"(?ms)^    def\s+{re.escape(method_name)}\s*\([^)]*\):.*?(?=^    def\s+|\Z)"
+    )
+    if method_pattern.search(class_text):
+        updated_class = method_pattern.sub(replacement.rstrip() + "\n\n", class_text, count=1)
+    else:
+        updated_class = class_text.rstrip() + "\n\n" + replacement.rstrip() + "\n"
+    return text[: class_match.start()] + updated_class + text[class_match.end() :]
 
 
-def _create_delegate():
-    module = _load_model_module()
-    wrapper_class = getattr(module, "ModelWrapper", None)
-    if wrapper_class is None:
-        raise AttributeError("ModelWrapper missing in aiu_custom/model.py")
-    return wrapper_class()
+def ensure_predict_imports(text: str) -> str:
+    required_imports = [
+        "import json",
+        "from pathlib import Path",
+        "import mlflow.pyfunc",
+        "import torch",
+    ]
+    lines = text.splitlines()
+    insert_index = 0
+    while insert_index < len(lines) and (
+        lines[insert_index].startswith("from __future__")
+        or lines[insert_index].strip() == ""
+    ):
+        insert_index += 1
+    for import_line in reversed(required_imports):
+        if import_line not in text:
+            lines.insert(insert_index, import_line)
+    return "\n".join(lines).rstrip() + "\n"
 
 
-class ModelWrapper(mlflow.pyfunc.PythonModel):
-    def __init__(self):
-        self._delegate = None
-
-    def load_context(self, context=None):
-        if self._delegate is None:
-            self._delegate = _create_delegate()
-            if hasattr(self._delegate, "load_context"):
-                self._delegate.load_context(context)
-        return self._delegate
-
-    def predict(self, context, model_input, params=None):
-        delegate = self.load_context(context)
-        return delegate.predict(context, model_input)
+def insert_before_model_wrapper_or_append(text: str, block: str) -> str:
+    if "class ModelWrapper" in text:
+        return text.replace("\nclass ModelWrapper", block.rstrip() + "\n\nclass ModelWrapper", 1)
+    return text.rstrip() + "\n\n" + block.strip() + "\n"
 
 
-def predict(payload):
-    return ModelWrapper().predict(None, payload)
+def generated_predict_text(template_text: str, kind: str) -> str:
+    text = template_text.strip() if template_text.strip() else (TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py").read_text(encoding="utf-8", errors="ignore")
+    text = ensure_predict_imports(text)
+
+    helper_block = f'''
+
+def _payload_to_model_input(payload):
+    if isinstance(payload, dict):
+        if "inputs" in payload and payload["inputs"]:
+            first_input = payload["inputs"][0]
+            if isinstance(first_input, dict) and "data" in first_input:
+                return first_input["data"]
+        for key in ("data", "instances", "features", "x"):
+            if key in payload:
+                return payload[key]
+    return payload
+
+
+def _to_jsonable(value):
+    if hasattr(value, "detach"):
+        value = value.detach().cpu().numpy()
+    if hasattr(value, "tolist"):
+        return value.tolist()
+    return value
+
+
+def _ai_payload_to_tensor(payload):
+    if hasattr(payload, "shape"):
+        return payload
+    return torch.tensor(payload, dtype=torch.float32)
+
+
+def _load_selected_model(model_path: Path, model_kind: str):
+    if model_kind in {{"pytorch", "safetensors"}}:
+        if model_kind == "safetensors":
+            from safetensors.torch import load_file
+
+            return load_file(str(model_path))
+        try:
+            return torch.load(model_path, map_location="cpu", weights_only=False)
+        except TypeError:
+            return torch.load(model_path, map_location="cpu")
+
+    if model_kind in {{"sklearn_pickle", "sklearn_joblib"}}:
+        import joblib
+
+        return joblib.load(model_path)
+
+    if model_kind == "onnx":
+        import onnxruntime as ort
+
+        return ort.InferenceSession(str(model_path))
+
+    if model_kind in {{"tensorflow", "keras", "h5"}}:
+        import tensorflow as tf
+
+        return tf.keras.models.load_model(model_path)
+
+    if model_kind in {{"xgboost_bst", "xgboost_ubj"}}:
+        import xgboost as xgb
+
+        booster = xgb.Booster()
+        booster.load_model(str(model_path))
+        return booster
+
+    raise ValueError(f"unsupported MODEL_KIND: {{model_kind}}")
+
+
+def _predict_loaded_model(model, model_kind: str, payload):
+    if model_kind == "onnx":
+        input_name = model.get_inputs()[0].name
+        return _to_jsonable(model.run(None, {{input_name: payload}}))
+
+    if model_kind in {{"pytorch", "safetensors"}}:
+        if not callable(model):
+            return {{
+                "status": "loaded",
+                "model_kind": model_kind,
+                "detail": "선택 모델은 로드되었지만 callable PyTorch 모델이 아닙니다.",
+            }}
+        tensor_input = _ai_payload_to_tensor(payload)
+        if hasattr(model, "eval"):
+            model.eval()
+        with torch.no_grad():
+            return _to_jsonable(model(tensor_input))
+
+    if hasattr(model, "predict"):
+        return _to_jsonable(model.predict(payload))
+
+    if callable(model):
+        return _to_jsonable(model(payload))
+
+    return {{
+        "status": "loaded",
+        "model_kind": model_kind,
+        "input": payload,
+    }}
 '''
+    if "def _load_selected_model(" not in text:
+        text = insert_before_model_wrapper_or_append(text, helper_block)
+
+    load_context_block = f'''    def load_context(self, context):
+        config_path = Path(_normalize_path(context.artifacts["config"]))
+        model_path = Path(_normalize_path(context.artifacts["model"]))
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+
+        model_config = config.get("model", config)
+        self.model_kind = str(model_config.get("model_kind") or model_config.get("kind") or "{kind}")
+        self.model_path = model_path
+        self.model = _load_selected_model(model_path, self.model_kind)
+        if hasattr(self.model, "eval"):
+            self.model.eval()
+
+'''
+
+    predict_block = '''    def predict(self, context, model_input, params=None):
+        if not hasattr(self, "model"):
+            return {
+                "status": "model_not_loaded",
+                "detail": "MLflow calls load_context() before predict().",
+                "input": model_input,
+            }
+        payload = _payload_to_model_input(model_input)
+        return _predict_loaded_model(self.model, self.model_kind, payload)
+'''
+
+    text = replace_class_method_block(text, "ModelWrapper", "load_context", load_context_block)
+    text = replace_class_method_block(text, "ModelWrapper", "predict", predict_block)
+    if "class ModelWrapper" not in text:
+        text = text.rstrip() + "\n\nclass ModelWrapper(mlflow.pyfunc.PythonModel):\n" + load_context_block.rstrip() + "\n\n" + predict_block.rstrip() + "\n"
+    if "def predict(payload)" not in text:
+        text = text.rstrip() + "\n\n\ndef predict(payload):\n    wrapper = ModelWrapper()\n    return wrapper.predict(None, payload)\n"
+    return text.rstrip() + "\n"
 
 
 def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], list[str]]:
@@ -3313,7 +3498,7 @@ def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: b
     else:
         template_path = TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py"
         template_text = template_path.read_text(encoding="utf-8", errors="ignore") if template_path.is_file() else ""
-    target.write_text(generated_predict_text(template_text), encoding="utf-8")
+    target.write_text(generated_predict_text(template_text, kind), encoding="utf-8")
     changed.append("aiu_custom/predict.py deployment entrypoint (refreshed)" if existed_before else "aiu_custom/predict.py deployment entrypoint")
     return changed, skipped, failures
 
@@ -3332,6 +3517,7 @@ def sync_selected_model_runtime(
 
     runtime_steps = [
         ensure_aiu_custom_template_copied(project, execute),
+        read_copied_template_files(project, execute),
         ensure_runtime_directories(project, execute),
         write_requirements(project, kind, execute),
         write_input_example(project, selected_model, kind, execute),
@@ -3486,7 +3672,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if not project.exists():
         raise FileNotFoundError(f"project folder not found: {project}")
     if is_filesystem_root(project):
-        raise ValueError("drive/root scan is not allowed. Run from the model project folder or pass --project <current-project-folder>.")
+        raise ValueError("drive/root scan is not allowed. 선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요.")
     if is_opencode_sample_source(project):
         raise ValueError(".opencode/는 분석 대상이 아닙니다. 선택한 실제 모델 프로젝트 폴더를 --project로 지정하세요.")
 
@@ -3559,13 +3745,17 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     if selection_error and (models or args.model):
         report.failures.append(selection_error)
         if models:
-            report.next_steps.append("사용할 모델을 번호 또는 경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
+            if selection_error == "model_path_must_be_project_relative":
+                report.next_steps.append("모델 경로는 Windows 절대경로가 아니라 워크스페이스 기준 상대경로로 입력하세요.")
+                report.next_steps.append(r"예: --model data\pytorch_cnn\cnn_model.pt 또는 --model data/pytorch_cnn/cnn_model.pt")
+            else:
+                report.next_steps.append("사용할 모델을 번호 또는 상대경로로 선택하세요. 예: --model 1, --model model.joblib, --model data/torch/model.pt")
             report.next_steps.append(
                 r"2번 모델 선택 실행: python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>"
             )
     if selected_model and not ensure_under_project(project, selected_model):
         report.failures.append("selected_model_outside_project")
-        report.next_steps.append("선택 모델은 <model-project-folder> 아래에 있어야 합니다.")
+        report.next_steps.append("선택 모델은 현재 워크스페이스 루트 아래 상대경로여야 합니다.")
     if selected_model and selected_kind is None:
         report.failures.append("unsupported_model_suffix")
 
@@ -3573,8 +3763,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         return report
     current_selected = current_selected_model_path(project)
     if not args.model and current_selected is not None and selected_model is not None and current_selected.resolve() == selected_model.resolve():
-        report.warnings.append(f"selected_model_reused_automatically:{rel(selected_model, project)}")
-        report.next_steps.append(f"TODO 2는 이미 완료되어 현재 선택 모델을 자동 재사용합니다: {rel(selected_model, project)}")
+        report.warnings.append(f"selected_model_reused:{rel(selected_model, project)}")
+        report.next_steps.append(f"TODO 2는 이미 완료되어 현재 선택 모델을 유지합니다: {rel(selected_model, project)}")
     explicit_model_selection = bool(args.model and not is_selected_model_alias(args.model) and not args.sync_runtime)
     if (
         explicit_model_selection
@@ -3675,6 +3865,13 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.prepared_paths.extend(template_changed)
     report.skipped.extend(template_skipped)
     report.failures.extend(template_failures)
+    if report.failures:
+        return report
+
+    read_changed, read_skipped, read_failures = read_copied_template_files(project, args.execute)
+    report.prepared_paths.extend(read_changed)
+    report.skipped.extend(read_skipped)
+    report.failures.extend(read_failures)
     if report.failures:
         return report
 

@@ -79,7 +79,7 @@ next: 오류 재실행
 python inferencetest.py
 
 보조 스크립트:
-python .opencode/scripts/06-inference-test/test_inference.py --project <project> --execute
+python .opencode/scripts/06-inference-test/test_inference.py --project . --execute
 ```
 
 <details>
