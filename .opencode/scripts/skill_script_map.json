@@ -52,7 +52,8 @@
   "qa-maintenance": {
     "primary_scripts": [
       "qa-maintenance/doctor.py",
-      "qa-maintenance/test_local_sample.py"
+      "qa-maintenance/test_local_sample.py",
+      "qa-maintenance/test_7_step_flow.py"
     ],
     "documents": [
       "README.md",

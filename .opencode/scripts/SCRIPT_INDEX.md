@@ -74,6 +74,7 @@ Scripts:
 
 - `qa-maintenance/doctor.py` - 전체 상태 1페이지 점검
 - `qa-maintenance/test_local_sample.py` - 번들 샘플 QA
+- `qa-maintenance/test_7_step_flow.py` - 모델 있음 기준 AI Studio 7단계 흐름 QA
 
 Documents:
 

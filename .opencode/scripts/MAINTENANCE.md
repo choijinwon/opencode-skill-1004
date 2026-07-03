@@ -320,6 +320,31 @@ test_sample()              샘플별 테스트 순서
 - Python 버전이 `3.11.9`가 아니면 실패하도록 유지합니다.
 - 네트워크 설치가 필요한 상황에서는 내부 http:// PyPI/Nexus 미러와 requirements.txt 고정 버전을 우선 안내합니다.
 
+## test_7_step_flow.py
+
+책임:
+
+- Windows/PowerShell 기준으로 모델 있음 AI Studio 7단계가 흐름대로 작동하는지 테스트합니다.
+- 모델 목록 확인, 모델 선택, 환경 점검, 템플릿 변환, 원격 등록 차단/실행, 추론, 오류 재실행을 순서대로 검증합니다.
+- 기본값은 원격 MLflow 서버를 호출하지 않고, `.env` 미입력 시 5번 단계가 안전하게 차단되는지 확인합니다.
+- 숫자 선택(`--model 3`)과 Windows 백슬래시 경로(`data\...`)를 모두 검증합니다.
+
+주요 수정 위치:
+
+```text
+REQUIRED_GENERATED_PATHS   4번 템플릿 변환 산출물 목록
+verify_generated_files()   saved_model 경로, source_path, MLmodel 상대경로 검증
+main()                     1~7단계 실행 순서
+```
+
+사용 예:
+
+```text
+python .opencode\scripts\qa-maintenance\test_7_step_flow.py --project . --model 3
+python .opencode\scripts\qa-maintenance\test_7_step_flow.py --project . --model data\pytorch_cnn\cnn_model.pt
+python .opencode\scripts\qa-maintenance\test_7_step_flow.py --project . --model 3 --run-remote
+```
+
 ## Change Checklist
 
 코드 수정 후 아래를 확인합니다.

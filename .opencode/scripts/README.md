@@ -49,6 +49,7 @@ KServe/Linux에서 실제 읽는 경로는 MLflow가 모델 패키지 내부에 
 QA / Maintenance
    qa-maintenance/doctor.py                           전체 상태 1페이지 점검
    qa-maintenance/test_local_sample.py                번들 샘플 QA
+   qa-maintenance/test_7_step_flow.py                 AI Studio 7단계 흐름 QA
    SCRIPT_INDEX.md                 스킬 목록 기준 스크립트 정리표
    MAINTENANCE.md                  유지보수 상세 문서
 ```
@@ -405,6 +406,17 @@ tensorflow
 python .opencode\scripts\qa-maintenance\test_local_sample.py --sample sklearn
 python .opencode\scripts\qa-maintenance\test_local_sample.py --sample all
 ```
+
+### test_7_step_flow.py
+
+Windows/PowerShell 기준으로 모델 있음 7단계가 순서대로 끊기지 않는지 테스트한다.
+
+```text
+python .opencode\scripts\qa-maintenance\test_7_step_flow.py --project . --model 3
+python .opencode\scripts\qa-maintenance\test_7_step_flow.py --project . --model data\pytorch_cnn\cnn_model.pt
+```
+
+기본 동작은 원격 MLflow 서버를 호출하지 않고, `.env` 미입력 시 5번 단계가 안전하게 차단되는지 확인한다. 숫자 선택(`--model 3`)과 Windows 백슬래시 경로(`data\...`)를 모두 검증할 수 있다. 실제 원격 등록까지 검증할 때만 `--run-remote`를 붙인다.
 
 ### local_serving/localservingtest.py
 
