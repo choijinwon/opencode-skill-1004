@@ -402,6 +402,10 @@ def rel(path: Path, base: Path) -> str:
         return normalize_path_text(path.as_posix())
 
 
+def windows_relative_path(path: Path, base: Path) -> str:
+    return rel(path, base).replace("/", "\\")
+
+
 def normalize_path_text(value: str) -> str:
     return re.sub(r"/+", "/", value.translate(PATH_SEPARATOR_TRANSLATION))
 
@@ -555,7 +559,7 @@ def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, 
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
         return None, None, "selected_model_config_model_missing"
-    source_path = model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
+    source_path = model.get("path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("source_path") or model.get("relative_path")
     kind = model.get("model_kind") or model.get("kind")
     if not isinstance(source_path, str) or not source_path.strip():
         return None, kind if isinstance(kind, str) else None, "selected_model_config_source_path_missing"
@@ -790,14 +794,21 @@ def default_mlflow_names(project: Path, selected_model: Path) -> tuple[str, str]
 
 def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, str]:
     details = MODEL_KIND_DETAILS.get(kind, {})
+    linux_path = rel(selected_model, project)
+    windows_url = windows_relative_path(selected_model, project)
+    saved_model_linux_path = f"saved_model/{selected_model.name}"
+    saved_model_windows_url = saved_model_linux_path.replace("/", "\\")
     return {
         "model_name": selected_model.name,
         "selected_model_name": selected_model_display_name(project, selected_model),
         "model_suffix": selected_model.suffix.lower(),
         "model_kind": kind,
-        "model_relative_path": rel(selected_model, project),
-        "runtime_model_path": rel(selected_model, project),
-        "saved_model_path": f"saved_model/{selected_model.name}",
+        "url": windows_url,
+        "path": linux_path,
+        "model_relative_path": linux_path,
+        "runtime_model_path": linux_path,
+        "saved_model_url": saved_model_windows_url,
+        "saved_model_path": saved_model_linux_path,
         "model_parent": rel(selected_model.parent, project),
         "required_package": details.get("required_package", "unknown"),
         "load_hint": details.get("load_hint", "custom loader required"),
@@ -1486,6 +1497,17 @@ def aiu_injected_block(project: Path, selected_model: Path, kind: str, reference
         """def load_selected_model():\n    raise ValueError(f\"unsupported MODEL_KIND: {MODEL_KIND}\")\n""",
     )
     data_prep = aiu_data_prep_block(kind)
+    todo_guide_text = format_todo_guide(
+        (
+            "완료",
+            "완료",
+            "확인 필요",
+            "완료",
+            "완료",
+            "선택 시",
+            "오류 시",
+        )
+    )
     return f'''
 
 # --- ai Studio selected model conversion ---
@@ -1556,7 +1578,7 @@ _aiu_missing_mlflow_settings = [
     if not str(_aiu_value).strip()
 ]
 if _aiu_missing_mlflow_settings:
-    print("학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
     print("missing settings:")
     for _aiu_name in _aiu_missing_mlflow_settings:
         print(f"- {{_aiu_name}}")
@@ -1574,18 +1596,7 @@ for _aiu_env_name, _aiu_env_value in {{
         os.environ[_aiu_env_name] = _aiu_env_value
 
 def _aiu_print_existing_model_tod():
-    print("\\n============================================================")
-    print("AI Studio TODO Guide - 7단계")
-    print("============================================================")
-    print("숫자키로 단계 실행 가능 / 모델 목록 화면에서는 숫자=모델 번호")
-    print("[1] 모델 목록 확인: 완료")
-    print("[2] 모델 선택: 완료")
-    print("[3] 환경변수/requirements 갱신: 확인 필요")
-    print("[4] 템플릿 변환: 완료")
-    print("[5] 원격 MLflow 등록 실행: 완료")
-    print("[6] 추론 테스트: 선택 시")
-    print("[7] 오류 재실행: 오류 시")
-    print("============================================================")
+    print({todo_guide_text!r})
 
 _aiu_atexit.register(_aiu_print_existing_model_tod)
 # --- /ai Studio selected model conversion ---
@@ -1830,7 +1841,9 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
     else:
         payload = {"inputs": []}
     payload["model_kind"] = kind
-    payload["model_path"] = rel(selected_model, project)
+    payload["url"] = windows_relative_path(selected_model, project)
+    payload["path"] = rel(selected_model, project)
+    payload["model_path"] = payload["path"]
     return payload
 
 
@@ -1849,6 +1862,8 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
             "datatype": first_input.get("datatype"),
         },
         "model_kind": kind,
+        "url": windows_relative_path(selected_model, project),
+        "path": rel(selected_model, project),
         "model_path": rel(selected_model, project),
     }
 
@@ -1957,7 +1972,9 @@ request_input_example = {
         }
     ],
     "model_kind": model_kind,
-    "model_path": selected_model_relative_path,
+    "url": selected_model_windows_url,
+    "path": selected_model_linux_path,
+    "model_path": selected_model_linux_path,
 }
 '''
     return f'''request_input_example = {repr(input_example)}
@@ -2141,7 +2158,7 @@ missing_mlflow_settings = [
 ]
 
 if missing_mlflow_settings:
-    print("학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest_2.py에 직접 입력하세요.")
     print("missing settings:")
     for name in missing_mlflow_settings:
         print(f"- {{name}}")
@@ -2161,6 +2178,8 @@ except Exception as exc:
 # ------------------------------------------------------------
 project_dir = os.path.dirname(os.path.abspath(__file__))
 selected_model_relative_path = {selected_relative!r}
+selected_model_linux_path = selected_model_relative_path.replace("\\\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
+selected_model_windows_url = selected_model_linux_path.replace("/", "\\\\")
 selected_model_path = first_existing_file(
     "selected_model",
     [
@@ -2204,7 +2223,10 @@ os.makedirs(config_dir_path, exist_ok=True)
 config_path = workspace_path(config_dir, "config.json")
 
 params = {config_literal}
-params["model"]["runtime_model_path"] = selected_model_relative_path
+params["model"]["url"] = selected_model_windows_url
+params["model"]["path"] = selected_model_linux_path
+params["model"]["runtime_model_path"] = selected_model_linux_path
+params["model"]["model_relative_path"] = selected_model_linux_path
 
 with open(config_path, "w", encoding="utf-8") as f:
     json.dump(params, f, indent=4, ensure_ascii=False)
@@ -2286,7 +2308,8 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         {{
             "model_name": params["model"]["model_name"],
             "model_kind": model_kind,
-            "model_path": selected_model_relative_path,
+            "model_url": selected_model_windows_url,
+            "model_path": selected_model_linux_path,
         }}
     )
 
@@ -2913,7 +2936,7 @@ def _resolve_model_path():
     if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
         return _CONTEXT_ARTIFACT_MODEL_PATH
     model = _config_model()
-    raw_path = model.get("saved_model_path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path") or model.get("source_path")
+    raw_path = model.get("path") or model.get("saved_model_path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path") or model.get("source_path")
     if not raw_path:
         raise ValueError("selected_model_path_missing: selected model metadata")
     path = _normalize_server_path(raw_path)
@@ -3425,10 +3448,14 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append(f"selected_model_config_invalid_json:{exc.lineno}")
                 config = {}
             model_config = config.get("model", {}) if isinstance(config, dict) else {}
-            config_path = model_config.get("model_relative_path") or model_config.get("runtime_model_path")
+            config_path = model_config.get("path") or model_config.get("model_relative_path") or model_config.get("runtime_model_path")
             config_kind = model_config.get("model_kind")
             if normalize_path_text(str(config_path or "")) != normalize_path_text(selected_relative):
                 failures.append(f"selected_model_config_path_mismatch:{config_path}->{selected_relative}")
+            config_url = model_config.get("url")
+            expected_url = selected_relative.replace("/", "\\")
+            if config_url != expected_url:
+                failures.append(f"selected_model_config_url_mismatch:{config_url}->{expected_url}")
             if config_kind != kind:
                 failures.append(f"selected_model_config_kind_mismatch:{config_kind}->{kind}")
 

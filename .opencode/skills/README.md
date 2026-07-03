@@ -63,22 +63,22 @@ Step 2. 모델 선택
         runtest_2.py 안의 경로는 선택 기준으로 사용하지 않는다.
         선택이 없으면 자동 준비를 진행하지 않고 선택 요청으로 멈춘다.
 Step 3. 환경변수/requirements 갱신
+        입력값 3개와 자동값 2개 상태를 확인한다.
+        requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
+        Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
+        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
+Step 4. 템플릿 변환
         pytorch_sample/ 템플릿을 먼저 복사한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 생성/갱신한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
         모델 선택 명령 한 번으로 이 단계까지 수행한다. `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때만 사용한다.
-        requirements.txt 필수 5개 패키지는 .opencode/scripts/03-environment-check/requirements.required.txt 기준을 사용하며 절대 제거하지 않는다.
-        Python 3.13에서 kserve 호환성 문제가 있어도 kserve==0.15.0은 제거하지 않고 Python 3.11.9 환경으로 전환하도록 안내한다.
         내부 일치 검증은 선택된 runtest_2.py와 런타임 파일 기준으로 수행한다.
-Step 4. 템플릿 변환
-        입력값 3개와 자동값 2개 상태를 확인한다.
-        변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt 반영 필요 여부와 pip 설치 명령을 안내한다.
 Step 5. 원격 MLflow 등록 실행
         run_training.py가 먼저 선택 모델 기준으로 runtest_2.py와 런타임 파일을 재검증/변환한 뒤 원격 MLflow 등록을 실행한다.
 Step 6. 추론 테스트
         선택 모델 환경으로 변환된 local serving 입력/출력 스키마를 확인한다.
         자동 실행하지 않고 사용자가 6번을 선택했을 때만 진행한다.
-        local_serving/ 폴더는 Step 3 런타임 변환 시퀀스에서 생성되어 있어야 한다.
+        local_serving/ 폴더는 Step 4 템플릿 변환 시퀀스에서 생성되어 있어야 한다.
 Step 7. 오류 재실행
         MLflow 등록 또는 추론 테스트 중 오류가 있으면 Failures와 오류 메시지를 기준으로 수정한 뒤 실패한 단계부터 다시 실행한다.
 ```

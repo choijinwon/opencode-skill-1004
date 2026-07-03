@@ -154,7 +154,7 @@ When the user types only a number, decide by the latest visible context:
    python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model <number> --execute
    ```
 
-   This is Step 3, not inference. It must read the existing workspace-root `runtest.py` as the reference and create/refresh only `runtest_2.py` for the selected model.
+   This is model selection plus preparation, not inference. It must read the existing workspace-root `runtest.py` as the reference and create/refresh only `runtest_2.py` for the selected model.
 
 2. If no model list is active and the TODO Guide is active, treat the number as a TODO step.
    For Step 5, execute the guarded registration command so the selected model runtime is checked and re-transformed before MLflow registration:

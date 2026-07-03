@@ -63,7 +63,7 @@ QA / Maintenance
 2. 모델 선택                       -> prepare_selected_model.py --model <번호|경로>
 3. 환경변수/requirements 갱신      -> check_environment.py --entrypoint runtest_2.py
 4. 템플릿 변환                     -> 템플릿 복사 + 복사된 템플릿 기준 연결부 수정
-5. 학습 실행 및 원격 MLflow 등록   -> run_training.py --entrypoint runtest_2.py --execute
+5. 원격 MLflow 등록 실행   -> run_training.py --entrypoint runtest_2.py --execute
 6. 추론 테스트                     -> 사용자가 6번 선택 시 python local_serving/localservingtest.py
 7. 오류 재실행             -> Failures 기준으로 실패한 단계부터 재실행
 ```

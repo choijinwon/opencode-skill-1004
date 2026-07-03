@@ -139,7 +139,7 @@ def write_input_example(test_x: torch.Tensor) -> dict:
 def main() -> None:
     missing = missing_mlflow_settings()
     if missing:
-        print("학습 실행 및 원격 MLflow 등록을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.")
+        print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.")
         print("missing settings:")
         for name in missing:
             print(f"- {name}")

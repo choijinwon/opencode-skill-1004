@@ -7,7 +7,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_model_selection_hint
 
 
 MODEL_HINTS = [
@@ -105,13 +105,21 @@ def main() -> int:
 
     if evidence or model_artifact_paths:
         print("- 발견 항목:")
-        discovered = [str(x) for x in evidence if x]
-        discovered.extend(str(path) for path in model_artifact_paths[:6])
-        for item in sorted(set(discovered))[:6]:
+        if model_artifact_paths:
+            print(f"  - 모델 후보: {len(model_artifact_paths)}개")
+        model_path_set = {str(path) for path in model_artifact_paths}
+        discovered = [
+            str(x)
+            for x in evidence
+            if x and str(x) not in model_path_set and not any(str(x).endswith(suffix) for suffix in [".pkl", ".joblib", ".pt", ".pth", ".onnx", ".h5", ".keras", ".safetensors", ".bst", ".ubj"])
+        ]
+        for item in sorted(set(discovered))[:5]:
             print(f"  - {item}")
 
     if model_artifact_paths:
         print("- 모델 선택 화면:")
+        print(format_model_selection_hint(indent="  "))
+        print("  모델 목록은 프로젝트 기준 상대경로 알파벳 순서입니다.")
         print("  숫자키는 TODO 단계가 아니라 아래 모델 번호 선택입니다.")
         for index, path in enumerate(model_artifact_paths[:10], start=1):
             print(f"  {index}. {path}")

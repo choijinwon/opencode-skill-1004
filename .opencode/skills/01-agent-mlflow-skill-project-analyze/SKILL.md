@@ -28,7 +28,7 @@ metadata:
 2. 모델 선택
 3. 환경변수/requirements 갱신
 4. 템플릿 변환
-5. 학습 실행 및 원격 MLflow 등록
+5. 원격 MLflow 등록 실행
 6. 추론 테스트
 7. 오류 재실행
 ```
@@ -72,7 +72,7 @@ metadata:
 ```text
 판단 결과: pass
 model_found: true
-다음 단계: 2. 모델 경로로 선택
+다음 단계: 2. 모델 선택
 ```
 
 모델이 없으면:

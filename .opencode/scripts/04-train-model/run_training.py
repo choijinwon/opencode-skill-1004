@@ -10,6 +10,12 @@ from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_ROOT = ROOT / "scripts"
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from ai_studio_process import AI_STUDIO_PROCESS_STEPS
+
 SAMPLES_DIR = ROOT / "samples"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
 SAMPLE_OPTIONS = ["sklearn", "pytorch", "tensorflow"]
@@ -518,14 +524,18 @@ def main():
     existing_model_flow = model_found and not is_sample_project(work_path)
     if existing_model_flow:
         mlflow_run_status = "blocked" if (missing_env or remote_uri_failure) else ("done" if args.execute and return_code == 0 else "pending")
+        step_statuses = (
+            "done" if artifacts else "needs_input",
+            "done" if artifacts else "needs_input",
+            "done" if not (missing_env or remote_uri_failure) else "needs_input",
+            "done" if (work_path / "runtest_2.py").exists() and (work_path / "requirements.txt").exists() else "pending",
+            mlflow_run_status,
+            "selectable",
+            "needed" if failures else "pending",
+        )
         process_checklist = [
-            EnvVarStatus("1. 모델 목록 확인", "done" if artifacts else "needs_input"),
-            EnvVarStatus("2. 모델 경로로 선택", "done" if artifacts else "needs_input"),
-            EnvVarStatus("3. 선택 모델 환경 변환 + requirements.txt 재정의/확인", "done" if (work_path / "runtest_2.py").exists() and (work_path / "requirements.txt").exists() else "pending"),
-            EnvVarStatus("4. 모델 환경변수/패키지 상태 체크", "done" if not (missing_env or remote_uri_failure) else "needs_input"),
-            EnvVarStatus("5. 학습 실행 및 원격 MLflow 등록", mlflow_run_status),
-            EnvVarStatus("6. 추론 테스트", "selectable"),
-            EnvVarStatus("7. 오류 재실행", "needed" if failures else "pending"),
+            EnvVarStatus(f"{index}. {title}", status)
+            for index, (title, status) in enumerate(zip(AI_STUDIO_PROCESS_STEPS, step_statuses), start=1)
         ]
     else:
         mlflow_run_status = "blocked" if (missing_env or remote_uri_failure) else ("done" if args.execute and return_code == 0 else "pending")
