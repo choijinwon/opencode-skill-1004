@@ -248,10 +248,25 @@ MODEL_SCAN_SKIP_DIRS = {
 }
 MLFLOW_SETTING_NAMES = {
     "mlflow_tracking_uri",
+    "mlflow_tracking_url",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
     "mlflow_register_model_name",
+}
+MLFLOW_SETTING_ALIASES = {
+    "mlflow_tracking_uri": (
+        "mlflow_tracking_uri",
+        "mlflow_tracking_url",
+        "tracking_uri",
+        "tracking_url",
+        "MLFLOW_TRACKING_URI",
+        "MLFLOW_TRACKING_URL",
+    ),
+    "mlflow_tracking_username": ("mlflow_tracking_username", "tracking_username", "MLFLOW_TRACKING_USERNAME"),
+    "mlflow_tracking_password": ("mlflow_tracking_password", "tracking_password", "MLFLOW_TRACKING_PASSWORD"),
+    "mlflow_experiment_name": ("mlflow_experiment_name", "experiment_name", "MLFLOW_EXPERIMENT_NAME"),
+    "mlflow_register_model_name": ("mlflow_register_model_name", "registered_model_name", "MLFLOW_REGISTER_MODEL_NAME"),
 }
 REQUIRED_MLFLOW_GATE_KEYS = (
     "mlflow_tracking_uri",
@@ -594,12 +609,20 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def mlflow_setting_value(values: dict[str, str], key: str) -> str:
+    for alias in MLFLOW_SETTING_ALIASES.get(key, (key,)):
+        value = values.get(alias)
+        if value is not None:
+            return value
+    return ""
+
+
 def missing_required_mlflow_values(project: Path) -> list[str]:
     values = parse_env_file(project / ".env")
     missing: list[str] = []
     for key in REQUIRED_MLFLOW_GATE_KEYS:
-        if todo_placeholder(values.get(key, "")):
-            missing.append(key)
+        if todo_placeholder(mlflow_setting_value(values, key)):
+            missing.append("mlflow_tracking_url" if key == "mlflow_tracking_uri" else key)
     return missing
 
 
@@ -2266,12 +2289,9 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
 
 def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
     return {
-        "model": {
-            "source_path": windows_relative_path(selected_model, project),
-            "model_kind": kind,
-        },
+        "model": model_profile(project, selected_model, kind),
         "mlflow": {
-            "tracking_uri": "",
+            "tracking_url": "",
             "tracking_username": "",
             "tracking_password": "",
             "experiment_name": "",
@@ -2566,7 +2586,7 @@ def handle_mlflow_connection_error(exc):
     if "sqlite3.OperationalError" in message and "disk I/O error" in message:
         print("MLflow 서버 저장소 오류: SQLite disk I/O error가 발생했습니다.")
         print("원인 후보: MLflow 서버가 sqlite/mlflow.db backend로 떠 있고, 해당 경로 권한/잠금/드라이브 I/O 문제가 있습니다.")
-        print("조치: mlflow_tracking_uri를 원격 MLflow 서버 URI로 바꾸거나, 서버 backend-store-uri와 artifact-root 경로 권한을 확인하세요.")
+        print("조치: mlflow_tracking_url을 원격 MLflow 서버 URL로 바꾸거나, 서버 backend-store-uri와 artifact-root 경로 권한을 확인하세요.")
         print("주의: runtest_2.py에서는 로컬 sqlite/file tracking을 사용하지 않습니다.")
         raise SystemExit(1)
     raise exc
@@ -3685,7 +3705,7 @@ def extract_mlflow_version(payload: str) -> str | None:
 
 def remote_mlflow_version(project: Path) -> str | None:
     values = parse_env_file(project / ".env")
-    tracking_uri = values.get("mlflow_tracking_uri") or values.get("MLFLOW_TRACKING_URI")
+    tracking_uri = mlflow_setting_value(values, "mlflow_tracking_uri")
     if not tracking_uri or not tracking_uri.lower().startswith(("http://", "https://")):
         return None
     base_uri = tracking_uri.rstrip("/")
@@ -4250,7 +4270,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.failures.append("step3_required_env_missing:" + ",".join(missing_gate_values))
         report.next_steps.append("3번 환경 검증이 완료되지 않았습니다. 아래 5개 값을 입력해야 다음 단계로 넘어갈 수 있습니다.")
         report.next_steps.append(
-            f"{rel(work_project, project)}/.env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, "
+            f"{rel(work_project, project)}/.env에 mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password, "
             "mlflow_experiment_name, mlflow_register_model_name 를 직접 입력하세요."
         )
         report.next_steps.append(f"입력 후 실행: python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py")
@@ -4305,13 +4325,6 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.prepared_paths.extend(template_changed)
     report.skipped.extend(template_skipped)
     report.failures.extend(template_failures)
-    if report.failures:
-        return report
-
-    read_changed, read_skipped, read_failures = read_copied_template_files(work_project, selected_kind, args.execute)
-    report.prepared_paths.extend(read_changed)
-    report.skipped.extend(read_skipped)
-    report.failures.extend(read_failures)
     if report.failures:
         return report
 

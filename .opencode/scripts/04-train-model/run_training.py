@@ -38,7 +38,7 @@ ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_uri",
+    "mlflow_tracking_url",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -90,8 +90,11 @@ MODEL_SCAN_SKIP_DIRS = {
 SETTING_ALIASES = {
     "mlflow_tracking_uri": {
         "mlflow_tracking_uri",
+        "mlflow_tracking_url",
         "tracking_uri",
+        "tracking_url",
         "MLFLOW_TRACKING_URI",
+        "MLFLOW_TRACKING_URL",
     },
     "mlflow_tracking_username": {
         "mlflow_tracking_username",
@@ -596,13 +599,13 @@ def main():
     elif args.execute and cmd and remote_uri_failure:
         failures.append(remote_uri_failure)
         next_steps.append("5번 원격 MLflow 등록 실행에는 원격 MLflow URL이 필요합니다.")
-        next_steps.append(".env의 mlflow_tracking_uri는 5개 필수 입력값 중 하나입니다. 원격 http:// 또는 https:// URI를 직접 입력하세요.")
+        next_steps.append(".env의 mlflow_tracking_url은 5개 필수 입력값 중 하나입니다. 원격 http:// 또는 https:// URL을 직접 입력하세요.")
         next_steps.append("file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
     elif args.execute and cmd and missing_env:
         failures.append("execution_blocked_missing_env")
         next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
         next_steps.append(
-            ".env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name 를 직접 입력한 뒤 다시 실행하세요."
+            ".env에 mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name 를 직접 입력한 뒤 다시 실행하세요."
         )
     elif args.execute and cmd:
         return_code = run_command(cmd, cwd=work_path)

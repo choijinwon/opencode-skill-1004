@@ -34,7 +34,7 @@ ENV_KEYS = [
 ]
 
 AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_uri",
+    "mlflow_tracking_url",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -92,8 +92,11 @@ MODEL_SCAN_SKIP_DIRS = {
 SETTING_ALIASES = {
     "mlflow_tracking_uri": {
         "mlflow_tracking_uri",
+        "mlflow_tracking_url",
         "tracking_uri",
+        "tracking_url",
         "MLFLOW_TRACKING_URI",
+        "MLFLOW_TRACKING_URL",
     },
     "mlflow_tracking_username": {
         "mlflow_tracking_username",
@@ -1737,9 +1740,9 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
             if version_constraint_status(remote_mlflow.server_version, item.required_version) == "version_mismatch":
                 next_steps.append(f"requirements.txt의 mlflow 요구 버전을 mlflow=={remote_mlflow.server_version}로 변환하세요.")
                 break
-    tracking_ready = any(item.name == "mlflow_tracking_uri" and item.status == "set" for item in ai_env.key_status)
+    tracking_ready = any(item.name in {"mlflow_tracking_uri", "mlflow_tracking_url"} and item.status == "set" for item in ai_env.key_status)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
-        next_steps.append(".env 5개 필수 입력값 중 mlflow_tracking_uri에 원격 MLflow/리포트 URI를 직접 입력하세요.")
+        next_steps.append(".env 5개 필수 입력값 중 mlflow_tracking_url에 원격 MLflow/리포트 URL을 직접 입력하세요.")
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
         next_steps.append(f".env 5개 필수 입력값을 직접 입력하세요: {required_names}.")
@@ -2225,7 +2228,7 @@ def print_action_items(report: EnvironmentReport) -> None:
             [
                 source_path,
                 "직접 입력 필요",
-                "mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name",
+                "mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name",
             ]
         )
     if action_rows:
