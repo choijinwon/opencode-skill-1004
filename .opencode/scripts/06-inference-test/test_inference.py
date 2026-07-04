@@ -87,6 +87,13 @@ def preview(value) -> str:
     return text[:1000]
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
 def response_schema(value) -> str:
     if isinstance(value, dict):
         return "object:" + ",".join(sorted(str(key) for key in value.keys())[:10])
@@ -173,22 +180,29 @@ def main():
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print("Project: .")
-        print(f"Input example: {report.input_example_path or 'missing'}")
-        print(f"Inference entrypoint: {report.inferencetest_path or 'missing'}")
-        print(f"req_url status: {report.req_url_status}")
-        print(f"Result path: {report.result_path or 'not written'}")
-        print(f"Executed: {report.executed}")
-        print(f"Status code: {report.status_code if report.status_code is not None else 'none'}")
-        print(f"Response schema: {report.response_schema or 'none'}")
+        print("추론 테스트 결과:")
+        print_markdown_table(
+            ["항목", "값"],
+            [
+                ["Project", "."],
+                ["Input example", report.input_example_path or "missing"],
+                ["Inference entrypoint", report.inferencetest_path or "missing"],
+                ["req_url status", report.req_url_status],
+                ["Result path", report.result_path or "not written"],
+                ["Executed", str(report.executed).lower()],
+                ["Status code", str(report.status_code) if report.status_code is not None else "none"],
+                ["Response schema", report.response_schema or "none"],
+            ],
+        )
         if report.output_preview:
-            print(f"Output preview: {report.output_preview}")
+            print("Output preview:")
+            print_markdown_table(["항목", "값"], [["Preview", report.output_preview]])
         if report.failures:
             print("Failures:")
-            for failure in report.failures:
-                print(f"- {failure}")
+            print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
             if "missing_req_url" in report.failures or "req_url_must_end_with_predict" in report.failures:
-                print("조치: inferencetest.py의 req_url 또는 --url에 원격 :predict URL을 입력하세요.")
+                print("조치:")
+                print_markdown_table(["No", "Action"], [["1", "inferencetest.py의 req_url 또는 --url에 원격 :predict URL을 입력하세요."]])
 
 
 if __name__ == "__main__":

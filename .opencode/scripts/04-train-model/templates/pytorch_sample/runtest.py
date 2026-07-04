@@ -223,8 +223,10 @@ def main() -> None:
     if missing:
         print("원격 MLflow 등록 실행을 위해 MLflow/AI Studio 설정을 runtest.py에 직접 입력하세요.")
         print("missing settings:")
-        for name in missing:
-            print(f"- {name}")
+        print("| No | Key |")
+        print("|---:|---|")
+        for index, name in enumerate(missing, start=1):
+            print(f"| {index} | {name} |")
         print("비밀번호 값은 출력하지 않습니다.")
         return
 

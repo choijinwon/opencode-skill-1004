@@ -1,7 +1,5 @@
-mlflow==3.10.0
-torch==2.12.1
-numpy==1.26.4
+mlflow==3.14.0
 kserve==0.15.0
-pandas==2.2.3
 scikit-learn==1.7.0
 joblib==1.5.1
+numpy==1.26.4

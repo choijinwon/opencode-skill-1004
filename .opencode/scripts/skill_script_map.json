@@ -5,11 +5,9 @@
       "1. 모델 목록 확인"
     ],
     "primary_scripts": [
-      "01-project-analyze/validate_mlflow_project.py",
-      "launch_workspace_summary.py",
-      "04-train-model/prepare_selected_model.py"
+      "01-project-analyze/validate_mlflow_project.py"
     ],
-    "purpose": "workspace analysis, model_found decision, and model list"
+    "purpose": "read-only workspace analysis, model_found decision, and model list"
   },
   "02-sample-bootstrap": {
     "skill_folder": "02-agent-mlflow-skill-sample-bootstrap",

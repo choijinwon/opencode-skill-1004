@@ -21,7 +21,7 @@ from pathlib import Path
 
 EXPECTED_PYTHON_VERSION = "3.11.9"
 EXPECTED_PACKAGE_VERSIONS = {
-    "mlflow": "==3.10.0",
+    "mlflow": "",
     "torch": "==2.12.1",
     "numpy": "==1.26.4",
     "kserve": "==0.15.0",
@@ -804,24 +804,25 @@ def build_report(workspace: Path, project: Path, sample: str, setting_file: str 
 
 def print_text(report: DoctorReport) -> None:
     print("OpenCode MLflow Doctor")
-    print("Workspace: .")
-    print("Project: .")
-    print(f"OS: {report.os}")
-    print(f"Python: {report.python} (expected {report.expected_python})")
+    print("| 항목 | 값 |")
+    print("|---|---|")
+    print("| Workspace | . |")
+    print("| Project | . |")
+    print(f"| OS | {report.os} |")
+    print(f"| Python | {report.python} (expected {report.expected_python}) |")
     print("")
+    print("| No | Status | Check | Detail | Evidence | TODO |")
+    print("|---:|---|---|---|---|---|")
     for index, check in enumerate(report.checks, start=1):
-        print(f"{index}. [{check.status}] {check.name}")
-        print(f"   detail: {check.detail}")
-        for item in check.evidence:
-            print(f"   - {item}")
-        if check.tod:
-            print("   TODO:")
-            for item in check.tod:
-                print(f"   - {item}")
+        evidence = "; ".join(check.evidence)
+        todo = "; ".join(check.tod)
+        print(f"| {index} | {check.status} | {check.name} | {check.detail} | {evidence} | {todo} |")
     print("")
     print("Next steps:")
-    for item in report.next_steps:
-        print(f"- {item}")
+    print("| No | Next Step |")
+    print("|---:|---|")
+    for index, item in enumerate(report.next_steps, start=1):
+        print(f"| {index} | {item} |")
 
 
 def main() -> int:

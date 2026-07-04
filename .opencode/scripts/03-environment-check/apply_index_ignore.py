@@ -141,16 +141,23 @@ def main() -> int:
     if not project.exists():
         raise SystemExit(f"project not found: {project}")
 
+    def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+        print("| " + " | ".join(headers) + " |")
+        print("|" + "|".join("---" for _ in headers) + "|")
+        for row in rows:
+            print("| " + " | ".join(str(value) for value in row) + " |")
+
     print("Project: .")
+    result_rows = []
     for name, patterns in TARGET_FILES.items():
         path = project / name
         block = managed_block(patterns)
         status = apply_file(path, block, args.dry_run)
-        print(f"{name}: {status}")
+        result_rows.append([name, status])
+    print_markdown_table(["파일", "상태"], result_rows)
 
     print("\nIndex ignore targets:")
-    for pattern in SCAN_PATTERNS:
-        print(f"- {pattern}")
+    print_markdown_table(["No", "Pattern"], [[str(index), pattern] for index, pattern in enumerate(SCAN_PATTERNS, start=1)])
     return 0
 
 

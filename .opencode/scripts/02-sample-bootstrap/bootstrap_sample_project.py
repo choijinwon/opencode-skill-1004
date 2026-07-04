@@ -122,6 +122,13 @@ class BootstrapReport:
     next_steps: list[str] = field(default_factory=list)
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
 def list_samples() -> list[dict[str, str]]:
     rows = []
     for key, meta in SAMPLES.items():
@@ -400,10 +407,19 @@ def main():
         if args.json:
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         else:
-            for row in rows:
-                print(f"{row['key']}: {row['label']} - {row['description']}")
-                print(f"  source: {row['source_path']}")
-                print(f"  available: {row['available']}")
+            print("샘플 목록:")
+            print_markdown_table(
+                ["No", "Sample", "Description", "Available"],
+                [
+                    [
+                        str(index),
+                        row["key"],
+                        row["description"],
+                        str(row["available"]).lower(),
+                    ]
+                    for index, row in enumerate(rows, start=1)
+                ],
+            )
         return
 
     if not args.sample:
@@ -476,28 +492,31 @@ def main():
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print("Project: .")
-        print(f"Selected sample: {report.selected_sample}")
-        print(f"Sample source: {Path(report.sample_source_path).name}")
-        print(f"Target project path: {'.' if report.target_project_path else 'not prepared'}")
-        print(f"Copy mode: {report.copy_mode}")
-        print(f"Project empty: {report.project_empty}")
-        print(f"Execute: {report.execute}")
-        print(f"Copied entries: {len(report.copied)}")
+        print("샘플 준비 결과:")
+        print_markdown_table(
+            ["항목", "값"],
+            [
+                ["Project", "."],
+                ["Selected sample", report.selected_sample or "missing"],
+                ["Sample source", Path(report.sample_source_path).name if report.sample_source_path else "missing"],
+                ["Target project path", "." if report.target_project_path else "not prepared"],
+                ["Copy mode", report.copy_mode],
+                ["Project empty", str(report.project_empty).lower()],
+                ["Execute", str(report.execute).lower()],
+                ["Copied entries", str(len(report.copied))],
+            ],
+        )
         if report.skipped:
             print("Skipped existing files:")
-            for item in report.skipped:
-                print(f"- {item}")
+            print_markdown_table(["No", "Skipped"], [[str(index), item] for index, item in enumerate(report.skipped, start=1)])
         if report.failures:
             print("Failures:")
-            for failure in report.failures:
-                print(f"- {failure}")
+            print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
         if report.tod_guide:
             print(format_todo_guide(("샘플 흐름", "샘플 선택 완료", "사용자 선택", "사용자 선택", "사용자 선택", "사용자 선택", "사용자 선택")))
         if report.next_steps:
             print("Next steps:")
-            for step in report.next_steps:
-                print(f"- {step}")
+            print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps, start=1)])
 
     if failures:
         sys.exit(1)

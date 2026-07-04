@@ -12,5 +12,5 @@ $Command = Get-Command opencode -CommandType Application,ExternalScript -All |
 if (-not $Command) {
     throw "real opencode command was not found in PATH"
 }
-
+& $Command.Source .opencode --reset-launch @args
 & $Command.Source . --agent aistudio @args

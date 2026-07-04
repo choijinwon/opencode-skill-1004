@@ -72,6 +72,38 @@ def load_prepare_module():
     return module
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
+def selected_entrypoint_path(report) -> str:
+    entrypoint = report.generated_entrypoint or "runtest_2.py"
+    if report.work_project_path and report.work_project_path != ".":
+        return f"{report.work_project_path.rstrip('/')}/{entrypoint}"
+    return entrypoint
+
+
+def print_selected_entrypoint_only(report) -> None:
+    print(f"선택 모델: {report.selected_model_path or 'missing'}")
+    print(f"MODEL_KIND: {report.model_kind or 'missing'}")
+    print(f"실행 파일: {selected_entrypoint_path(report)}")
+    print(f"작업 폴더: {report.work_project_path or '.'}")
+    print("다음 가능 단계:")
+    print_markdown_table(
+        ["Status", "Step", "Action"],
+        [
+            ["대기", "3", "환경 검증"],
+            ["대기", "4", "템플릿 변환 (사용자 선택)"],
+            ["대기", "5", "원격 MLflow 등록 실행"],
+            ["대기", "6", "추론 테스트"],
+            ["대기", "7", "오류 재실행"],
+        ],
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Step 2: select and lock a model for the AI Studio flow.")
     parser.add_argument("model_arg", nargs="?", help="model number or project-relative path")
@@ -104,6 +136,8 @@ def main() -> int:
         from dataclasses import asdict
 
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
+    elif not args.verbose and not report.failures:
+        print_selected_entrypoint_only(report)
     else:
         module.print_report(report, verbose=args.verbose)
     return 1 if report.failures else 0

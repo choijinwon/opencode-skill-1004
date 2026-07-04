@@ -27,9 +27,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
 
 ```text
 01 Project Analyze
-  01-project-analyze/validate_mlflow_project.py      상세 프로젝트 분석
-  launch_workspace_summary.py                        Windows 런치 분석 명령 호환
-  04-train-model/prepare_selected_model.py           모델 목록 확인
+  01-project-analyze/validate_mlflow_project.py      읽기 전용 프로젝트 분석과 모델 목록 확인
 
 02 Sample Bootstrap
   02-sample-bootstrap/bootstrap_sample_project.py    sklearn/pytorch/tensorflow 샘플 복사
@@ -43,7 +41,7 @@ scripts      -> 폐쇄망에서도 동작하도록 표준 라이브러리 중심
   03-environment-check/apply_index_ignore.py         인덱싱 제외 적용
 
 04 Train Model / Selected Model Build
-  04-train-model/prepare_selected_model.py           1번 모델 목록 확인 + 4번 템플릿 변환
+  04-train-model/prepare_selected_model.py           4번 템플릿 변환
   04-train-model/run_training.py                     5번 원격 MLflow 등록 실행
   04-train-model/adapt_ai_studio.py                  사용자 임의 run.py 보강용 보조 스크립트
 
@@ -59,7 +57,7 @@ QA / Maintenance
 고정 7단계 매핑:
 
 ```text
-1 모델 목록 확인                  -> prepare_selected_model.py --project .
+1 모델 목록 확인                  -> validate_mlflow_project.py --project . --no-write-check
 2 모델 선택                       -> 02-model-select/select_model.py --model <번호|경로>
 3 환경 검증      -> check_environment.py
 4 템플릿 변환                     -> prepare_selected_model.py --model selected --execute

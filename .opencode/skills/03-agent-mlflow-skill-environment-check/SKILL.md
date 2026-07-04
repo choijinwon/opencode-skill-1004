@@ -17,7 +17,7 @@ metadata:
 판단 결과: pass | warn | needs_user_input | blocked
 현재 단계: 3. 환경 검증
 현재 대상: selected_project_path
-핵심 판단: Python 3.11.9, MLflow 3.13.0, dependency, 설정 상태
+핵심 판단: 현재 Python, 원격 MLflow version, dependency, 설정 상태
 다음 단계: 사용자가 4. 템플릿 변환 선택 후, 사용자가 5. 원격 MLflow 등록 실행 선택
 ```
 
@@ -37,42 +37,44 @@ metadata:
 
 ```text
 1. 선택 모델 정보가 config/config.json 기준으로 유지되는지 확인한다.
-2. Python 실행 파일과 버전을 확인한다.
-3. dependency 파일과 핵심 패키지를 확인한다.
-4. MLflow 3.13.0 설치/version을 확인한다.
-5. mlflow_tracking_uri이 있으면 원격 MLflow 서버 version을 확인한다.
-6. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 업데이트한다. 이때 필수 패키지 5개는 항상 유지한다.
-7. Python 3.13 등에서 kserve 설치 호환성 문제가 보여도 `kserve==0.15.0`을 requirements.txt에서 제거하지 않는다. Python 버전 차단/전환 대상으로 안내한다.
-8. requirements.txt에는 `torch==2.x.x+cpu`, `torchvision==...+cpu` 같은 wheel local tag를 넣지 않는다. CPU wheel 선택은 내부 Nexus/pip index 설정으로 처리하고, 파일은 `torch==2.x.x` 형식으로 유지한다.
-9. `.env`의 비어 있는 값은 사용자가 직접 `.env`에 입력하도록 안내한다.
+2. Python 실행 파일과 버전을 확인하되, 고정 버전 강제 대신 MLflow/requirements 호환성 기준으로 판단한다.
+3. dependency 파일과 핵심 패키지를 확인하되, 로컬 설치를 요구하지 않는다.
+4. 로컬 MLflow 설치 상태는 참고만 하고, 원격 MLflow 서버 version과 requirements.txt 변환 기준을 우선한다.
+5. mlflow_tracking_uri이 있으면 원격 MLflow 서버 version을 확인하고, 확인된 서버 version에 맞춰 requirements.txt의 mlflow 버전을 변환한다.
+6. 선택 모델 MODEL_KIND 기준으로 필요한 프레임워크 패키지만 requirements.txt에 반영한다. 선택 모델과 무관한 프레임워크 패키지는 제거한다.
+7. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 변환한다. 이때 필수 패키지 5개는 항상 유지한다.
+8. `kserve==0.15.0`은 requirements.txt 필수 항목으로 유지한다. 로컬 PC 환경 검증에서는 kserve 미설치를 차단/처리 항목으로 표시하지 않고, 별도 설치를 요구하지 않는다.
+9. requirements.txt에는 `torch==2.x.x+cpu`, `torchvision==...+cpu` 같은 wheel local tag를 넣지 않는다. CPU wheel 선택은 내부 Nexus/pip index 설정으로 처리하고, 파일은 `torch==2.x.x` 형식으로 유지한다.
+10. `.env`의 비어 있는 값은 사용자가 직접 `.env`에 입력하도록 안내한다.
+11. `mlflow_tracking_uri`, `mlflow_tracking_username`, `mlflow_tracking_password` 3개 값이 비어 있으면 4번 템플릿 변환과 5번 원격 MLflow 등록 실행으로 넘어가지 않는다.
 ```
 
 ## Output Contract
 
 ```text
-반드시 보여줄 값:
+기본 출력은 짧게 보여준다:
 - 판단 결과
-- Python 현재 version / 기대 version 3.11.9
-- dependency 파일 상태
-- 설치 기준 파일: requirements.txt
-- requirements.txt 필요 패키지 / 설치 여부 / 설치 버전 / 요구 버전 / 버전 불일치
-- import 기준 requirements.txt 업데이트 내역
-- MLflow 3.13.0 설치/version 상태
-- 원격 MLflow 서버 version / 로컬 MLflow version / 불일치 여부
-- 환경 변수 상태
-- 실행 파일명이 다른 경우 --entrypoint <file> 사용 여부
-- 입력이 필요한 값
-- password는 값 없이 set/empty/missing
-- TODO Guide
-- 차단 항목 요약
+- 선택 모델 / MODEL_KIND
+- Python 현재 version과 MLflow·requirements 호환성 기준
+- requirements.txt 확인/변환 상태
+- 원격 MLflow URI 상태
 - 처리해야 할 항목
+- 다시 검증 명령
+
+상세 출력은 사용자가 요청하거나 --verbose 실행 시에만 보여준다:
+- OS, virtualenv, dependency 파일 전체
+- requirements.txt 전체 패키지 목록
+- 원격 MLflow 서버 version 상세
+- 환경 변수 전체 상태
+- TODO Guide
+- 차단 항목 요약, Failures 전체
 ```
 
 상태 출력 UI:
 
 ```text
 판단 결과: warn
-Python: version_mismatch, current=<현재버전>, expected=3.11.9
+Python: compatibility_check, current=<현재버전>, 기준=MLflow/requirements
 MLflow: set
 Remote MLflow: version_match | version_mismatch | unreachable | skipped
 Secrets: mlflow_tracking_password=set, value hidden
@@ -80,27 +82,22 @@ Secrets: mlflow_tracking_password=set, value hidden
 ```
 
 환경 검증 결과를 설명할 때는 `다음단계 진행하시겠습니까?`처럼 질문하지 않는다.
-사용자가 해야 할 일은 아래 고정 형식으로만 안내한다.
+사용자가 해야 할 일은 아래처럼 짧게 안내한다.
 
 ```text
-패키지 불일치/미설치가 있어도 로컬 dependency 설치는 자동 실행하지 않는다.
-requirements.txt 변환과 상태 표시만 수행한다.
+환경 검증 결과
+- 판단 결과: needs_user_input
+- Python: <현재버전> (MLflow/requirements 호환성 기준)
+- requirements.txt: 확인/변환 완료
+- 원격 MLflow URI: missing
 
-처리해야 할 항목:
-- 직접 확인 대상: 패키지 불일치/미설치
-  조치: 내부 Nexus/네트워크/패키지 버전을 확인하고, 필요 시 사용자가 직접 설치하세요.
-  - pandas: 버전 불일치
-    요구 버전: ==2.2.3
-    설치 버전: 2.3.3
-- 직접 입력 필요: .env
-  mlflow_tracking_uri — 원격 MLflow 서버 URI (http://... 또는 https://...)
-  mlflow_tracking_username
-  mlflow_tracking_password (secret — 출력하지 않음)
+처리해야 할 항목
+1. Python <현재버전>: MLflow/requirements 호환성 확인
+2. mlflow: 버전 불일치
+3. .env 입력 필요: mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password
 
-처리 완료 후 실행:
-- 4번 템플릿 변환은 사용자가 선택: python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute
-- 5번 원격 MLflow 등록 실행은 사용자가 선택: python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
-- 6번 추론 테스트는 사용자가 선택: python inferencetest.py
+다시 검증
+- python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py
 ```
 
 ## Commands
@@ -111,9 +108,9 @@ python .opencode/scripts/03-environment-check/check_environment.py --project .
 python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint <file>
 python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint <file>
 
-폐쇄망 패키지 설치:
-필요 시 사용자 직접 설치:
-python -m pip install -r requirements.txt --index-url http://<internal-pypi>/simple --trusted-host <internal-pypi-host>
+폐쇄망 패키지 처리:
+환경 검증 단계에서는 패키지를 설치하지 않는다.
+mlflow/torch/numpy/pandas 미설치 또는 버전 불일치는 requirements.txt 변환 결과로만 보여준다.
 
 PyTorch CPU wheel Nexus upstream 참고:
 https://download.pytorch.org/whl/cpu
@@ -144,14 +141,14 @@ forbidden       -> Windows 로컬 절대경로를 KServe 런타임 경로로 사
 
 ```text
 pass:
-- Python 3.11.9
+- 현재 Python에서 MLflow/requirements 필수 패키지 호환성 확인됨
 - MLflow 3.13.0 설치됨
 - 원격 MLflow 서버 version과 로컬 mlflow version 일치
 - 핵심 dependency 확인됨
 - 필수 MLflow 설정이 소스 또는 환경에 있음
 
 warn:
-- Python 버전만 기대값과 다름
+- Python 버전은 고정 기대값이 아니라 MLflow/requirements 호환성 확인이 필요함
 - 폐쇄망 설치 준비가 필요하지만 다음 단계 안내 가능
 - 원격 MLflow 서버 version 확인 실패(unreachable)지만 URL/인증을 다시 확인할 수 있음
 
@@ -191,9 +188,9 @@ mlflow_register_model_name
 <summary>문제 해결 보기</summary>
 
 ```text
-증상: Python 버전 차이
-원인: 현재 Python이 3.11.9가 아님
-조치: 호환성 경고로 표시하고 필요 시 3.11.9 환경 사용
+증상: Python 버전 확인 필요
+원인: 현재 Python에서 MLflow/requirements 필수 패키지 호환성을 확인해야 함
+조치: 고정 버전 전환을 강제하지 않고 MLflow 서버 버전과 requirements.txt 기준으로 확인
 
 증상: 환경변수를 입력했는데 체크가 안 됨
 원인: `.env` 값 누락 또는 export 설정 누락

@@ -7,9 +7,7 @@
       "mode": "primary"
     }
   },
-  "instructions": [
-    ".opencode/AISTUDIO_GUIDE.md"
-  ],
+  "instructions": [],
   "skills": {
     "paths": [
       ".opencode/skills"

@@ -41,6 +41,14 @@ metadata:
    - 이미 선택된 모델이 있을 때 4번에서 모델 번호를 다시 넘기지 않는다.
    - 여러 모델이 있어도 스킬 변환 대상은 현재 선택 모델 하나로 유지한다.
    - `runtest_2.py` 안의 모델 경로를 다시 선택 기준으로 삼지 않는다.
+   - `다음 가능 단계`를 보여줄 때는 반드시 Markdown Table 형식으로 출력한다.
+     | Status | Step | Action |
+     |---|---:|---|
+     | 대기 | 3 | 환경 검증 |
+     | 대기 | 4 | 템플릿 변환 |
+     | 대기 | 5 | 원격 MLflow 등록 실행 |
+     | 대기 | 6 | 추론 테스트 |
+     | 대기 | 7 | 오류 재실행 |
 3. 환경 검증
 4. 템플릿 변환 (사용자 선택)
 5. 원격 MLflow 등록 실행 (사용자 선택)
@@ -54,7 +62,7 @@ metadata:
 1. 기존 모델이면 프로젝트 루트 전체와 data/** 모델 목록을 먼저 보여준다.
 2. 사용할 모델을 번호 또는 경로로 선택한다.
 3. MODEL_KIND를 확장자 기준으로 판별한다.
-4. 워크스페이스 루트 아래에 선택 모델명 작업 폴더를 만들고, `.opencode/samples/pytorch_sample/` 템플릿을 그 폴더로 복사한 뒤, 복사된 모든 템플릿 파일을 다시 읽고 선택 모델 기준 연결부만 최소 변환한다. 단, 템플릿 `requirements.txt`는 복사하지 않는다.
+4. 워크스페이스 루트 아래에 선택 모델명 작업 폴더를 만들고, `.opencode/samples/pytorch_sample/local_serving/` 폴더만 그 작업 폴더의 `local_serving/`로 복사한 뒤, 복사된 local serving 템플릿을 다시 읽고 선택 모델 기준 연결부만 최소 변환한다.
 5. 워크스페이스 루트의 runtest.py를 우선 읽기 전용으로 참조하고, 복사된 템플릿 파일을 선택 모델 연결부만 안전하게 변환한다.
 6. 기존 runtest.py 또는 run_test.py는 절대 수정하지 않고 runtest_2.py만 선택 모델 기준으로 변환한다.
 7. 모델 파일은 템플릿 폴더로 복사하지 않는다.
@@ -96,8 +104,8 @@ MLflow artifact:
 python .opencode/scripts/04-train-model/run_training.py --project .
 
 원격 MLflow 등록 실행:
-python .opencode/scripts/04-train-model/run_training.py --project . --execute
-python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
+python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --execute
+python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute
 
 명시적 entrypoint 실행:
 python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint <file> --execute
@@ -197,7 +205,7 @@ blocked:
 3. 환경 검증
    필수 패키지 5개는 항상 유지하고, 모델 형식별 추가 패키지만 반영
 4. 템플릿 변환
-   사용자가 4번 선택 시 실행. 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
+   사용자가 4번 선택 시 실행. `local_serving/` 폴더만 복사 후, 복사된 local serving 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정
 5. 원격 MLflow 등록 실행
    사용자가 5번을 선택했을 때만 실행
 6. 추론 테스트

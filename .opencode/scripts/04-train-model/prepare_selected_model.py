@@ -4,11 +4,15 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import importlib.metadata
 import json
 import os
 import re
 import shutil
+import subprocess
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from pprint import pformat
@@ -67,9 +71,9 @@ if str(SCRIPT_ROOT) not in sys.path:
 
 from ai_studio_process import format_model_selection_hint, format_todo_guide
 
-TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
+DEFAULT_TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
 TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "samples"
-TEMPLATE_SAMPLE_DIR = TRAIN_MODEL_TEMPLATE_ROOT / TEMPLATE_SAMPLE_DIR_NAME
+TEMPLATE_SAMPLE_DIR = TRAIN_MODEL_TEMPLATE_ROOT / DEFAULT_TEMPLATE_SAMPLE_DIR_NAME
 REQUIRED_REQUIREMENTS_FILE = ROOT / "scripts" / "03-environment-check" / "requirements.required.txt"
 CHECK_ENVIRONMENT_SCRIPT = ROOT / "scripts" / "03-environment-check" / "check_environment.py"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
@@ -78,6 +82,48 @@ PYTORCH_REFERENCE_DIR = TEMPLATE_SAMPLE_DIR
 PYTORCH_REFERENCE_ENTRYPOINT = PYTORCH_REFERENCE_DIR / "runtest.py"
 PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
 PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
+
+
+def normalize_python_version_text(value: str | None) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    match = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?$", text)
+    if not match:
+        return None
+    major, minor, patch = match.group(1), match.group(2), match.group(3)
+    return f"{major}.{minor}.{patch}" if patch else f"{major}.{minor}"
+
+
+def environment_check_command(work_project: Path, python_version: str | None) -> str:
+    command = (
+        "python .opencode/scripts/03-environment-check/check_environment.py "
+        f"--project {rel(work_project, Path.cwd())} --entrypoint runtest_2.py"
+    )
+    if python_version:
+        command += f" --python-version {python_version}"
+    return command
+
+
+def run_environment_check_summary(work_project: Path, python_version: str | None) -> tuple[dict[str, object] | None, str | None]:
+    command = [
+        sys.executable,
+        str(CHECK_ENVIRONMENT_SCRIPT),
+        "--project",
+        str(work_project),
+        "--entrypoint",
+        "runtest_2.py",
+        "--json",
+    ]
+    if python_version:
+        command.extend(["--python-version", python_version])
+    completed = subprocess.run(command, capture_output=True, text=True)
+    if completed.returncode != 0:
+        return None, (completed.stderr or completed.stdout or "").strip()
+    try:
+        return json.loads(completed.stdout), None
+    except json.JSONDecodeError:
+        return None, "environment check JSON parse failed"
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>"
 
 REFERENCE_ENTRYPOINT_BY_KIND = {
@@ -90,6 +136,67 @@ REFERENCE_ENTRYPOINT_BY_KIND = {
     "tensorflow_keras": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_h5": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
     "tensorflow_saved_model": ROOT / "samples" / "tensorflow_sample" / "run_model.py",
+}
+
+TEMPLATE_SAMPLE_DIR_NAME_BY_KIND = {
+    "pytorch": "pytorch_sample",
+    "safetensors": "pytorch_sample",
+    "sklearn_pickle": "sklearn_sample",
+    "sklearn_joblib": "sklearn_sample",
+    "xgboost_bst": "sklearn_sample",
+    "xgboost_ubj": "sklearn_sample",
+    "onnx": "sklearn_sample",
+    "tensorflow_keras": "tensorflow_sample",
+    "tensorflow_h5": "tensorflow_sample",
+    "tensorflow_saved_model": "tensorflow_sample",
+}
+
+
+def template_sample_dir_name(kind: str | None) -> str:
+    return TEMPLATE_SAMPLE_DIR_NAME_BY_KIND.get(kind or "", DEFAULT_TEMPLATE_SAMPLE_DIR_NAME)
+
+
+def template_sample_dir(kind: str | None) -> Path:
+    return TRAIN_MODEL_TEMPLATE_ROOT / template_sample_dir_name(kind)
+MODEL_KIND_MANUAL_REQUIREMENT_MAP = {
+    "tensorflow_keras": ["tensorflow==2.19.0"],
+    "tensorflow_h5": ["tensorflow==2.19.0"],
+    "onnx": ["onnxruntime==1.22.1"],
+    "pytorch": ["numpy==1.26.4", "torch==2.7.1", "torchvision==0.22.1", "torchmetrics==1.7.3"],
+    "safetensors": ["numpy==1.26.4", "torch==2.7.1", "safetensors==0.5.3"],
+    "sklearn_pickle": ["scikit-learn==1.7.0", "joblib==1.5.1"],
+    "sklearn_joblib": ["scikit-learn==1.7.0", "joblib==1.5.1"],
+    "xgboost_bst": ["xgboost==3.0.2"],
+    "xgboost_ubj": ["xgboost==3.0.2"],
+}
+IMAGE_MODEL_KEYWORDS = (
+    "cnn",
+    "mnist",
+    "fashionmnist",
+    "image",
+    "vision",
+    "resnet",
+    "yolo",
+    "unet",
+    "vit",
+    "segmentation",
+    "detection",
+)
+IMAGE_MODEL_KINDS = {
+    "pytorch",
+    "safetensors",
+    "onnx",
+    "tensorflow_keras",
+    "tensorflow_h5",
+    "tensorflow_saved_model",
+}
+IMAGE_MODEL_MANUAL_REQUIREMENT_MAP = {
+    "pytorch": ["pillow==12.3.0", "matplotlib==3.11.0"],
+    "safetensors": ["pillow==12.3.0", "matplotlib==3.11.0"],
+    "onnx": ["pillow==12.3.0", "matplotlib==3.11.0"],
+    "tensorflow_keras": ["pillow==12.3.0", "matplotlib==3.11.0"],
+    "tensorflow_h5": ["pillow==12.3.0", "matplotlib==3.11.0"],
+    "tensorflow_saved_model": ["pillow==12.3.0", "matplotlib==3.11.0"],
 }
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
 ai_STUDIO_COPY_IGNORE_FILES = {
@@ -143,6 +250,13 @@ MLFLOW_SETTING_NAMES = {
     "mlflow_experiment_name",
     "mlflow_register_model_name",
 }
+REQUIRED_MLFLOW_GATE_KEYS = (
+    "mlflow_tracking_uri",
+    "mlflow_tracking_username",
+    "mlflow_tracking_password",
+    "mlflow_experiment_name",
+    "mlflow_register_model_name",
+)
 MODEL_RELATED_SETTING_NAMES = {
     "SOURCE_MODEL_PATH",
     "DATA_MODEL_PATH",
@@ -418,11 +532,20 @@ class PreparedModelReport:
     locked_model_path: str | None = None
     required_requirements: list[str] = field(default_factory=list)
     additional_requirements: list[str] = field(default_factory=list)
+    image_model_recommendations: list[str] = field(default_factory=list)
     prepared_paths: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
+    selected_python_version: str | None = None
+    env_check_status: str | None = None
+    env_check_summary: str | None = None
+    env_check_command: str | None = None
+    env_check_requirements: list[str] = field(default_factory=list)
+    env_check_import_packages: list[str] = field(default_factory=list)
+    env_check_dry_run_status: str | None = None
+    env_check_dry_run_summary: str | None = None
 
 
 def rel(path: Path, base: Path) -> str:
@@ -441,6 +564,40 @@ def windows_relative_path(path: Path, base: Path) -> str:
 
 def normalize_path_text(value: str) -> str:
     return re.sub(r"/+", "/", value.translate(PATH_SEPARATOR_TRANSLATION))
+
+
+def strip_env_value(value: str) -> str:
+    text = value.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        text = text[1:-1].strip()
+    return text
+
+
+def todo_placeholder(value: str) -> bool:
+    text = strip_env_value(value).strip().lower()
+    return text in {"", "todo", "{todo}", "<todo>", "tbd", "none", "null", "입력", "입력필요"}
+
+
+def parse_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.is_file():
+        return values
+    for raw_line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = strip_env_value(value)
+    return values
+
+
+def missing_required_mlflow_values(project: Path) -> list[str]:
+    values = parse_env_file(project / ".env")
+    missing: list[str] = []
+    for key in REQUIRED_MLFLOW_GATE_KEYS:
+        if todo_placeholder(values.get(key, "")):
+            missing.append(key)
+    return missing
 
 
 def is_absolute_model_selector(value: str) -> bool:
@@ -649,10 +806,22 @@ def match_model_by_text(project: Path, models: list[Path], raw: str) -> tuple[Pa
     return resolve_single_artifact(project, matches, raw)
 
 
-def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, str | None]:
-    config_path = project / "config" / "config.json"
-    if not config_path.is_file():
-        return None, None, "selected_model_config_missing"
+def selected_model_config_candidates(project: Path) -> list[Path]:
+    candidates: list[Path] = []
+    root_config = project / "config" / "config.json"
+    if root_config.is_file():
+        candidates.append(root_config)
+    for child in sorted(project.iterdir() if project.is_dir() else [], key=lambda path: path.name.lower()):
+        if not child.is_dir() or child.name.startswith("."):
+            continue
+        config_path = child / "config" / "config.json"
+        if config_path.is_file():
+            candidates.append(config_path)
+    return sorted(candidates, key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
+
+
+def selected_model_from_config_path(project: Path, config_path: Path) -> tuple[Path | None, str | None, str | None]:
+    config_project = config_path.parents[1]
     try:
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -667,11 +836,24 @@ def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, 
     normalized = normalize_path_text(source_path.strip())
     candidate = Path(normalized).expanduser()
     if not candidate.is_absolute():
-        candidate = project / candidate
+        candidate = config_project / candidate
     candidate = candidate.resolve()
     if not candidate.exists():
         return candidate, kind if isinstance(kind, str) else None, f"selected_model_config_not_found:{source_path}"
     return candidate, kind if isinstance(kind, str) else None, None
+
+
+def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, str | None]:
+    candidates = selected_model_config_candidates(project)
+    if not candidates:
+        return None, None, "selected_model_config_missing"
+    last_error = "selected_model_config_missing"
+    for config_path in candidates:
+        selected_model, kind, error = selected_model_from_config_path(project, config_path)
+        if error is None:
+            return selected_model, kind, None
+        last_error = error
+    return None, None, last_error
 
 
 def stored_selected_model_path(project: Path) -> Path | None:
@@ -917,8 +1099,8 @@ def default_mlflow_names(project: Path, selected_model: Path) -> tuple[str, str]
 
 def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, str]:
     details = MODEL_KIND_DETAILS.get(kind, {})
-    linux_path = rel(selected_model, project)
-    windows_url = windows_relative_path(selected_model, project)
+    source_linux_path = rel(selected_model, project)
+    source_windows_path = windows_relative_path(selected_model, project)
     saved_model_linux_path = f"saved_model/{selected_model.name}"
     saved_model_windows_path = saved_model_linux_path.replace("/", "\\")
     return {
@@ -928,15 +1110,17 @@ def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, s
         "model_kind": kind,
         "url": saved_model_linux_path,
         "path": saved_model_windows_path,
+        "windows_path": saved_model_windows_path,
+        "linux_path": saved_model_linux_path,
         "model_relative_path": saved_model_windows_path,
         "runtime_model_path": saved_model_windows_path,
         "saved_model_url": saved_model_linux_path,
         "saved_model_path": saved_model_windows_path,
-        "source_url": linux_path,
-        "source_path": windows_url,
-        "linux_path": linux_path,
+        "source_url": source_linux_path,
+        "source_path": source_windows_path,
         "linux_saved_model_path": saved_model_linux_path,
-        "linux_source_path": linux_path,
+        "linux_source_path": source_linux_path,
+        "windows_source_path": source_windows_path,
         "model_parent": rel(selected_model.parent, project),
         "required_package": details.get("required_package", "unknown"),
         "load_hint": details.get("load_hint", "custom loader required"),
@@ -958,8 +1142,9 @@ def reference_display_path(reference: Path) -> str:
 
 
 def reference_scope_display_path(kind: str | None, reference: Path) -> str:
-    if kind in {"pytorch", "safetensors"} and PYTORCH_REFERENCE_DIR.is_dir():
-        return f"{reference_display_path(PYTORCH_REFERENCE_DIR)} (requirements.txt 제외)"
+    sample_dir = template_sample_dir(kind)
+    if sample_dir.is_dir():
+        return f"{reference_display_path(sample_dir)} (requirements.txt 제외)"
     return reference_display_path(reference)
 
 
@@ -971,23 +1156,30 @@ def conversion_reference_step(kind: str, reference: Path) -> str:
 
 
 def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference: Path) -> list[str]:
+    sample_dir = template_sample_dir_name(kind)
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        f"2. samples/pytorch_sample/ 템플릿을 모델 작업 폴더로 복사: {rel(selected_model_work_dir(project, selected_model), project)}",
+        f"2. samples/{sample_dir}/ 템플릿 전체를 모델 작업 폴더로 복사: {rel(selected_model_work_dir(project, selected_model), project)}",
         f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
         "4. runtest.py 참조해서 runtest_2.py 변환",
-        "5. 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
+        "5. 복사된 local_serving 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
         "6. 변환 결과 검증",
     ]
 
 
-def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def copy_template_sample_folder(project: Path, kind: str | None, execute: bool) -> tuple[list[str], list[str], list[str]]:
     copied: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
     target = project
-    if not TEMPLATE_SAMPLE_DIR.is_dir():
-        failures.append(f"pytorch_sample_folder_missing:{TEMPLATE_SAMPLE_DIR}")
+    sample_dir = template_sample_dir(kind)
+    sample_dir_name = template_sample_dir_name(kind)
+    if not sample_dir.is_dir():
+        failures.append(f"{sample_dir_name}_folder_missing:{sample_dir}")
+        return copied, skipped, failures
+    source_root = sample_dir / "local_serving"
+    if not source_root.is_dir():
+        failures.append(f"{sample_dir_name}_local_serving_missing:{source_root}")
         return copied, skipped, failures
     if target.exists() and not target.is_dir():
         failures.append(f"workspace_target_not_directory:{target}")
@@ -995,8 +1187,8 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
     current_selected = current_selected_model_path(project)
     selected_model_locked = current_selected is not None and current_selected.exists()
     if execute:
-        for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
-            relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
+        for source in source_root.rglob("*"):
+            relative = Path("local_serving") / source.relative_to(source_root)
             if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
                 continue
             if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
@@ -1013,20 +1205,7 @@ def copy_template_sample_folder(project: Path, execute: bool) -> tuple[list[str]
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
-        runtest_path = target / "runtest.py"
-        if runtest_path.is_file():
-            runtest_text = runtest_path.read_text(encoding="utf-8", errors="ignore")
-            forbidden_markers = [
-                marker
-                for marker in FORBIDDEN_RUNTEST_SELECTED_MODEL_MARKERS
-                if marker in runtest_text
-            ]
-            if forbidden_markers:
-                failures.append(
-                    "runtest.py_selected_model_constants_forbidden:"
-                    + ",".join(forbidden_markers)
-                )
-    copied.append(".opencode/samples/pytorch_sample/* -> model work folder (data/, requirements.txt 제외)")
+    copied.append(f".opencode/samples/{sample_dir_name}/local_serving/ -> model work folder local_serving/")
     return copied, skipped, failures
 
 
@@ -1034,39 +1213,22 @@ def ensure_aiu_custom_template_copied(project: Path, execute: bool) -> tuple[lis
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    template_dir = TEMPLATE_SAMPLE_DIR / "aiu_custom"
-    target_dir = project / "aiu_custom"
-    if not template_dir.is_dir():
-        failures.append(f"aiu_custom_template_missing:{template_dir}")
-        return changed, skipped, failures
-    template_files = [
-        path.relative_to(template_dir).as_posix()
-        for path in template_dir.rglob("*")
-        if path.is_file()
-        and not any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in path.relative_to(template_dir).parts)
-    ]
-    if not template_files:
-        failures.append("aiu_custom_template_files_empty")
-        return changed, skipped, failures
-    if not execute:
-        skipped.append("aiu_custom/ template copy verification:dry_run")
-        return changed, skipped, failures
-    missing = [relative for relative in template_files if not (target_dir / relative).is_file()]
-    if missing:
-        failures.append("aiu_custom_template_copy_missing:" + ",".join(missing))
-        return changed, skipped, failures
-    changed.append("aiu_custom/ template copied")
+    skipped.append("aiu_custom/ template copy skipped: generated by selected-model conversion")
     return changed, skipped, failures
 
 
-def copied_template_relative_files() -> list[str]:
-    if not TEMPLATE_SAMPLE_DIR.is_dir():
+def copied_template_relative_files(kind: str | None) -> list[str]:
+    sample_dir = template_sample_dir(kind)
+    if not sample_dir.is_dir():
+        return []
+    source_root = sample_dir / "local_serving"
+    if not source_root.is_dir():
         return []
     files: list[str] = []
-    for source in TEMPLATE_SAMPLE_DIR.rglob("*"):
+    for source in source_root.rglob("*"):
         if not source.is_file():
             continue
-        relative = source.relative_to(TEMPLATE_SAMPLE_DIR)
+        relative = Path("local_serving") / source.relative_to(source_root)
         if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
             continue
         if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
@@ -1075,11 +1237,11 @@ def copied_template_relative_files() -> list[str]:
     return sorted(files)
 
 
-def read_copied_template_files(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def read_copied_template_files(project: Path, kind: str | None, execute: bool) -> tuple[list[str], list[str], list[str]]:
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    relative_files = copied_template_relative_files()
+    relative_files = copied_template_relative_files(kind)
     if not relative_files:
         failures.append("copied_template_files_empty")
         return changed, skipped, failures
@@ -1762,14 +1924,18 @@ _aiu_missing_mlflow_settings = [
         "mlflow_tracking_uri": mlflow_tracking_uri,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
+        "mlflow_experiment_name": mlflow_experiment_name,
+        "mlflow_register_model_name": mlflow_register_model_name,
     }}.items()
     if not str(_aiu_value).strip()
 ]
 if _aiu_missing_mlflow_settings:
-    print("원격 MLflow 등록 실행을 위해 MLflow 설정을 .env에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 .env에 아래 5개 필수 값을 입력해야 합니다.")
     print("missing settings:")
-    for _aiu_name in _aiu_missing_mlflow_settings:
-        print(f"- {{_aiu_name}}")
+    print("| No | Key |")
+    print("|---:|---|")
+    for _aiu_index, _aiu_name in enumerate(_aiu_missing_mlflow_settings, start=1):
+        print(f"| {{_aiu_index}} | {{_aiu_name}} |")
     print("비밀번호 값은 출력하지 않습니다.")
     raise SystemExit(0)
 
@@ -2029,12 +2195,16 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
     else:
         payload = {"inputs": []}
     payload["model_kind"] = kind
+    source_linux_path = rel(selected_model, project)
     selected_windows_path = windows_relative_path(selected_model, project)
     saved_model_linux_path = f"saved_model/{selected_model.name}"
     saved_model_windows_path = f"saved_model\\{selected_model.name}"
     payload["url"] = saved_model_linux_path
     payload["path"] = saved_model_windows_path
+    payload["linux_path"] = saved_model_linux_path
+    payload["windows_path"] = saved_model_windows_path
     payload["model_path"] = payload["path"]
+    payload["source_url"] = source_linux_path
     payload["source_path"] = selected_windows_path
     return payload
 
@@ -2056,7 +2226,10 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
         "model_kind": kind,
         "url": f"saved_model/{selected_model.name}",
         "path": f"saved_model\\{selected_model.name}",
+        "linux_path": f"saved_model/{selected_model.name}",
+        "windows_path": f"saved_model\\{selected_model.name}",
         "model_path": f"saved_model\\{selected_model.name}",
+        "source_url": rel(selected_model, project),
         "source_path": windows_relative_path(selected_model, project),
     }
 
@@ -2173,7 +2346,10 @@ request_input_example = {{
     "model_kind": model_kind,
     "url": {saved_model_url!r},
     "path": {saved_model_path!r},
+    "linux_path": {saved_model_url!r},
+    "windows_path": {saved_model_path!r},
     "model_path": {saved_model_path!r},
+    "source_url": {source_model_path.replace(chr(92), "/")!r},
     "source_path": {source_model_path!r},
 }}
 '''
@@ -2341,20 +2517,22 @@ def first_existing_file(label, candidates):
             return candidate
     print(f"파일 또는 폴더를 찾을 수 없습니다: {{label}}")
     print("확인한 경로:")
-    for candidate in normalized_candidates:
-        print(f"- {{candidate}}")
+    print("| No | Candidate Path |")
+    print("|---:|---|")
+    for index, candidate in enumerate(normalized_candidates, start=1):
+        print(f"| {{index}} | {{candidate}} |")
     raise FileNotFoundError(f"{{label}} not found")
 
 
 def mlflow_artifact_uri(path):
-    # MLmodel artifacts.*.uri에는 절대경로가 아니라 프로젝트 기준 상대경로를 기록합니다.
+    # MLmodel의 키 이름은 uri로 고정이고, 값은 POSIX(/) 상대경로로 기록합니다.
     absolute_path = normalize_local_path(path)
     relative_path = os.path.relpath(absolute_path, project_dir)
-    return os.path.normpath(relative_path)
+    return relative_path.replace(chr(92), "/")
 
 
 def mlflow_config_artifact_uri(path):
-    # config uri는 MLflow/KServe 서버 해석과 문서 기준을 맞추기 위해 POSIX 상대경로를 사용합니다.
+    # MLmodel의 config artifact uri 값도 POSIX(/) 상대경로로 기록합니다.
     absolute_path = normalize_local_path(path)
     relative_path = os.path.relpath(absolute_path, project_dir)
     return relative_path.replace(chr(92), "/")
@@ -2377,15 +2555,19 @@ missing_mlflow_settings = [
         "mlflow_tracking_uri": mlflow_tracking_uri,
         "mlflow_tracking_username": mlflow_tracking_username,
         "mlflow_tracking_password": mlflow_tracking_password,
+        "mlflow_experiment_name": mlflow_experiment_name,
+        "mlflow_register_model_name": mlflow_register_model_name,
     }}.items()
     if not str(value).strip()
 ]
 
 if missing_mlflow_settings:
-    print("원격 MLflow 등록 실행을 위해 MLflow 설정을 .env에 직접 입력하세요.")
+    print("원격 MLflow 등록 실행을 위해 .env에 아래 5개 필수 값을 입력해야 합니다.")
     print("missing settings:")
-    for name in missing_mlflow_settings:
-        print(f"- {{name}}")
+    print("| No | Key |")
+    print("|---:|---|")
+    for index, name in enumerate(missing_mlflow_settings, start=1):
+        print(f"| {{index}} | {{name}} |")
     print("비밀번호 값은 출력하지 않습니다.")
     raise SystemExit(0)
 
@@ -3021,7 +3203,40 @@ def _resolve_model_path():
     if _CONTEXT_ARTIFACT_MODEL_PATH is not None:
         return _CONTEXT_ARTIFACT_MODEL_PATH
     model = _config_model()
-    raw_path = model.get("path") or model.get("saved_model_path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path") or model.get("source_path")
+    if os.name == "nt":
+        raw_path = (
+            model.get("path")
+            or model.get("windows_path")
+            or model.get("saved_model_path")
+            or model.get("model_relative_path")
+            or model.get("runtime_model_path")
+            or model.get("source_path")
+            or model.get("windows_source_path")
+            or model.get("url")
+            or model.get("linux_path")
+            or model.get("saved_model_url")
+            or model.get("linux_saved_model_path")
+            or model.get("source_url")
+            or model.get("linux_source_path")
+            or model.get("relative_path")
+        )
+    else:
+        raw_path = (
+            model.get("url")
+            or model.get("linux_path")
+            or model.get("saved_model_url")
+            or model.get("linux_saved_model_path")
+            or model.get("source_url")
+            or model.get("linux_source_path")
+            or model.get("path")
+            or model.get("windows_path")
+            or model.get("saved_model_path")
+            or model.get("model_relative_path")
+            or model.get("runtime_model_path")
+            or model.get("source_path")
+            or model.get("windows_source_path")
+            or model.get("relative_path")
+        )
     if not raw_path:
         raise ValueError("selected_model_path_missing: selected model metadata")
     path = _normalize_server_path(raw_path)
@@ -3210,7 +3425,8 @@ def insert_before_model_wrapper_or_append(text: str, block: str) -> str:
 
 
 def generated_predict_text(template_text: str, kind: str) -> str:
-    text = template_text.strip() if template_text.strip() else (TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py").read_text(encoding="utf-8", errors="ignore")
+    fallback_template = template_sample_dir(kind) / "aiu_custom" / "predict.py"
+    text = template_text.strip() if template_text.strip() else fallback_template.read_text(encoding="utf-8", errors="ignore")
     text = ensure_predict_imports(text)
 
     helper_block = f'''
@@ -3344,7 +3560,7 @@ def _predict_loaded_model(model, model_kind: str, payload):
     return text.rstrip() + "\n"
 
 
-def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], list[str]]:
+def requirements_packages_for_kind(kind: str, project: Path | None = None) -> tuple[list[str], list[str], list[str]]:
     if REQUIRED_REQUIREMENTS_FILE.exists():
         required = [
             line.strip()
@@ -3353,36 +3569,140 @@ def requirements_packages_for_kind(kind: str) -> tuple[list[str], list[str], lis
         ]
     else:
         required = [
-            "mlflow==3.10.0",
-            "torch==2.12.1",
-            "numpy==1.26.4",
+            "mlflow",
             "kserve==0.15.0",
-            "pandas==2.2.3",
         ]
-    extras_by_kind = {
-        "sklearn_pickle": ["scikit-learn==1.7.0", "joblib==1.5.1"],
-        "sklearn_joblib": ["scikit-learn==1.7.0", "joblib==1.5.1"],
-        "safetensors": ["safetensors==0.5.3"],
-        "xgboost_bst": ["xgboost==3.0.2"],
-        "xgboost_ubj": ["xgboost==3.0.2"],
+    required = [mlflow_environment_requirement(line, project) for line in required]
+    required_names = {
+        requirement.split("==", 1)[0].strip().lower().replace("_", "-")
+        for requirement in required
     }
-    inference_requirements = ["requests==2.32.4"]
-    additional = inference_requirements + extras_by_kind.get(kind, [])
-    packages = required + additional
-    unique_packages: list[str] = []
-    seen: set[str] = set()
-    for package in packages:
-        key = package.split("==", 1)[0].lower()
-        if key in seen:
+    additional = [
+        requirement
+        for requirement in MODEL_KIND_MANUAL_REQUIREMENT_MAP.get(kind, [])
+        if requirement.split("==", 1)[0].strip().lower().replace("_", "-") not in required_names
+    ]
+    if project is not None:
+        requirements_path = project / "requirements.txt"
+        if requirements_path.is_file():
+            existing_names: set[str] = set()
+            for raw_line in requirements_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                stripped = raw_line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                match = re.match(r"^([A-Za-z0-9_.-]+)", stripped)
+                if not match:
+                    continue
+                existing_names.add(match.group(1).strip().lower().replace("_", "-"))
+            if existing_names:
+                additional = [
+                    requirement
+                    for requirement in additional
+                    if requirement.split("==", 1)[0].strip().lower().replace("_", "-") not in existing_names
+                ]
+    return required, additional, required
+
+
+def looks_like_image_model(selected_model: Path | None, kind: str | None) -> bool:
+    if selected_model is None or kind not in IMAGE_MODEL_KINDS:
+        return False
+    model_text = normalize_path_text(str(selected_model)).lower()
+    return any(keyword in model_text for keyword in IMAGE_MODEL_KEYWORDS)
+
+
+def image_model_manual_requirements(selected_model: Path | None, kind: str | None) -> list[str]:
+    if not looks_like_image_model(selected_model, kind):
+        return []
+    return list(IMAGE_MODEL_MANUAL_REQUIREMENT_MAP.get(kind or "", []))
+
+
+def filter_existing_requirement_lines(requirements: list[str], project: Path | None) -> list[str]:
+    if project is None:
+        return list(requirements)
+    requirements_path = project / "requirements.txt"
+    if not requirements_path.is_file():
+        return list(requirements)
+    existing_names: set[str] = set()
+    for raw_line in requirements_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
             continue
-        seen.add(key)
-        unique_packages.append(package)
-    return required, additional, unique_packages
+        match = re.match(r"^([A-Za-z0-9_.-]+)", stripped)
+        if not match:
+            continue
+        existing_names.add(match.group(1).strip().lower().replace("_", "-"))
+    return [
+        requirement
+        for requirement in requirements
+        if requirement.split("==", 1)[0].strip().lower().replace("_", "-") not in existing_names
+    ]
 
 
-def generated_requirements_text(kind: str) -> str:
-    _required, _additional, packages = requirements_packages_for_kind(kind)
-    return "\n".join(packages) + "\n"
+def local_package_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def extract_mlflow_version(payload: str) -> str | None:
+    text = payload.strip()
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = None
+    if isinstance(data, dict):
+        for key in ("version", "mlflow_version", "server_version"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    match = re.search(r"\d+(?:\.\d+){1,3}(?:[A-Za-z0-9_.+-]*)?", text)
+    return match.group(0) if match else None
+
+
+def remote_mlflow_version(project: Path) -> str | None:
+    values = parse_env_file(project / ".env")
+    tracking_uri = values.get("mlflow_tracking_uri") or values.get("MLFLOW_TRACKING_URI")
+    if not tracking_uri or not tracking_uri.lower().startswith(("http://", "https://")):
+        return None
+    base_uri = tracking_uri.rstrip("/")
+    for endpoint_name in ("version", "api/2.0/mlflow/version"):
+        endpoint = f"{base_uri}/{endpoint_name}"
+        request = urllib.request.Request(endpoint, headers={"Accept": "application/json, text/plain"})
+        try:
+            with urllib.request.urlopen(request, timeout=3) as response:
+                version = extract_mlflow_version(response.read(4096).decode("utf-8", errors="replace"))
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+        if version:
+            return version
+    return None
+
+
+def mlflow_environment_requirement(requirement: str, project: Path | None = None) -> str:
+    package_name = requirement.split("==", 1)[0].strip().lower().replace("_", "-")
+    if package_name != "mlflow":
+        return requirement
+    if project is not None:
+        version = remote_mlflow_version(project)
+        if version:
+            return f"mlflow=={version}"
+    version = local_package_version("mlflow")
+    if version:
+        return f"mlflow=={version}"
+    return "mlflow"
+
+
+def generated_requirements_text(kind: str, project: Path | None = None) -> str:
+    required, _additional, packages = requirements_packages_for_kind(kind, project)
+    lines = [
+        "# Add project-specific packages below.",
+        "# Example: torch==2.7.1",
+        *packages,
+    ]
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def ast_literal_string(node: ast.AST | None) -> str | None:
@@ -3456,8 +3776,15 @@ def write_requirements(project: Path, kind: str, execute: bool) -> tuple[list[st
     failures: list[str] = []
     existed_before = target.exists()
     if execute:
-        target.write_text(generated_requirements_text(kind), encoding="utf-8")
-    changed.append("requirements.txt transformed for selected model")
+        if existed_before:
+            skipped.append("requirements.txt kept (existing user file preserved)")
+        else:
+            target.write_text(generated_requirements_text(kind, project), encoding="utf-8")
+            changed.append("requirements.txt created with mlflow/kserve base items")
+    elif existed_before:
+        skipped.append("requirements.txt kept (existing user file preserved)")
+    else:
+        changed.append("requirements.txt will be created with mlflow/kserve base items")
     return changed, skipped, failures
 
 
@@ -3535,7 +3862,7 @@ def write_aiu_predict(project: Path, selected_model: Path, kind: str, execute: b
     if target.is_file():
         template_text = target.read_text(encoding="utf-8", errors="ignore")
     else:
-        template_path = TEMPLATE_SAMPLE_DIR / "aiu_custom" / "predict.py"
+        template_path = template_sample_dir(kind) / "aiu_custom" / "predict.py"
         template_text = template_path.read_text(encoding="utf-8", errors="ignore") if template_path.is_file() else ""
     target.write_text(generated_predict_text(template_text, kind), encoding="utf-8")
     changed.append("aiu_custom/predict.py transformed for selected model")
@@ -3556,7 +3883,7 @@ def sync_selected_model_runtime(
 
     runtime_steps = [
         ensure_aiu_custom_template_copied(project, execute),
-        read_copied_template_files(project, execute),
+        read_copied_template_files(project, kind, execute),
         ensure_runtime_directories(project, execute),
         write_requirements(project, kind, execute),
         write_input_example(project, selected_model, kind, execute),
@@ -3567,7 +3894,7 @@ def sync_selected_model_runtime(
         write_aiu_predict(project, selected_model, kind, execute),
     ]
     if copy_template:
-        runtime_steps.insert(0, copy_template_sample_folder(project, execute))
+        runtime_steps.insert(0, copy_template_sample_folder(project, kind, execute))
 
     for next_changed, next_skipped, next_failures in runtime_steps:
         changed.extend(next_changed)
@@ -3755,11 +4082,17 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         requested_model_path=rel(requested_model, project) if requested_model else None,
         model_selection_locked=model_selection_locked,
         locked_model_path=rel(locked_model, project) if locked_model else None,
+        selected_python_version=normalize_python_version_text(getattr(args, "python_version", None)),
     )
+    report.env_check_command = environment_check_command(work_project, report.selected_python_version)
     if selected_kind:
-        required_requirements, additional_requirements, _packages = requirements_packages_for_kind(selected_kind)
+        required_requirements, additional_requirements, _packages = requirements_packages_for_kind(selected_kind, work_project)
         report.required_requirements = required_requirements
         report.additional_requirements = additional_requirements
+        report.image_model_recommendations = filter_existing_requirement_lines(
+            image_model_manual_requirements(selected_model, selected_kind),
+            work_project,
+        )
 
     if not models:
         if training_code:
@@ -3816,9 +4149,20 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         and current_selected.resolve() != selected_model.resolve()
     ):
         attempted = rel(selected_model, project)
+        current_kind = model_kind(current_selected)
+        current_work_project = selected_model_work_dir(project, current_selected)
         report.selected_model_path = rel(current_selected, project)
-        report.model_kind = model_kind(current_selected)
+        report.model_kind = current_kind
         report.locked_model_path = rel(current_selected, project)
+        report.work_project_path = rel(current_work_project, project)
+        if current_kind:
+            required_requirements, additional_requirements, _packages = requirements_packages_for_kind(current_kind, current_work_project)
+            report.required_requirements = required_requirements
+            report.additional_requirements = additional_requirements
+            report.image_model_recommendations = filter_existing_requirement_lines(
+                image_model_manual_requirements(current_selected, current_kind),
+                current_work_project,
+            )
         report.warnings.append(f"selected_model_change_blocked:{rel(current_selected, project)}!={attempted}")
         report.failures.append("selected_model_change_blocked_use_step2")
         report.next_steps.append(
@@ -3841,14 +4185,14 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.next_steps.append(f"선택 모델을 새 값으로 변경합니다: {rel(selected_model, project)}")
 
     if args.select_only or explicit_model_selection:
-        changed, skipped, failures = write_config_json(project, selected_model, selected_kind, args.execute)
-        report.prepared_paths.extend(["selected_model locked"] + changed)
-        report.skipped.extend(skipped)
-        report.failures.extend(failures)
         work_changed, work_skipped, work_failures = ensure_model_work_dir(project, work_project, args.execute)
         report.prepared_paths.extend(work_changed)
         report.skipped.extend(work_skipped)
         report.failures.extend(work_failures)
+        changed, skipped, failures = write_config_json(work_project, selected_model, selected_kind, args.execute)
+        report.prepared_paths.extend(["selected_model locked"] + changed)
+        report.skipped.extend(skipped)
+        report.failures.extend(failures)
         if args.execute and not report.failures:
             report.next_steps.extend(
                 [
@@ -3861,6 +4205,17 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             )
         elif not report.failures:
             report.next_steps.append("검토 후 --execute를 붙여 선택 모델을 고정하세요. 템플릿 변환은 --model selected --execute로 별도 실행합니다.")
+        return report
+
+    missing_gate_values = missing_required_mlflow_values(work_project)
+    if missing_gate_values:
+        report.failures.append("step3_required_env_missing:" + ",".join(missing_gate_values))
+        report.next_steps.append("3번 환경 검증이 완료되지 않았습니다. 아래 5개 값을 입력해야 다음 단계로 넘어갈 수 있습니다.")
+        report.next_steps.append(
+            f"{rel(work_project, project)}/.env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, "
+            "mlflow_experiment_name, mlflow_register_model_name 를 직접 입력하세요."
+        )
+        report.next_steps.append(f"입력 후 실행: python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py")
         return report
 
     if args.sync_runtime:
@@ -3908,14 +4263,14 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.next_steps.append("검토 후 --execute를 붙여 선택 모델 기준으로 런타임 폴더/파일을 변환하세요.")
         return report
 
-    template_changed, template_skipped, template_failures = copy_template_sample_folder(work_project, args.execute)
+    template_changed, template_skipped, template_failures = copy_template_sample_folder(work_project, selected_kind, args.execute)
     report.prepared_paths.extend(template_changed)
     report.skipped.extend(template_skipped)
     report.failures.extend(template_failures)
     if report.failures:
         return report
 
-    read_changed, read_skipped, read_failures = read_copied_template_files(work_project, args.execute)
+    read_changed, read_skipped, read_failures = read_copied_template_files(work_project, selected_kind, args.execute)
     report.prepared_paths.extend(read_changed)
     report.skipped.extend(read_skipped)
     report.failures.extend(read_failures)
@@ -3955,6 +4310,8 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
     report.prepared_paths.extend(verify_changed)
     report.skipped.extend(verify_skipped)
     report.failures.extend(verify_failures)
+    if args.execute and not report.failures:
+        attach_environment_check_result(report, work_project)
 
     if args.execute and not report.failures:
         report.next_steps.extend(
@@ -3963,7 +4320,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                 f"선택 모델 유지: {rel(selected_model, project)}",
                 f"작업 폴더: {rel(work_project, project)}",
                 "PowerShell에서는 선택한 Windows 프로젝트 루트에서 실행하세요.",
-                f"3번은 사용자가 선택해 실행합니다: python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
+                f"3번은 사용자가 선택해 실행합니다: {report.env_check_command}",
                 "4번 템플릿 변환은 사용자가 선택했을 때만 진행합니다.",
                 "5번 원격 MLflow 등록 실행은 사용자가 선택했을 때만 진행합니다.",
                 "6번 추론 테스트와 7번 오류 재실행도 사용자가 선택했을 때만 진행합니다.",
@@ -3978,6 +4335,10 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
     model_selected = bool(report.selected_model_path)
     project_path = Path(report.project_path)
     work_path = project_path / report.work_project_path if report.work_project_path else project_path
+    step3_required_env_missing = any(
+        failure.startswith("step3_required_env_missing:")
+        for failure in report.failures
+    )
     auto_ready = all(
         path in report.prepared_paths
         or f"{path} (refreshed)" in report.prepared_paths
@@ -4011,9 +4372,9 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
     return [
         model_list_status,
         "완료" if model_selected else "대기",
-        "사용자 선택" if model_selected else "2번 완료 후",
-        "사용자 선택",
-        "사용자 선택",
+        "입력 필요" if step3_required_env_missing else ("사용자 선택" if model_selected else "2번 완료 후"),
+        "3번 완료 후" if step3_required_env_missing else "사용자 선택",
+        "3번 완료 후" if step3_required_env_missing else "사용자 선택",
         "사용자 선택",
         "사용자 선택",
     ]
@@ -4023,10 +4384,54 @@ def print_todo_guide(report: PreparedModelReport) -> None:
     print(format_todo_guide(todo_statuses(report)))
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
+def print_copy_block(requirements: list[str]) -> None:
+    if not requirements:
+        return
+    print("```txt")
+    for item in requirements:
+        print(item)
+    print("```")
+
+
+def attach_environment_check_result(report: PreparedModelReport, work_project: Path) -> None:
+    env_payload, env_error = run_environment_check_summary(work_project, report.selected_python_version)
+    if env_error is not None:
+        report.env_check_status = "error"
+        report.env_check_summary = env_error
+        return
+    if env_payload is None:
+        report.env_check_status = "error"
+        report.env_check_summary = "environment check returned no payload"
+        return
+    report.env_check_status = "ok"
+    report.env_check_summary = str(env_payload.get("python_version_status") or env_payload.get("project_path") or "ok")
+    report.env_check_requirements = [
+        item.get("requirement", "")
+        for item in env_payload.get("requirements", [])
+        if isinstance(item, dict) and item.get("requirement")
+    ]
+    report.env_check_import_packages = [
+        item.get("package", "")
+        for item in env_payload.get("requirement_candidates", [])
+        if isinstance(item, dict) and item.get("source") == "import" and item.get("package")
+    ]
+    report.env_check_dry_run_status = ""
+    report.env_check_dry_run_summary = ""
+
+
 def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
     work_project = report.work_project_path or "."
-    check_env_command = f"python .opencode/scripts/03-environment-check/check_environment.py --project {work_project} --entrypoint runtest_2.py"
+    check_env_command = report.env_check_command or f"python .opencode/scripts/03-environment-check/check_environment.py --project {work_project} --entrypoint runtest_2.py"
     prepare_command = f"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute"
+    if report.selected_python_version:
+        prepare_command += f" --python-version {report.selected_python_version}"
     run_training_command = f"python .opencode/scripts/04-train-model/run_training.py --project {work_project} --entrypoint runtest_2.py --execute"
     if (
         not verbose
@@ -4036,24 +4441,45 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         and "selected_model locked" in report.prepared_paths
     ):
         print("선택 결과:")
-        print(f"- 선택 모델: {report.selected_model_path}")
-        print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
-        print(f"- 작업 폴더: {work_project}")
+        print_markdown_table(
+            ["항목", "값"],
+            [
+                ["선택 모델", report.selected_model_path],
+                ["MODEL_KIND", report.model_kind or "missing"],
+                ["작업 폴더", work_project],
+            ],
+        )
         print_todo_guide(report)
-        print("- 완료: 선택 모델 고정")
-        print("- 다음: 3번 환경 검증")
-        print("- 4번 템플릿 변환은 사용자가 선택했을 때만 실행")
+        print_markdown_table(
+            ["상태", "내용"],
+            [
+                ["완료", "선택 모델 고정"],
+                ["다음", "3번 환경 검증"],
+                ["안내", "4번 템플릿 변환은 사용자가 선택했을 때만 실행"],
+            ],
+        )
         return
 
     if not verbose and report.execute and report.selected_model_path and not report.failures:
         print("준비 결과:")
-        print(f"- 선택 모델: {report.selected_model_path}")
-        print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
-        print(f"- 작업 폴더: {work_project}")
+        print_markdown_table(
+            ["항목", "값"],
+            [
+                ["선택 모델", report.selected_model_path],
+                ["MODEL_KIND", report.model_kind or "missing"],
+                ["작업 폴더", work_project],
+            ],
+        )
         print_todo_guide(report)
-        print("- 완료: 템플릿 복사 후 선택 모델 형식에 맞게 변환")
-        print("- 변환: runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py")
-        print("- 변환: inferencetest.py, config/config.json, input_example.json, requirements.txt")
+        print_markdown_table(
+            ["상태", "내용"],
+            [
+                ["완료", "local_serving/ 폴더 통복사"],
+                ["변환", "runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py"],
+                ["변환", "inferencetest.py, config/config.json, input_example.json"],
+                ["갱신", "requirements.txt"],
+            ],
+        )
         return
 
     print("Project: .")
@@ -4066,145 +4492,199 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         selected_model_path = normalize_path_text(report.selected_model_path or "")
         print("\n모델 선택 화면")
         if report.selected_model_path:
-            print(f"- 선택 모델: {report.selected_model_path}")
-            print(f"- MODEL_KIND: {report.model_kind or 'missing'}")
-            print(f"- 작업 폴더: {work_project}")
-            print("- 이후 단계는 이 선택 모델 기준으로 계속 진행합니다.")
+            print_markdown_table(
+                ["항목", "값"],
+                [
+                    ["선택 모델", report.selected_model_path],
+                    ["MODEL_KIND", report.model_kind or "missing"],
+                    ["작업 폴더", work_project],
+                    ["진행 기준", "이후 단계는 이 선택 모델 기준으로 계속 진행"],
+                ],
+            )
         else:
             print(format_model_selection_hint())
+            guidance_rows: list[list[str]] = []
             if report.training_code_paths:
-                print("- case 1: 학습 코드가 감지되었습니다. 아래 학습 코드 후보도 2번 목록에 표시합니다.")
+                guidance_rows.append(["case 1", "학습 코드가 감지되었습니다. 아래 학습 코드 후보도 2번 목록에 표시합니다."])
             if total_model_count:
                 if data_model_count == total_model_count:
-                    print(f"- data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+                    guidance_rows.append(["모델 목록", f"data 폴더에 {total_model_count}개 모델이 있습니다. 선택해주세요."])
                 elif data_model_count:
-                    print(f"- 프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요.")
+                    guidance_rows.append(["모델 목록", f"프로젝트에 {total_model_count}개 모델이 있습니다. data 폴더 {data_model_count}개 포함, 선택해주세요."])
                 else:
-                    print(f"- 현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요.")
+                    guidance_rows.append(["모델 목록", f"현재 프로젝트 루트 바로 아래에 {total_model_count}개 모델이 있습니다. 선택해주세요."])
+            if guidance_rows:
+                print_markdown_table(["항목", "안내"], guidance_rows)
         if report.model_artifact_paths:
-            print("- 목록은 선택한 워크스페이스 기준 상대경로 알파벳 순서입니다.")
+            list_guidance_rows = [["정렬 기준", "선택한 워크스페이스 기준 상대경로 알파벳 순서"]]
             if report.selected_model_path:
-                print("- 아래 목록은 확인용입니다. 모델 변경은 2번 모델 선택 스크립트로만 진행합니다.")
+                list_guidance_rows.append(["목록 용도", "아래 목록은 확인용입니다. 모델 변경은 2번 모델 선택 스크립트로만 진행합니다."])
             else:
-                print("- 숫자키는 TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다.")
+                list_guidance_rows.append(["숫자키", "TODO 단계가 아니라 아래 모델 artifact 번호 선택입니다."])
+            print_markdown_table(["항목", "안내"], list_guidance_rows)
             print("  모델 artifact 후보:")
-            for index, path in enumerate(report.model_artifact_paths, start=1):
-                marker = " <선택됨>" if normalize_path_text(path) == selected_model_path else ""
-                print(f"  {index}. {path}{marker}")
+            print_markdown_table(
+                ["No", "Model Path", "상태"],
+                [
+                    [
+                        str(index),
+                        path,
+                        "선택됨" if normalize_path_text(path) == selected_model_path else "",
+                    ]
+                    for index, path in enumerate(report.model_artifact_paths, start=1)
+                ],
+            )
         else:
-            print("- 학습 코드는 아래 번호로 확인하고, 실행 시 --entrypoint 경로를 사용합니다.")
+            print_markdown_table(["항목", "안내"], [["학습 코드", "아래 번호로 확인하고, 실행 시 --entrypoint 경로를 사용합니다."]])
         if not report.selected_model_path:
             if report.model_artifact_paths:
-                print(f"- 모델 artifact 선택 실행 예: {PS_PREPARE_MODEL_COMMAND}")
+                print_markdown_table(["항목", "값"], [["모델 artifact 선택 실행 예", PS_PREPARE_MODEL_COMMAND]])
             if report.training_code_paths:
                 print("  학습 코드 후보:")
-                for index, path in enumerate(report.training_code_paths, start=1):
-                    print(f"  {index}. {path}")
-                print(f"- 학습 코드 실행 안내: {training_code_run_hint(Path(report.project_path), report.training_code_paths)}")
-            print("- 선택 후 진행: 3번 환경 검증")
-            print("- 4번 템플릿 변환은 사용자가 선택했을 때만 실행")
+                print_markdown_table(
+                    ["No", "Entrypoint Path"],
+                    [[str(index), path] for index, path in enumerate(report.training_code_paths, start=1)],
+                )
+                print_markdown_table(["항목", "안내"], [["학습 코드 실행 안내", training_code_run_hint(Path(report.project_path), report.training_code_paths)]])
+            print_markdown_table(
+                ["항목", "안내"],
+                [
+                    ["선택 후 진행", "3번 환경 검증"],
+                    ["4번 템플릿 변환", "사용자가 선택했을 때만 실행"],
+                ],
+            )
 
     print_todo_guide(report)
 
     if not verbose:
         if report.required_requirements:
-            print("\nrequirements.txt 필수 항목:")
-            print("- " + ", ".join(report.required_requirements))
+            print("\nrequirements.txt 기본 항목:")
+            print_markdown_table(
+                ["No", "Requirement"],
+                [[str(index), item] for index, item in enumerate(report.required_requirements, start=1)],
+            )
+        if report.additional_requirements:
+            print("\nrequirements 선택한 모델 패키지 항목 (사용자가 직접 추가):")
+            print_markdown_table(
+                ["No", "Requirement"],
+                [[str(index), item] for index, item in enumerate(report.additional_requirements, start=1)],
+            )
+            print("사용자가 직접 선택해 requirements.txt에 추가:")
+            print_copy_block(report.additional_requirements)
+        if report.image_model_recommendations:
+            print("\n선택 모델 기준 이미지 모델 추천 (직접 requirements.txt 입력):")
+            print_markdown_table(
+                ["No", "Requirement"],
+                [[str(index), item] for index, item in enumerate(report.image_model_recommendations, start=1)],
+            )
+            print("사용자가 직접 선택해 requirements.txt에 추가:")
+            print_copy_block(report.image_model_recommendations)
+        if report.env_check_import_packages:
+            print("\nimport 기반 패키지:")
+            print_markdown_table(
+                ["No", "Package"],
+                [[str(index), item] for index, item in enumerate(report.env_check_import_packages, start=1)],
+            )
         if report.prepared_paths:
             print("\n준비 결과:")
             if report.failures:
-                print("- 실패")
+                print_markdown_table(["상태", "내용"], [["실패", "오류 항목 확인 필요"]])
             elif report.execute:
-                print("- 완료: 템플릿 복사, runtest_2.py, requirements/input/config, 런타임 연결부 변환")
+                print_markdown_table(
+                    ["상태", "내용"],
+                    [
+                        ["완료", "local_serving/ 폴더 통복사"],
+                        ["변환", "runtest_2.py와 런타임 연결부"],
+                        ["변환", "config/config.json, input_example.json"],
+                        ["갱신", "requirements.txt 기본 항목"],
+                    ],
+                )
             else:
-                print("- dry-run: --execute를 붙이면 실제 파일을 변환합니다.")
+                print_markdown_table(["상태", "내용"], [["dry-run", "--execute를 붙이면 실제 파일을 변환합니다."]])
         if report.warnings:
             print("\nWarnings:")
-            for warning in report.warnings:
-                print(f"- {warning}")
+            print_markdown_table(["No", "Warning"], [[str(index), warning] for index, warning in enumerate(report.warnings, start=1)])
         if report.failures:
             print("\nFailures:")
-            for failure in report.failures:
-                print(f"- {failure}")
+            print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
         print("\n다음 단계:")
         if report.failures:
             if report.next_steps:
-                for step in report.next_steps[:3]:
-                    print(f"- {step}")
+                print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps[:3], start=1)])
             else:
-                print("- 오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요.")
+                print_markdown_table(["No", "Next Step"], [["1", "오류 항목을 수정한 뒤 같은 명령을 다시 실행하세요."]])
         elif report.selected_model_path:
-            print(f"- 3번 환경 검증은 사용자가 선택: {check_env_command}")
-            print(f"- 4번 템플릿 변환은 사용자가 선택: {prepare_command}")
-            print(f"- 5번 원격 MLflow 등록 실행은 사용자가 선택: {run_training_command}")
-            print("- 6번 추론 테스트와 7번 오류 재실행도 사용자가 선택")
+            print_markdown_table(
+                ["Step", "명령/안내"],
+                [
+                    ["3", f"환경 검증은 사용자가 선택: {check_env_command}"],
+                    ["4", f"템플릿 변환은 사용자가 선택: {prepare_command}"],
+                    ["5", f"원격 MLflow 등록 실행은 사용자가 선택: {run_training_command}"],
+                    ["6/7", "추론 테스트와 오류 재실행도 사용자가 선택"],
+                ],
+            )
         elif report.next_steps:
-            for step in report.next_steps[:3]:
-                print(f"- {step}")
+            print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps[:3], start=1)])
         return
 
     print("\nmodel_artifact_paths:")
     if report.model_artifact_paths:
-        for index, path in enumerate(report.model_artifact_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Model Path"], [[str(index), path] for index, path in enumerate(report.model_artifact_paths, start=1)])
     else:
-        print("- none")
+        print_markdown_table(["항목", "값"], [["model_artifact_paths", "none"]])
     print("training_code_paths:")
     if report.training_code_paths:
-        for index, path in enumerate(report.training_code_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Entrypoint Path"], [[str(index), path] for index, path in enumerate(report.training_code_paths, start=1)])
     else:
-        print("- none")
+        print_markdown_table(["항목", "값"], [["training_code_paths", "none"]])
     print("data_file_paths:")
     if report.data_file_paths:
-        for index, path in enumerate(report.data_file_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Data Path"], [[str(index), path] for index, path in enumerate(report.data_file_paths, start=1)])
     else:
-        print("- none")
+        print_markdown_table(["항목", "값"], [["data_file_paths", "none"]])
     print("entrypoint_paths:")
     if report.entrypoint_paths:
-        for index, path in enumerate(report.entrypoint_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Entrypoint Path"], [[str(index), path] for index, path in enumerate(report.entrypoint_paths, start=1)])
     else:
-        print("- none")
-    print(f"Selected model: {report.selected_model_path or 'missing'}")
-    print(f"MODEL_KIND: {report.model_kind or 'missing'}")
-    print(f"Work folder: {work_project}")
-    print(f"Reference entrypoint: {report.reference_entrypoint or 'missing'}")
-    print(f"Transformed entrypoint: {report.generated_entrypoint}")
-    print(f"Execute: {report.execute}")
+        print_markdown_table(["항목", "값"], [["entrypoint_paths", "none"]])
+    print_markdown_table(
+        ["항목", "값"],
+        [
+            ["Selected model", report.selected_model_path or "missing"],
+            ["MODEL_KIND", report.model_kind or "missing"],
+            ["Work folder", work_project],
+            ["Reference entrypoint", report.reference_entrypoint or "missing"],
+            ["Transformed entrypoint", report.generated_entrypoint],
+            ["Execute", str(report.execute).lower()],
+        ],
+    )
     if report.required_requirements or report.additional_requirements:
-        print("requirements.txt transform:")
+        print("requirements.txt base:")
         if report.required_requirements:
-            print("- required:")
-            for item in report.required_requirements:
-                print(f"  - {item}")
+            print_markdown_table(["No", "Required"], [[str(index), item] for index, item in enumerate(report.required_requirements, start=1)])
         if report.additional_requirements:
-            print("- added for selected model:")
-            for item in report.additional_requirements:
-                print(f"  - {item}")
-        else:
-            print("- added for selected model: none")
+            print_markdown_table(["No", "requirements 선택한 모델 패키지 항목 (사용자가 직접 추가)"], [[str(index), item] for index, item in enumerate(report.additional_requirements, start=1)])
+        if report.image_model_recommendations:
+            print_markdown_table(["No", "Image Model Recommendation"], [[str(index), item] for index, item in enumerate(report.image_model_recommendations, start=1)])
+        print_markdown_table(["항목", "값"], [["project packages", "실제 파일 import 기준으로 반영"]])
+    if report.env_check_import_packages:
+        print("import packages:")
+        print_markdown_table(["No", "Package"], [[str(index), item] for index, item in enumerate(report.env_check_import_packages, start=1)])
     if report.prepared_paths:
         print("Prepared:")
-        for item in report.prepared_paths:
-            print(f"- {item}")
+        print_markdown_table(["No", "Prepared"], [[str(index), item] for index, item in enumerate(report.prepared_paths, start=1)])
     if report.skipped:
         print("Skipped:")
-        for item in report.skipped:
-            print(f"- {item}")
+        print_markdown_table(["No", "Skipped"], [[str(index), item] for index, item in enumerate(report.skipped, start=1)])
     if report.warnings:
         print("Warnings:")
-        for warning in report.warnings:
-            print(f"- {warning}")
+        print_markdown_table(["No", "Warning"], [[str(index), warning] for index, warning in enumerate(report.warnings, start=1)])
     if report.failures:
         print("Failures:")
-        for failure in report.failures:
-            print(f"- {failure}")
+        print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
     if report.next_steps:
         print("Next steps:")
-        for step in report.next_steps:
-            print(f"- {step}")
+        print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps, start=1)])
 
 
 def normalize_argv(argv: list[str]) -> list[str]:
@@ -4239,6 +4719,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Select a current project-root or data/** model artifact and generate workspace-root runtest_2.py without modifying runtest.py.")
     parser.add_argument("--project", default=".", help="model project folder")
     parser.add_argument("--model", help="model index from model_artifact_paths or a project-relative path")
+    parser.add_argument("--python-version", help="selected Python version for requirements dry-run check, for example 3.10 or 3.11.9")
     parser.add_argument("--execute", action="store_true", help="write the selected-model runtest_2.py or sync runtime files when --sync-runtime is used")
     parser.add_argument("--force", action="store_true", help="kept for compatibility; runtest_2.py is transformed for the selected model")
     parser.add_argument("--select-only", action="store_true", help="step 2 only: lock the selected model; do not copy or transform templates")

@@ -297,26 +297,40 @@ def scan_workspace(project: Path, max_files: int, large_mb: int) -> tuple[list[F
 
 
 def render_text(project: Path, findings: list[Finding]) -> None:
+    def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+        print("| " + " | ".join(headers) + " |")
+        print("|" + "|".join("---" for _ in headers) + "|")
+        for row in rows:
+            print("| " + " | ".join(str(value) for value in row) + " |")
+
     print("OpenCode closed-network response speed check")
     print("Project: .")
     print("")
 
-    for index, finding in enumerate(findings, start=1):
-        print(f"{index}. [{finding.status}] {finding.name}")
-        print(f"   detail: {finding.detail}")
-        print(f"   action: {finding.action}")
+    print_markdown_table(
+        ["No", "Status", "Name", "Detail", "Action"],
+        [
+            [str(index), finding.status, finding.name, finding.detail, finding.action]
+            for index, finding in enumerate(findings, start=1)
+        ],
+    )
 
     has_warn_or_fail = any(item.status in {"warn", "fail"} for item in findings)
     print("")
     print("Recommended fast path:")
-    print("1. python .opencode/scripts/03-environment-check/apply_index_ignore.py --project .")
-    print("2. Restart/Open OpenCode after ignore files are applied.")
-    print("3. In Ai Studio 모드, answer with model_found + one next action only.")
-    print("4. In Ai Studio 빌드 모드, run scripts directly instead of re-scanning the full tree.")
+    print_markdown_table(
+        ["No", "Action"],
+        [
+            ["1", "python .opencode/scripts/03-environment-check/apply_index_ignore.py --project ."],
+            ["2", "Restart/Open OpenCode after ignore files are applied."],
+            ["3", "In Ai Studio 모드, answer with model_found + one next action only."],
+            ["4", "In Ai Studio 빌드 모드, run scripts directly instead of re-scanning the full tree."],
+        ],
+    )
     if has_warn_or_fail:
         print("")
         print("TODO:")
-        print("- Fix warn/fail items above before long model analysis.")
+        print_markdown_table(["No", "TODO"], [["1", "Fix warn/fail items above before long model analysis."]])
 
 
 def main() -> int:

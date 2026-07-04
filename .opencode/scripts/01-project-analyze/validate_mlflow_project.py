@@ -13,12 +13,13 @@ ROOT = Path(__file__).resolve().parents[2]
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|상대경로>"
 PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py"
 
+# 실행 파일 후보명입니다. 고정 파일명은 없고, 분석 시 힌트로만 사용합니다.
 # The skill pack does not require a fixed file name. These common names are
 # used only as hints when detecting a registration or inference entrypoint.
 ENTRYPOINT_NAMES = [
     "register_model.py",
-        "runtest_2.py",
-                    "runtest.py",
+    "runtest_2.py",
+    "runtest.py",
     "run_test.py",
     "run_model.py",
     "run.py",
@@ -32,8 +33,8 @@ ENTRYPOINT_NAMES = [
 
 TRAINING_ENTRYPOINT_NAMES = [
     "register_model.py",
-        "runtest_2.py",
-                    "runtest.py",
+    "runtest_2.py",
+    "runtest.py",
     "run_test.py",
     "run_model.py",
     "run.py",
@@ -43,21 +44,25 @@ TRAINING_ENTRYPOINT_NAMES = [
     "scripts/train.py",
 ]
 
+# 환경 설정 파일 후보명입니다.
 CONFIG_NAMES = [
     ".env",
                     ]
 
+# 입력 예시 파일 후보명입니다.
 INPUT_EXAMPLE_NAMES = [
     "input_example.json",
     "sample_input.json",
     "example.json",
 ]
 
+# 모델 artifact 파일 확장자 후보 목록입니다.
 ARTIFACT_SUFFIXES = [
     ".pkl",
     ".joblib",
     ".pt",
     ".pth",
+    ".ckpt",
     ".onnx",
     ".h5",
     ".keras",
@@ -66,11 +71,13 @@ ARTIFACT_SUFFIXES = [
     ".safetensors",
 ]
 
+# 확장자별 모델 형식 매핑입니다.
 ARTIFACT_KIND_BY_SUFFIX = {
     ".keras": "tensorflow_keras",
     ".h5": "tensorflow_h5",
     ".pt": "pytorch",
     ".pth": "pytorch",
+    ".ckpt": "pytorch",
     ".safetensors": "safetensors",
     ".onnx": "onnx",
     ".pkl": "sklearn_pickle",
@@ -79,25 +86,39 @@ ARTIFACT_KIND_BY_SUFFIX = {
     ".ubj": "xgboost_ubj",
 }
 
+# 학습 코드가 있는지 빠르게 판별하기 위한 정규식입니다.
+# case 1 기준:
+# - .py / .ipynb 안에서
+# - model.fit(), model.compile()
+# - torch.save(), model.save(), save_model()
+# 같은 학습/저장 흐름이 보이면 학습 코드가 있다고 판단합니다.
 TRAINING_CODE_PATTERN = re.compile(
     r"("
     r"\bmodel\.fit\s*\(|"
     r"\bmodel\.compile\s*\(|"
-    r"\btorch\.save\s*\("
+    r"\btorch\.save\s*\(|"
+    r"\bmodel\.save\s*\(|"
+    r"\bsave_model\s*\(|"
+    r"\bjoblib\.dump\s*\(|"
+    r"\bpickle\.dump\s*\(|"
+    r"\bxgb\.save_model\s*\(|"
+    r"\bsave_pretrained\s*\("
     r")",
     re.IGNORECASE,
 )
 
+# 학습 코드 스캔 대상 파일 형식입니다.
 CODE_SCAN_SUFFIXES = {".py", ".ipynb"}
-CODE_SCAN_SKIP_FILES = {"runtest_2.py"}
 
+# 코드 안의 import/키워드로 프레임워크 흔적을 찾을 때 사용합니다.
 FRAMEWORK_CODE_RULES = [
-    ("tensorflow", ["tensorflow", "tf.keras", "keras", ".compile("]),
-    ("pytorch", ["torch", "torch.save"]),
+    ("tensorflow", ["tensorflow", "tf.keras", "keras", ".compile(", ".save(", "saved_model"]),
+    ("pytorch", ["torch", "torch.save", "save_pretrained", ".pt", ".pth", ".ckpt"]),
     ("sklearn", ["sklearn", "scikit", "train_test_split", "model.fit("]),
-    ("xgboost", ["xgboost", "xgb.", "xgbclassifier", "xgbregressor"]),
+    ("xgboost", ["xgboost", "xgb.", "xgbclassifier", "xgbregressor", "save_model"]),
 ]
 
+# 모델 산출물로 자주 쓰이는 폴더/파일명 힌트입니다.
 ARTIFACT_DIR_HINTS = [
     "saved_model",
     "saved_model.pb",
@@ -107,6 +128,7 @@ ARTIFACT_DIR_HINTS = [
     "model.safetensors",
 ]
 
+# 분석에서 제외할 폴더 목록입니다.
 SCAN_SKIP_DIRS = {
     ".git",
     ".mypy_cache",
@@ -123,17 +145,25 @@ SCAN_SKIP_DIRS = {
     "venv",
 }
 
+
+def should_skip_dir_name(name: str) -> bool:
+    # .opencode 및 .opencode-* 단계 폴더는 번들/분석용 영역이므로 스캔에서 제외합니다.
+    return name in SCAN_SKIP_DIRS or name.startswith(".opencode")
+
+# 프로젝트 필수 폴더 골격입니다.
 REQUIRED_DIRS = [
     "aiu_custom",
     "local_serving",
     "saved_model",
 ]
 
+# 샘플 규격상 기대하는 공통 파일입니다.
 SAMPLE_SPEC_FILES = [
     "requirements.txt",
     "input_example.json",
 ]
 
+# AI Studio 실행에 필요한 .env 키입니다.
 AI_STUDIO_ENV_KEYS = [
     "mlflow_tracking_uri",
     "mlflow_tracking_username",
@@ -149,6 +179,7 @@ AUTO_DEFAULT_SETTING_KEYS = {
 
 @dataclass
 class Check:
+    # 개별 점검 항목 결과를 담습니다.
     name: str
     status: str
     message: str
@@ -157,6 +188,7 @@ class Check:
 
 @dataclass
 class ValidationReport:
+    # 1단계 분석 결과 전체를 담는 리포트 구조입니다.
     selected_project: str
     selection_reason: str
     os: str
@@ -169,7 +201,16 @@ class ValidationReport:
     training_code_paths: list[str] = field(default_factory=list)
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    # 콘솔 출력용 Markdown 표를 만듭니다.
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
 def read_text(path: Path) -> str:
+    # 파일 읽기 실패가 나더라도 분석이 중단되지 않도록 빈 문자열로 처리합니다.
     try:
         return path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
@@ -177,6 +218,7 @@ def read_text(path: Path) -> str:
 
 
 def safe_exists(path: Path) -> bool:
+    # 접근 오류가 나는 경로도 안전하게 검사합니다.
     try:
         return path.exists()
     except OSError:
@@ -184,6 +226,8 @@ def safe_exists(path: Path) -> bool:
 
 
 def safe_is_file(path: Path) -> bool:
+    # 경로가 실제 파일인지 확인합니다.
+    # 권한/파일시스템 오류가 나면 예외 대신 False 를 반환합니다.
     try:
         return path.is_file()
     except OSError:
@@ -191,6 +235,8 @@ def safe_is_file(path: Path) -> bool:
 
 
 def safe_is_dir(path: Path) -> bool:
+    # 경로가 실제 폴더(디렉터리)인지 확인합니다.
+    # 접근 오류가 나더라도 분석이 중단되지 않게 False 로 처리합니다.
     try:
         return path.is_dir()
     except OSError:
@@ -198,6 +244,7 @@ def safe_is_dir(path: Path) -> bool:
 
 
 def safe_iterdir(path: Path):
+    # 권한/인코딩 문제로 디렉터리 순회가 실패해도 예외를 밖으로 던지지 않습니다.
     try:
         yield from path.iterdir()
     except OSError:
@@ -212,6 +259,7 @@ def safe_glob(path: Path, pattern: str):
 
 
 def safe_relative(path: Path, base: Path) -> str:
+    # base 기준 상대경로를 우선 쓰고, 불가능하면 원본 경로를 그대로 반환합니다.
     try:
         return str(path.relative_to(base))
     except ValueError:
@@ -219,14 +267,17 @@ def safe_relative(path: Path, base: Path) -> str:
 
 
 def normalize_path_text(value: str) -> str:
+    # Windows/한글 키보드 백슬래시 변형 문자를 모두 '/' 기준으로 통일합니다.
     return value.replace("\\", "/").replace("＼", "/").replace("￦", "/").replace("₩", "/")
 
 
 def artifact_kind(path: Path) -> str | None:
+    # 파일 확장자로 모델 형식을 추정합니다.
     return ARTIFACT_KIND_BY_SUFFIX.get(path.suffix.lower())
 
 
 def model_sort_key(path: Path, project: Path) -> str:
+    # 모델 목록은 워크스페이스 기준 상대경로 알파벳 순서로 고정합니다.
     try:
         relative = path.resolve().relative_to(project.resolve())
     except ValueError:
@@ -235,6 +286,7 @@ def model_sort_key(path: Path, project: Path) -> str:
 
 
 def has_project_markers(path: Path) -> bool:
+    # 현재 폴더가 실제 모델 프로젝트인지 빠르게 판별합니다.
     # Treat the current directory as a model project only when it has clear
     # ML project markers. This prevents the repository root from being selected
     # just because it contains the skill pack itself.
@@ -260,6 +312,7 @@ def has_project_markers(path: Path) -> bool:
 
 
 def score_project(path: Path) -> int:
+    # 여러 후보 폴더가 있을 때 우선순위를 정하기 위한 단순 점수입니다.
     # The score is intentionally simple and transparent. It is a candidate
     # ranking aid, not a pass/fail quality score.
     score = 0
@@ -279,6 +332,7 @@ def score_project(path: Path) -> int:
 
 
 def resolve_workspace_project(raw_project: str) -> Path:
+    # 사용자가 넘긴 경로를 실제 워크스페이스 프로젝트 루트 기준으로 정규화합니다.
     raw = raw_project.strip()
     if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
         raw = "."
@@ -295,6 +349,7 @@ def resolve_workspace_project(raw_project: str) -> Path:
 
 
 def select_project(explicit: str | None) -> tuple[Path, str]:
+    # 현재 단계는 사용자가 지정한 프로젝트를 우선 사용하고, 없으면 현재 폴더를 씁니다.
     if explicit:
         project = resolve_workspace_project(explicit)
         return project, "explicit path"
@@ -303,10 +358,12 @@ def select_project(explicit: str | None) -> tuple[Path, str]:
 
 
 def is_filesystem_root(path: Path) -> bool:
+    # 드라이브/파일시스템 루트 전체 검색을 막기 위한 판별입니다.
     return path.parent == path
 
 
 def is_opencode_sample_source(path: Path) -> bool:
+    # .opencode 번들/샘플 원본은 사용자 프로젝트가 아니므로 분석 대상에서 제외합니다.
     parts = path.resolve().parts
     if ".opencode" in parts:
         return True
@@ -317,27 +374,19 @@ def is_opencode_sample_source(path: Path) -> bool:
 
 
 def iter_files(path: Path, max_depth: int = 4):
+    # 파일 탐색 범위는 사용자가 선택한 워크스페이스 하위 전체입니다.
+    # 단, .opencode/.venv/node_modules 같은 제외 폴더는 내려가지 않습니다.
     if is_opencode_sample_source(path):
         return
-    # Model selection is scoped to the selected workspace only:
-    # - files directly under the workspace root
-    # - files under data/**
-    # This prevents accidental scans of large/generated folders on Windows.
-    for candidate in safe_iterdir(path):
-        if safe_is_file(candidate):
-            yield candidate
-
-    data_root = path / "data"
-    if not safe_is_dir(data_root):
-        return
-
-    base_depth = len(data_root.parts)
-    for root, dirs, files in os.walk(data_root, onerror=lambda _error: None):
+    base_depth = len(path.parts)
+    for root, dirs, files in os.walk(path, onerror=lambda _error: None):
         root_path = Path(root)
+        # 현재 폴더가 워크스페이스 아래 몇 단계 깊이인지 계산합니다.
         depth = len(root_path.parts) - base_depth
+        # 최대 탐색 깊이에 도달하면 그 아래 하위 폴더는 더 이상 내려가지 않습니다.
         if depth >= max_depth:
             dirs[:] = []
-        dirs[:] = [d for d in dirs if d not in SCAN_SKIP_DIRS]
+        dirs[:] = [d for d in dirs if not should_skip_dir_name(d)]
         for file_name in files:
             candidate = root_path / file_name
             if safe_is_file(candidate):
@@ -345,32 +394,32 @@ def iter_files(path: Path, max_depth: int = 4):
 
 
 def is_saved_model_dir(path: Path) -> bool:
+    # TensorFlow SavedModel 폴더인지 간단히 판별합니다.
     return safe_is_dir(path) and safe_exists(path / "saved_model.pb")
 
 
 def iter_artifact_dirs(path: Path, max_depth: int = 4):
+    # 파일형 모델뿐 아니라 디렉터리형 모델도 artifact 후보로 찾습니다.
     if is_opencode_sample_source(path):
         return
-    for candidate in safe_iterdir(path):
-        if is_saved_model_dir(candidate):
-            yield candidate
-
-    data_root = path / "data"
-    if not safe_is_dir(data_root):
-        return
-
-    base_depth = len(data_root.parts)
-    for root, dirs, _files in os.walk(data_root, onerror=lambda _error: None):
+    # 사용자가 선택한 워크스페이스 하위에서 max_depth 깊이까지만 디렉터리형 모델을 탐색합니다.
+    base_depth = len(path.parts)
+    for root, dirs, _files in os.walk(path, onerror=lambda _error: None):
         root_path = Path(root)
+        # 현재 폴더가 워크스페이스 아래 몇 단계 깊이인지 계산합니다.
         depth = len(root_path.parts) - base_depth
+        # 최대 탐색 깊이에 도달하면 그 아래 하위 폴더는 더 이상 내려가지 않습니다.
         if depth >= max_depth:
             dirs[:] = []
-        dirs[:] = [d for d in dirs if d not in SCAN_SKIP_DIRS]
+        # 분석 제외 폴더(.opencode, node_modules 등)는 순회 대상에서 제거합니다.
+        dirs[:] = [d for d in dirs if not should_skip_dir_name(d)]
+        # 현재 폴더가 TensorFlow SavedModel 구조이면 모델 artifact 디렉터리로 반환합니다.
         if is_saved_model_dir(root_path):
             yield root_path
 
 
-def find_artifacts(path: Path, max_depth: int = 4) -> list[Path]:
+def find_artifacts(path: Path, max_depth: int = 8) -> list[Path]:
+    # 모델 파일/폴더 후보를 한 번에 모아 정렬된 목록으로 반환합니다.
     artifacts: list[Path] = []
     artifacts.extend(iter_artifact_dirs(path, max_depth=max_depth))
     for file_path in iter_files(path, max_depth=max_depth):
@@ -384,6 +433,7 @@ def find_artifacts(path: Path, max_depth: int = 4) -> list[Path]:
 
 
 def notebook_text(path: Path) -> str:
+    # 노트북도 학습 코드 탐지 대상이라 셀 내용을 이어붙여 평문화합니다.
     try:
         payload = json.loads(read_text(path))
     except json.JSONDecodeError:
@@ -404,12 +454,14 @@ def notebook_text(path: Path) -> str:
 
 
 def read_code_text(path: Path) -> str:
+    # .py 와 .ipynb 를 동일한 방식으로 읽기 위한 헬퍼입니다.
     if path.suffix.lower() == ".ipynb":
         return notebook_text(path)
     return read_text(path)
 
 
 def iter_code_files(project: Path, max_depth: int = 5):
+    # 학습 코드 흔적을 찾을 코드 파일 목록을 안전하게 순회합니다.
     if is_opencode_sample_source(project):
         return
     base_depth = len(project.parts)
@@ -419,11 +471,9 @@ def iter_code_files(project: Path, max_depth: int = 5):
         depth = len(root_path.parts) - base_depth
         if depth >= max_depth:
             dirs[:] = []
-        dirs[:] = [name for name in dirs if name not in SCAN_SKIP_DIRS]
+        dirs[:] = [name for name in dirs if not should_skip_dir_name(name)]
         for file_name in files:
             candidate = root_path / file_name
-            if file_name in CODE_SCAN_SKIP_FILES:
-                continue
             if candidate.suffix.lower() not in CODE_SCAN_SUFFIXES:
                 continue
             try:
@@ -437,6 +487,7 @@ def iter_code_files(project: Path, max_depth: int = 5):
 
 
 def detect_training_code(project: Path) -> tuple[list[Path], list[str], list[str]]:
+    # model.fit / model.compile / torch.save 패턴으로 학습 코드 존재를 감지합니다.
     hits: list[Path] = []
     evidence: list[str] = []
     frameworks: list[str] = []
@@ -457,6 +508,7 @@ def detect_training_code(project: Path) -> tuple[list[Path], list[str], list[str
 
 
 def detect_framework(project: Path, requirements_text: str, artifacts: list[Path], training_frameworks: list[str]) -> tuple[str, list[str]]:
+    # 프레임워크 판별은 추정이 아니라 requirements/artifact/code 흔적을 근거로 합니다.
     # Framework detection is evidence-based and conservative. Unknown/custom is
     # valid when the project does not expose recognizable dependency or artifact
     # hints.
@@ -488,6 +540,7 @@ def detect_framework(project: Path, requirements_text: str, artifacts: list[Path
 
 
 def parse_requirements(project: Path) -> tuple[Path | None, str, list[str]]:
+    # requirements.txt 원문과 실제 패키지 줄 목록을 함께 반환합니다.
     req = project / "requirements.txt"
     if not safe_exists(req):
         return None, "", []
@@ -501,6 +554,7 @@ def parse_requirements(project: Path) -> tuple[Path | None, str, list[str]]:
 
 
 def check_json_file(path: Path) -> tuple[bool, str]:
+    # JSON 파일이 실제로 존재하고 파싱 가능한지 확인합니다.
     if not safe_exists(path):
         return False, "missing"
     try:
@@ -513,6 +567,7 @@ def check_json_file(path: Path) -> tuple[bool, str]:
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
+    # .env 파일을 단순 key=value 형태로 읽습니다.
     values: dict[str, str] = {}
     if not safe_exists(path):
         return values
@@ -526,6 +581,7 @@ def parse_env_file(path: Path) -> dict[str, str]:
 
 
 def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
+    # .env 안에 필수 MLflow 설정값이 모두 들어있는지 검사합니다.
     path = project / ".env"
     values = parse_env_file(path)
     evidence = []
@@ -557,6 +613,7 @@ def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
 
 
 def find_first_existing(project: Path, names: list[str]) -> Path | None:
+    # 후보 이름 중 실제로 존재하는 첫 번째 파일을 찾습니다.
     for name in names:
         candidate = project / name
         if safe_exists(candidate):
@@ -565,6 +622,7 @@ def find_first_existing(project: Path, names: list[str]) -> Path | None:
 
 
 def unique_paths(paths: list[Path]) -> list[Path]:
+    # resolve 기준으로 중복 경로를 제거합니다.
     unique = []
     seen = set()
     for path in paths:
@@ -580,18 +638,21 @@ def unique_paths(paths: list[Path]) -> list[Path]:
 
 
 def find_entrypoints(project: Path) -> list[Path]:
+    # 실행 진입점 후보를 수집합니다.
     found = [project / name for name in ENTRYPOINT_NAMES if safe_exists(project / name)]
     found.extend(path for path in safe_glob(project, "*.py") if safe_is_file(path))
     return unique_paths(found)
 
 
 def find_training_entrypoints(project: Path) -> list[Path]:
+    # 학습/등록 쪽 실행 파일 후보를 수집합니다.
     found = [project / name for name in TRAINING_ENTRYPOINT_NAMES if safe_exists(project / name)]
     found.extend(path for path in safe_glob(project, "*.py") if safe_is_file(path))
     return unique_paths(found)
 
 
 def check_aiu_custom(project: Path, entrypoints: list[Path]) -> Check:
+    # aiu_custom 래퍼가 필요한 프로젝트인지, 필요하다면 골격이 맞는지 검사합니다.
     # AI Studio style pyfunc registration depends on the aiu_custom wrapper
     # being present with the model project.
     entrypoint_text = "\n".join(read_text(path) for path in entrypoints)
@@ -659,6 +720,7 @@ def check_aiu_custom(project: Path, entrypoints: list[Path]) -> Check:
 
 
 def check_required_dirs(project: Path) -> Check:
+    # 필수 폴더 골격이 존재하는지 확인합니다.
     evidence = []
     missing = []
     for name in REQUIRED_DIRS:
@@ -682,12 +744,14 @@ def check_required_dirs(project: Path) -> Check:
 
 
 def sample_key_for_framework(framework: str) -> str:
+    # 프레임워크 이름을 샘플 키로 단순 매핑합니다.
     if framework in {"sklearn", "pytorch", "tensorflow"}:
         return framework
     return "pytorch"
 
 
 def sample_spec_missing(project: Path) -> list[str]:
+    # 샘플 규격 대비 누락된 폴더/파일을 목록으로 반환합니다.
     missing = []
     for name in REQUIRED_DIRS:
         if not safe_is_dir(project / name):
@@ -705,6 +769,7 @@ def sample_spec_missing(project: Path) -> list[str]:
 
 
 def check_entrypoint_confirmation(project: Path, entrypoints: list[Path]) -> Check:
+    # 실행 파일 후보가 하나인지, 여러 개인지, 없는지 확인합니다.
     evidence = [safe_relative(path, project) for path in entrypoints[:10]]
     if not entrypoints:
         return Check(
@@ -729,6 +794,7 @@ def check_entrypoint_confirmation(project: Path, entrypoints: list[Path]) -> Che
 
 
 def check_sample_spec(project: Path, framework: str) -> Check:
+    # 샘플 규격 대비 누락된 골격이 있는지 체크합니다.
     missing = sample_spec_missing(project)
     evidence = [f"sample: {sample_key_for_framework(framework)}"]
     if missing:
@@ -747,6 +813,7 @@ def check_sample_spec(project: Path, framework: str) -> Check:
 
 
 def write_permission_check(project: Path) -> Check:
+    # 실제로 파일 생성이 가능한 프로젝트인지 임시 파일로 가볍게 검사합니다.
     try:
         with tempfile.NamedTemporaryFile(prefix=".mlflow_skill_check_", dir=project, delete=True) as handle:
             handle.write(b"ok")
@@ -766,6 +833,7 @@ def write_permission_check(project: Path) -> Check:
 
 
 def windows_path_check(project: Path) -> Check:
+    # Windows에서 자주 문제가 되는 공백/경로 길이를 먼저 점검합니다.
     evidence = ["."]
     path_text = str(project)
     warnings = []
@@ -784,6 +852,7 @@ def windows_path_check(project: Path) -> Check:
 
 
 def has_prepare_only(entrypoints: list[Path]) -> tuple[bool, list[str]]:
+    # 등록 전에 사전 점검만 수행하는 흐름이 있는지 코드 흔적으로 확인합니다.
     evidence = []
     # --prepare-only is only one possible implementation. "preflight" or a
     # prepare() function can provide the same registration-before-execution check.
@@ -797,6 +866,7 @@ def has_prepare_only(entrypoints: list[Path]) -> tuple[bool, list[str]]:
 
 
 def has_register_flow(entrypoints: list[Path]) -> tuple[bool, list[str]]:
+    # MLflow 등록 흐름(start_run, log_model 등)이 코드에 보이는지 확인합니다.
     evidence = []
     patterns = ["mlflow.", "log_model", "start_run", "registered_model_name"]
     for path in entrypoints:
@@ -808,6 +878,7 @@ def has_register_flow(entrypoints: list[Path]) -> tuple[bool, list[str]]:
 
 
 def find_mlflow_code_settings(entrypoints: list[Path]) -> list[str]:
+    # 코드 내부에 MLflow 설정 상수가 직접 들어 있는지 찾아 근거로 남깁니다.
     evidence = []
     setting_names = [
         "mlflow_tracking_uri",
@@ -825,12 +896,18 @@ def find_mlflow_code_settings(entrypoints: list[Path]) -> list[str]:
 
 
 def build_report(project: Path, reason: str, write_check: bool) -> ValidationReport:
+    # 1단계 분석 결과를 한 번에 모아 최종 리포트 구조로 만듭니다.
+    # 이후 2~7단계로 이어질 수 있게 근거와 next step도 같이 정리합니다.
     # Build the report in the same order as the 7 OpenCode skills:
     # model select -> project check -> mlflow check -> gap guide ->
     # run-model guide -> preflight check -> register guide.
     checks: list[Check] = []
     project = project.resolve()
 
+    # 1) 먼저 분석 대상 프로젝트 경로가 유효한지 검사합니다.
+    #    - 경로가 없으면 바로 중단
+    #    - 파일시스템 루트 전체 검색은 차단
+    #    - .opencode 번들 원본은 사용자 프로젝트가 아니므로 차단
     if not safe_exists(project):
         checks.append(Check("local model path selection", "block", "selected project path does not exist", ["."]))
         return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Provide a valid --project path."])
@@ -841,8 +918,16 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         checks.append(Check("local model path selection", "block", ".opencode/ is bundled skill source, not a user model project", ["."]))
         return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, ["Use the actual selected model project folder as --project."])
 
+    # 2) 경로가 정상이라면 현재 프로젝트를 분석 대상으로 확정합니다.
     checks.append(Check("local model path selection", "pass", "project selected", [".", reason]))
 
+    # 3) 프로젝트 안의 핵심 단서를 한 번에 수집합니다.
+    #    - requirements.txt
+    #    - 모델 artifact 파일/폴더
+    #    - 학습 코드 흔적
+    #    - 프레임워크 후보
+    #    - 엔트리포인트 후보
+    #    - 설정 파일 / input example 파일
     requirements_path, requirements_text, packages = parse_requirements(project)
     artifacts = find_artifacts(project)
     training_code_paths, training_code_evidence, training_frameworks = detect_training_code(project)
@@ -851,25 +936,41 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     training_entrypoints = find_training_entrypoints(project)
     config_file = find_first_existing(project, CONFIG_NAMES)
     input_example_file = find_first_existing(project, INPUT_EXAMPLE_NAMES)
+
+    # 4) 학습 코드 또는 모델 artifact가 하나라도 있으면 model_found=true 로 판단합니다.
     model_found = bool(training_code_paths or artifacts)
+
+    # 5) 분석 결과를 3가지 케이스로 나눕니다.
+    #    - case 1: 학습 코드 있음
+    #    - case 2: pre-trained 모델 파일만 있음
+    #    - case 3: false (모델/학습 코드 없음)
     if training_code_paths:
         analysis_case = "case 1: training code"
-        analysis_message = "학습 코드가 감지되었습니다. 해당 프레임워크 템플릿 변환 안내로 진행합니다."
+        analysis_message = "py/ipynb 파일에서 model.fit(), model.compile(), save 계열 학습 로직이 감지되었습니다. 해당 프레임워크 템플릿 변환 안내로 진행합니다."
         analysis_evidence = training_code_evidence[:10]
     elif artifacts:
         analysis_case = "case 2: pre-trained model artifact"
-        analysis_message = "학습 코드 없이 모델 artifact가 감지되었습니다. 모델 선택 흐름으로 진행합니다."
+        analysis_message = "pth, pkl, h5, onnx, SavedModel 폴더 등 pre-trained 모델 파일만 감지되었습니다. 모델 선택 흐름으로 진행합니다."
         analysis_evidence = [safe_relative(path, project) for path in artifacts[:10]]
     else:
-        analysis_case = "case 3: no model"
-        analysis_message = "학습 코드와 모델 artifact가 없습니다. 샘플 선택 흐름으로 진행합니다."
-        analysis_evidence = ["sample choices: 1 sklearn / 2 pytorch / 3 tensorflow"]
+        analysis_case = "case 3: false"
+        analysis_message = "학습 코드와 모델 artifact가 없습니다. pytorch_sample / sklearn_sample / tensorflow_sample 중 하나를 선택하는 흐름으로 진행합니다."
+        analysis_evidence = [
+            "pytorch_sample",
+            "sklearn_sample",
+            "tensorflow_sample",
+        ]
 
+    # 6) 프로젝트 스캔 근거를 모읍니다.
+    #    requirements, entrypoint, artifact 일부를 evidence 로 남겨
+    #    왜 이렇게 판단했는지 나중에 확인할 수 있게 합니다.
     project_evidence = []
     if requirements_path:
         project_evidence.append(safe_relative(requirements_path, project))
     project_evidence.extend(safe_relative(path, project) for path in entrypoints[:5])
     project_evidence.extend(safe_relative(path, project) for path in artifacts[:5])
+
+    # 7) "현재 프로젝트가 어떤 케이스인지" 체크 결과에 기록합니다.
     checks.append(
         Check(
             "workspace analysis case",
@@ -878,6 +979,8 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             [analysis_case] + analysis_evidence,
         )
     )
+
+    # 8) 전체 스캔 결과와 프레임워크 후보를 체크 결과에 기록합니다.
     checks.append(
         Check(
             "project scan",
@@ -891,6 +994,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     checks.append(check_sample_spec(project, framework))
     checks.append(check_aiu_custom(project, entrypoints))
 
+    # 9) MLflow 관련 의존성과 설정 흔적을 점검합니다.
     mlflow_evidence = []
     has_mlflow_dep = any(re.match(r"(?i)^mlflow([=<>!~ ]|$)", pkg) for pkg in packages)
     if requirements_path:
@@ -906,6 +1010,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         )
     )
 
+    # 10) config/input_example/.env 와 같은 실행 보조 파일의 준비 상태를 확인합니다.
     # Code constants and project config files are the expected places to
     # confirm MLflow settings.
     config_ok = False
@@ -935,6 +1040,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     )
     checks.append(check_ai_studio_env(project, code_settings))
 
+    # 11) 등록 실행 흐름과 prepare/preflight 흐름이 코드상 보이는지 확인합니다.
     register_found, register_evidence = has_register_flow(entrypoints)
     checks.append(
         Check(
@@ -976,6 +1082,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         )
     )
 
+    # 12) 마지막으로 Windows 경로 호환성과 쓰기 가능 여부를 확인합니다.
     checks.append(windows_path_check(project))
     if write_check:
         checks.append(write_permission_check(project))
@@ -1031,38 +1138,85 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     )
 
 
+def print_model_list(report: ValidationReport):
+    # 모델/학습 코드/샘플 선택지는 모두 Markdown Table 형식으로 고정 출력합니다.
+    rows: list[tuple[str, str, str, str]] = []
+    for path in report.training_code_paths:
+        location = "file"
+        rows.append((path, "training_code", location, "선택 가능"))
+    for path in report.model_artifact_paths:
+        suffix = Path(path).suffix.lower()
+        kind = ARTIFACT_KIND_BY_SUFFIX.get(suffix, "unknown")
+        location = "data"
+        rows.append((path, kind, location, "선택 가능"))
+    if rows:
+        print("| No | Path | MODEL_KIND | Location | Status |")
+        print("|---:|---|---|---|---|")
+        for index, (path, kind, location, status) in enumerate(rows, start=1):
+            print(f"| {index} | {path} | {kind} | {location} | {status} |")
+        return
+    print("| No | Sample |")
+    print("|---:|---|")
+    print("| 1 | sklearn_sample |")
+    print("| 2 | pytorch_sample |")
+    print("| 3 | tensorflow_sample |")
+
+
 def print_text(report: ValidationReport):
-    print(f"Selected project: {report.selected_project}")
-    print(f"Selection reason: {report.selection_reason}")
-    print(f"OS: {report.os}")
-    print(f"Python: {report.python}")
-    print(f"model_found: {str(report.model_found).lower()}")
+    # 기본 출력은 짧은 요약과 목록만 보여주는 간단 모드입니다.
+    count = len(report.model_artifact_paths) + len(report.training_code_paths)
+    print_markdown_table(
+        ["항목", "값"],
+        [
+            ["현재 단계", "1. 프로젝트 분석"],
+            ["model_found", str(report.model_found).lower()],
+            ["analysis_case", report.analysis_case or "none"],
+            ["발견 개수", str(count)],
+        ],
+    )
+    print()
+    print_model_list(report)
+
+
+def print_verbose_text(report: ValidationReport):
+    # 상세 출력은 내부 체크 결과와 next step까지 모두 보여주는 모드입니다.
+    print_markdown_table(
+        ["항목", "값"],
+        [
+            ["Selected project", report.selected_project],
+            ["Selection reason", report.selection_reason],
+            ["OS", report.os],
+            ["Python", report.python],
+            ["model_found", str(report.model_found).lower()],
+            ["analysis_case", report.analysis_case or "none"],
+        ],
+    )
     if report.analysis_case:
-        print(f"analysis_case: {report.analysis_case}")
+        pass
     if report.training_code_paths:
         print("Training code paths:")
-        for index, path in enumerate(report.training_code_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Entrypoint Path"], [[str(index), path] for index, path in enumerate(report.training_code_paths, start=1)])
     if report.model_artifact_paths:
         print("Model artifact paths:")
-        for index, path in enumerate(report.model_artifact_paths, start=1):
-            print(f"{index}. {path}")
+        print_markdown_table(["No", "Model Path"], [[str(index), path] for index, path in enumerate(report.model_artifact_paths, start=1)])
     print()
+    check_rows = []
     for index, check in enumerate(report.checks, start=1):
-        print(f"{index}. [{check.status}] {check.name}")
-        print(f"   {check.message}")
-        for evidence in check.evidence:
-            print(f"   - {evidence}")
+        evidence = "; ".join(check.evidence) if check.evidence else ""
+        check_rows.append([str(index), check.status, check.name, check.message, evidence])
+    print_markdown_table(["No", "Status", "Check", "Message", "Evidence"], check_rows)
     print()
     print("Next steps:")
-    for step in report.next_steps:
-        print(f"- {step}")
+    print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps, start=1)])
 
 
 def main():
+    # CLI 인자를 받아 분석을 실행하고, 요청한 출력 형식으로 결과를 보여줍니다.
     parser = argparse.ArgumentParser(description="Validate an MLflow model project using the skill pack checklist.")
     parser.add_argument("--project", help="model project path. If omitted, the script auto-selects a candidate.")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON output")
+    parser.add_argument("--list", action="store_true", help="print model/sample choices")
+    parser.add_argument("--verbose", action="store_true", help="print detailed analysis checks")
     parser.add_argument("--no-write-check", action="store_true", help="skip temporary write permission check")
     parser.add_argument("--strict-exit", action="store_true", help="return non-zero when checks contain warn/block statuses")
     args = parser.parse_args()
@@ -1071,6 +1225,10 @@ def main():
     report = build_report(project, reason, write_check=not args.no_write_check)
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
+    elif args.list:
+        print_model_list(report)
+    elif args.verbose:
+        print_verbose_text(report)
     else:
         print_text(report)
 

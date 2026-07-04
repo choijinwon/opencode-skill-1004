@@ -36,7 +36,7 @@ ENTRYPOINTS = [
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
-ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
+ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 AI_STUDIO_ENV_KEYS = [
     "mlflow_tracking_uri",
     "mlflow_tracking_username",
@@ -226,6 +226,36 @@ def project_relative_path(path: Path, project: Path) -> str:
         return path.name
 
 
+def display_project_path(path: Path) -> str:
+    try:
+        relative = path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+        return relative or "."
+    except ValueError:
+        return path.as_posix()
+
+
+def selected_model_config_candidates(project: Path) -> list[Path]:
+    candidates: list[Path] = []
+    root_config = project / "config" / "config.json"
+    if root_config.is_file():
+        candidates.append(root_config)
+    if project.is_dir():
+        for child in sorted(project.iterdir(), key=lambda path: path.name.lower()):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            config_path = child / "config" / "config.json"
+            if config_path.is_file():
+                candidates.append(config_path)
+    return sorted(candidates, key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
+
+
+def selected_model_project(project: Path) -> Path:
+    candidates = selected_model_config_candidates(project)
+    if not candidates:
+        return project
+    return candidates[0].parents[1]
+
+
 def find_workspace_root(project: Path) -> Path | None:
     for candidate in [project, *project.parents]:
         if (candidate / PROJECT_PREPARE_SELECTED_MODEL_SCRIPT).is_file():
@@ -276,6 +306,28 @@ def find_artifacts(project: Path) -> list[str]:
         if path.is_file() and (path.suffix.lower() in ARTIFACT_SUFFIXES or path.name in {"MLmodel", "python_model.pkl"}):
             found.append(str(path))
     return sorted(set(found))
+
+
+def local_generated_path_rows(work_path: Path, workspace_root: Path) -> list[list[str]]:
+    rows: list[list[str]] = []
+    candidates = [
+        ("실행 폴더", work_path),
+        ("모델 파일", work_path / "saved_model"),
+        ("설정 파일", work_path / "config" / "config.json"),
+        ("입력 예시", work_path / "input_example.json"),
+    ]
+    for label, path in candidates:
+        if label == "모델 파일" and path.is_dir():
+            model_files = sorted(
+                child for child in path.iterdir()
+                if child.is_file() and child.name != ".gitkeep"
+            )
+            if model_files:
+                rows.append([label, project_relative_path(model_files[0], workspace_root)])
+            continue
+        if path.exists():
+            rows.append([label, project_relative_path(path, workspace_root)])
+    return rows
 
 
 def missing_required_dirs(project: Path) -> list[str]:
@@ -377,11 +429,6 @@ def validate_mlflow_tracking_url(value: str) -> str | None:
         return "invalid_remote_tracking_uri:sqlite_or_file"
     if not lowered.startswith(("http://", "https://")):
         return "invalid_remote_tracking_uri:scheme"
-
-    parsed = urlparse(tracking_uri)
-    hostname = (parsed.hostname or "").lower()
-    if hostname in {"localhost", "0.0.0.0", "::1"} or hostname.startswith("127."):
-        return "invalid_remote_tracking_uri:local_address"
     return None
 
 
@@ -480,13 +527,14 @@ def main():
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = parser.parse_args()
 
-    project = resolve_workspace_project(args.project)
-    if not project.exists():
-        raise FileNotFoundError(f"project folder not found: {project}")
-    if is_filesystem_root(project):
+    requested_project = resolve_workspace_project(args.project)
+    if not requested_project.exists():
+        raise FileNotFoundError(f"project folder not found: {requested_project}")
+    if is_filesystem_root(requested_project):
         raise ValueError("drive/root scan is not allowed. 선택한 워크스페이스 루트로 이동한 뒤 --project . 로 실행하세요.")
-    if is_opencode_sample_source(project):
+    if is_opencode_sample_source(requested_project):
         raise ValueError(".opencode/는 번들 스킬 원본이라 실행/분석 대상이 아닙니다. 실제 모델 프로젝트 폴더를 --project로 지정하세요.")
+    project = selected_model_project(requested_project)
 
     failures: list[str] = []
     next_steps: list[str] = []
@@ -521,7 +569,18 @@ def main():
         else:
             cmd = build_command(args.python, entrypoint, args.prepare_only, work_path)
 
-    if args.execute and model_found and entrypoint is not None and is_runtest_2_entrypoint(entrypoint, work_path):
+    missing_env = missing_ai_studio_env(work_path, entrypoint)
+    remote_uri_failure = remote_tracking_uri_failure(work_path, entrypoint)
+
+    if (
+        args.execute
+        and cmd
+        and not missing_env
+        and not remote_uri_failure
+        and model_found
+        and entrypoint is not None
+        and is_runtest_2_entrypoint(entrypoint, work_path)
+    ):
         sync_messages, sync_failures = sync_selected_model_runtime_before_registration(work_path, args.python)
         preflight.extend(sync_messages)
         if sync_failures:
@@ -529,22 +588,19 @@ def main():
             next_steps.append("먼저 모델 선택 단계로 돌아가 선택 모델을 다시 준비하세요.")
             next_steps.append(PS_PREPARE_MODEL_COMMAND)
 
-    missing_env = missing_ai_studio_env(work_path, entrypoint)
-    remote_uri_failure = remote_tracking_uri_failure(work_path, entrypoint)
-
     return_code = None
     if args.execute and cmd and any(failure.startswith("selected_model_runtime_sync_failed") for failure in failures):
         next_steps.append("런타임 변환 실패로 원격 MLflow 등록 실행을 중단했습니다.")
     elif args.execute and cmd and remote_uri_failure:
         failures.append(remote_uri_failure)
         next_steps.append("5번 원격 MLflow 등록 실행에는 원격 MLflow URL이 필요합니다.")
-        next_steps.append(".env의 mlflow_tracking_uri에 원격 http:// 또는 https:// URI를 직접 입력하세요.")
-        next_steps.append("localhost, 127.0.0.1, 0.0.0.0, file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
+        next_steps.append(".env의 mlflow_tracking_uri는 5개 필수 입력값 중 하나입니다. 원격 http:// 또는 https:// URI를 직접 입력하세요.")
+        next_steps.append("file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
     elif args.execute and cmd and missing_env:
         failures.append("execution_blocked_missing_env")
         next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
         next_steps.append(
-            ".env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password를 직접 입력한 뒤 다시 실행하세요."
+            ".env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name 를 직접 입력한 뒤 다시 실행하세요."
         )
     elif args.execute and cmd:
         return_code = run_command(cmd, cwd=work_path)
@@ -608,32 +664,54 @@ def main():
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:
-        print("Project: .")
-        print("Work path: .")
-        print(f"Model found: {report.model_found}")
-        print(f"Selected sample: {report.selected_sample or 'none'}")
-        print(f"Entrypoint: {report.entrypoint or 'missing'}")
-        print(f"Command: {' '.join(report.command) if report.command else 'none'}")
-        print(f"Executed: {report.executed}")
-        print(f"Return code: {report.return_code}")
+        def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+            print("| " + " | ".join(headers) + " |")
+            print("|" + "|".join("---" for _ in headers) + "|")
+            for row in rows:
+                print("| " + " | ".join(str(value) for value in row) + " |")
+
+        print("원격 MLflow 등록 실행 결과")
+        project_display = display_project_path(Path(report.project_path))
+        work_display = display_project_path(Path(report.work_path))
+        entrypoint_display = (
+            project_relative_path(Path(report.entrypoint), Path(report.work_path))
+            if report.entrypoint
+            else "missing"
+        )
+        print_markdown_table(
+            ["항목", "값"],
+            [
+                ["Project", project_display],
+                ["Work path", work_display],
+                ["Model found", str(report.model_found)],
+                ["Selected sample", report.selected_sample or "none"],
+                ["Entrypoint", entrypoint_display],
+                ["Command", " ".join(report.command) if report.command else "none"],
+                ["Executed", str(report.executed)],
+                ["Return code", str(report.return_code)],
+            ],
+        )
+        workspace_root = find_workspace_root(Path(report.work_path)) or Path.cwd().resolve()
+        local_rows = local_generated_path_rows(Path(report.work_path), workspace_root)
+        if local_rows:
+            print("워크스페이스 로컬 생성 경로:")
+            print_markdown_table(["항목", "상대경로"], local_rows)
         if report.preflight:
             print("Preflight:")
-            for item in report.preflight:
-                print(f"- {item}")
+            print_markdown_table(["No", "항목"], [[str(index), item] for index, item in enumerate(report.preflight, start=1)])
         print("Process checklist:")
-        for item in report.process_checklist:
-            print(f"- {item.name}: {item.status}")
+        print_markdown_table(["항목", "상태"], [[item.name, item.status] for item in report.process_checklist])
         print("Metrics and artifacts:")
-        for artifact in report.artifacts:
-            print(f"- {artifact}")
+        if report.artifacts:
+            print_markdown_table(["No", "Artifact"], [[str(index), artifact] for index, artifact in enumerate(report.artifacts, start=1)])
+        else:
+            print_markdown_table(["No", "Artifact"], [["-", "none"]])
         if report.failures:
             print("Failures:")
-            for failure in report.failures:
-                print(f"- {failure}")
+            print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
         if report.next_steps:
             print("Next steps:")
-            for step in report.next_steps:
-                print(f"- {step}")
+            print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps, start=1)])
 
 
 if __name__ == "__main__":

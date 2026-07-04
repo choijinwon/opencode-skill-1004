@@ -442,36 +442,42 @@ def build_report(project: Path, entrypoint_arg: str | None, sample: str, execute
     return report
 
 
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
 def print_text(report: AdaptReport) -> None:
     print("AI Studio Adapter")
-    print("Project: .")
-    print(f"Entrypoint: {report.entrypoint or 'missing'}")
-    print(f"Framework: {report.framework}")
-    print(f"Execute: {report.execute}")
+    print_markdown_table(
+        ["항목", "값"],
+        [
+            ["Project", "."],
+            ["Entrypoint", report.entrypoint or "missing"],
+            ["Framework", report.framework],
+            ["Execute", str(report.execute).lower()],
+        ],
+    )
     if report.planned_changes:
         print("\nPlanned changes:")
-        for item in report.planned_changes:
-            print(f"- {item}")
+        print_markdown_table(["No", "Planned Change"], [[str(index), item] for index, item in enumerate(report.planned_changes, start=1)])
     if report.changed_files:
         print("\nChanged files:")
-        for item in report.changed_files:
-            print(f"- {item}")
+        print_markdown_table(["No", "Changed File"], [[str(index), item] for index, item in enumerate(report.changed_files, start=1)])
     if report.skipped:
         print("\nSkipped:")
-        for item in report.skipped:
-            print(f"- {item}")
+        print_markdown_table(["No", "Skipped"], [[str(index), item] for index, item in enumerate(report.skipped, start=1)])
     if report.warnings:
         print("\nWarnings:")
-        for item in report.warnings:
-            print(f"- {item}")
+        print_markdown_table(["No", "Warning"], [[str(index), item] for index, item in enumerate(report.warnings, start=1)])
     if report.failures:
         print("\nFailures:")
-        for item in report.failures:
-            print(f"- {item}")
+        print_markdown_table(["No", "Failure"], [[str(index), item] for index, item in enumerate(report.failures, start=1)])
     if report.next_steps:
         print("\nNext steps:")
-        for item in report.next_steps:
-            print(f"- {item}")
+        print_markdown_table(["No", "Next Step"], [[str(index), item] for index, item in enumerate(report.next_steps, start=1)])
 
 
 def main() -> int:

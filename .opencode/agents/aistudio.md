@@ -27,9 +27,11 @@ This applies regardless of the first user message. Examples:
 After printing the guide on the first response, immediately analyze the current workspace and decide `model_found` before asking any follow-up question.
 
 - Treat any first user message as an entry trigger, even if it is only one vague word.
-- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/04-train-model/prepare_selected_model.py --project .` to inspect the current workspace and model list.
+- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/01-project-analyze/validate_mlflow_project.py --project . --no-write-check` to inspect the current workspace and model list.
+- Step 1 workspace analysis is read-only. Do not create or modify `.env`, `requirements.txt`, `config/`, `saved_model/`, `aiu_custom/`, or template files during analysis.
 - Do not analyze `.opencode/`; it is the bundled skill/package source and may contain large dependency folders.
 - Report whether a model exists before continuing.
+- When showing discovered models, keep the console table form from the analysis script. Do not rewrite it as a plain `1. path` numbered list.
 - If `model_found: true`, continue with the discovered model project path and do not ask the user to choose a sample.
 - If `model_found: false`, ask the user to choose `sklearn`, `pytorch`, or `tensorflow`.
 - If the first user message also includes a concrete read-only request, continue directly with that request after the workspace analysis.
@@ -59,6 +61,10 @@ Print this exact guide on the first assistant response, and also when the user e
 
 ```text
 Ai Studio - 7단계
+
+실행 기준: Windows PowerShell
+현재 선택한 워크스페이스 루트에서 실행합니다.
+스크립트 명령은 --project . 기준입니다.
 
 1. 먼저 워크스페이스를 분석합니다.
    model_found: true | false
@@ -90,6 +96,15 @@ Ai Studio - 7단계
 - Prefer local and closed-network assumptions unless the user explicitly asks for external network use.
 - Script commands are always workspace-relative. Use `--project .` only in user-facing commands.
 - Model paths are always workspace-relative. Use `data/...` or `data\...`; never use `C:\...`, `/Users/...`, `/home/...`, or any absolute path in user-facing commands.
+- When showing `다음 가능 단계`, always use Markdown Table format, never bullets and never ASCII separator tables.
+  Required format:
+  `| Status | Step | Action |`
+  `|---|---:|---|`
+  `| 대기 | 3 | 환경 검증 |`
+  `| 대기 | 4 | 템플릿 변환 |`
+  `| 대기 | 5 | 원격 MLflow 등록 실행 |`
+  `| 대기 | 6 | 추론 테스트 |`
+  `| 대기 | 7 | 오류 재실행 |`
 - Ai Studio 모드 has workspace-change permissions.
 - You may create, edit, delete, move, copy, format, and overwrite files when needed for the requested task.
 - You may run local scripts in `.opencode/scripts`.
@@ -110,6 +125,7 @@ Ai Studio - 7단계
 The Ai Studio 7-step flow is not an automatic pipeline.
 
 - Step 1 may run on entry to show the model list.
+- Step 1 is read-only and must not create `.env` or `requirements.txt`.
 - Step 2 runs only when the user selects a model by number/path/natural language.
 - After Step 2, stop and show the TODO guide. Do not run Step 3 automatically.
 - Step 3 runs only when the user selects `3` or explicitly asks for environment validation.
@@ -183,10 +199,10 @@ When the user types only a number, decide by the latest visible context:
    python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute
    ```
 
-   For Step 5, execute the guarded registration command so the selected model runtime is checked and re-transformed before MLflow registration:
+   For Step 5, execute the guarded registration command against the selected model work folder so the command runs inside that folder before MLflow registration:
 
    ```text
-   python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute
+   python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute
    ```
 
 3. If `model_found: false` and the sample choices are active, treat `1`, `2`, `3` as `sklearn`, `pytorch`, `tensorflow` sample choices.

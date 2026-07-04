@@ -19,7 +19,7 @@ from pathlib import Path
 
 PYTHON_COMMAND = "python"
 OPENCODE_ROOT = Path(__file__).resolve().parents[2]
-LAUNCH_SUMMARY_SCRIPT = ".opencode/scripts/launch_workspace_summary.py"
+ANALYZE_SCRIPT = ".opencode/scripts/01-project-analyze/validate_mlflow_project.py"
 SELECT_MODEL_SCRIPT = ".opencode/scripts/02-model-select/select_model.py"
 PREPARE_SCRIPT = ".opencode/scripts/04-train-model/prepare_selected_model.py"
 ENV_SCRIPT = ".opencode/scripts/03-environment-check/check_environment.py"
@@ -252,7 +252,7 @@ def main() -> int:
 
     try:
         # 1. 모델 목록 확인
-        step1 = run_command([PYTHON_COMMAND, LAUNCH_SUMMARY_SCRIPT, ".", "--json"], project, allow_failure=True)
+        step1 = run_command([PYTHON_COMMAND, ANALYZE_SCRIPT, "--project", ".", "--no-write-check", "--json"], project, allow_failure=True)
         assert_contains(step1.stdout, '"model_artifact_paths"', "step 1 model list")
         model_paths = json.loads(step1.stdout).get("model_artifact_paths", [])
         results.append(StepResult(1, "모델 목록 확인", "PASS", "model_artifact_paths 출력 확인"))

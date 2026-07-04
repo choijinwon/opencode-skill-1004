@@ -11,9 +11,7 @@ Skill folder:
 
 Primary scripts:
 
-- `01-project-analyze/validate_mlflow_project.py` - 상세 워크스페이스 분석
-- `launch_workspace_summary.py` - 기존 런치 분석 명령 호환 wrapper
-- `04-train-model/prepare_selected_model.py` - 모델 목록 확인
+- `01-project-analyze/validate_mlflow_project.py` - 읽기 전용 워크스페이스 분석과 모델 목록 확인
 
 ## 02 Sample Bootstrap
 
@@ -81,7 +79,7 @@ Generated runtime entrypoint:
 ## Fixed 7-Step Process Map
 
 ```text
-1. 모델 목록 확인                  -> 04-train-model/prepare_selected_model.py --project .
+1. 모델 목록 확인                  -> 01-project-analyze/validate_mlflow_project.py --project . --no-write-check
 2. 모델 선택                       -> 02-model-select/select_model.py --model <번호|경로>
 3. 환경 검증      -> 03-environment-check/check_environment.py
 4. 템플릿 변환                     -> 04-train-model/prepare_selected_model.py --model selected --execute

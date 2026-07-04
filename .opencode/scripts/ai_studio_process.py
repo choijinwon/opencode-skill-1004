@@ -50,14 +50,13 @@ def format_todo_guide(statuses: list[str] | tuple[str, ...] | None = None) -> st
     normalized = normalize_todo_statuses(statuses)
     lines = [
         "",
-        TODO_GUIDE_BORDER,
         TODO_GUIDE_TITLE,
-        TODO_GUIDE_BORDER,
         TODO_GUIDE_HINT,
+        "| Step | Process | Status |",
+        "|---:|---|---|",
     ]
     for index, (title, status) in enumerate(zip(AI_STUDIO_PROCESS_STEPS, normalized), start=1):
-        lines.append(f"[{index}] {title}: {status}")
-    lines.append(TODO_GUIDE_BORDER)
+        lines.append(f"| {index} | {title} | {status} |")
     return "\n".join(lines)
 
 

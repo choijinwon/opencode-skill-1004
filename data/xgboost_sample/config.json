@@ -1,0 +1,4 @@
+{
+  "kind": "xgboost_bst",
+  "input_dim": 4
+}
