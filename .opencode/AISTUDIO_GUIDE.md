@@ -23,9 +23,9 @@ Ai Studio - 7단계
    자연어로도 선택할 수 있습니다. 예: "첫 번째 모델", "파이토치 모델", "data/... 모델 사용".
    모델 목록이 보이는 상태에서 숫자 키를 누르면 TODO 단계가 아니라 모델 번호 선택으로 처리합니다.
    모델 번호 선택 직후 2번 모델 선택 스크립트를 실행해 선택 모델을 고정합니다.
-   실행 명령: python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>
-   예: python .opencode/scripts/02-model-select/select_model.py --project . --model 1
-   PowerShell 경로 예: python .opencode/scripts/02-model-select/select_model.py --project . --model 'data\pytorch_cnn\cnn_model.pt'
+   실행 명령: & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model <번호|경로> -AutoInstallIfMissing
+   예: & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 1 -AutoInstallIfMissing
+   PowerShell 경로 예: & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 'data\pytorch_cnn\cnn_model.pt' -AutoInstallIfMissing
    경로 기준: Windows PowerShell에서 선택한 워크스페이스 루트 기준 상대경로만 사용합니다.
    절대경로는 입력하지 않습니다.
    모델 선택 직후에는 멈춥니다.

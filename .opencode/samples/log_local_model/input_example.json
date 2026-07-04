@@ -1,8 +1,0 @@
-{
-  "instances": [
-    {
-      "message": "sample log line",
-      "level": "INFO"
-    }
-  ]
-}

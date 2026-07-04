@@ -77,16 +77,16 @@ TODO Guide
 
 ```text
 샘플 목록:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --list
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py" --list -AutoInstallIfMissing
 
 복사 전 확인:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample pytorch
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py" --project . --sample pytorch -AutoInstallIfMissing
 
 실제 복사:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample pytorch --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py" --project . --sample pytorch --execute -AutoInstallIfMissing
 
 기존 모델 골격 보충:
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample pytorch --scaffold-existing --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py" --project . --sample pytorch --scaffold-existing --execute -AutoInstallIfMissing
 ```
 
 <details>

@@ -1890,13 +1890,27 @@ def print_copy_block(requirements: list[str]) -> None:
 
 def selected_model_requirement_rows(report: EnvironmentReport) -> list[list[str]]:
     if report.selected_model_recommendations:
-        return [
-            [item.split("==", 1)[0], item.split("==", 1)[1] if "==" in item else ""]
-            for item in report.selected_model_recommendations
-        ]
+        return [[item] for item in report.selected_model_recommendations]
     if report.selected_model_path or report.selected_model_kind:
-        return [["-", "모델 전용 추가 패키지 없음"]]
+        return [["모델 전용 추가 패키지 없음"]]
     return []
+
+
+def pinned_mandatory_requirements(report: EnvironmentReport) -> list[str]:
+    requirements: list[str] = []
+    if report.remote_mlflow and report.remote_mlflow.server_version:
+        requirements.append(f"mlflow=={report.remote_mlflow.server_version}")
+    else:
+        requirements.append("mlflow")
+
+    requirements.extend(
+        f"{item.name}=={item.required_version.lstrip('=')}"
+        for item in report.requirements
+        if item.name in MANDATORY_REQUIREMENT_NAMES - {"mlflow"}
+        if item.required_version and item.required_version not in {"any", "-"}
+        if not is_unselected_framework_requirement(item, report.selected_required_package)
+    )
+    return requirements
 
 
 def step3_status_text(report: EnvironmentReport) -> str:
@@ -1942,16 +1956,18 @@ def print_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
+        pinned_requirements = pinned_mandatory_requirements(report)
         print("\nrequirements 선택한 모델 패키지 항목 (사용자가 직접 추가)")
         print_markdown_table(
-            ["Package", "Version"],
-            selected_requirement_rows,
+            ["Requirement"],
+            selected_requirement_rows + [[item] for item in pinned_requirements],
         )
         selected_requirements = [
             item
             for item in report.selected_model_recommendations
             if item and item != "-"
         ]
+        selected_requirements.extend(pinned_requirements)
         if selected_requirements:
             print("사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)
@@ -2022,16 +2038,18 @@ def print_verbose_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
+        pinned_requirements = pinned_mandatory_requirements(report)
         print("\nrequirements 선택한 모델 패키지 항목 (사용자가 직접 추가)")
         print_markdown_table(
-            ["Package", "Version"],
-            selected_requirement_rows,
+            ["Requirement"],
+            selected_requirement_rows + [[item] for item in pinned_requirements],
         )
         selected_requirements = [
             item
             for item in report.selected_model_recommendations
             if item and item != "-"
         ]
+        selected_requirements.extend(pinned_requirements)
         if selected_requirements:
             print("사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)

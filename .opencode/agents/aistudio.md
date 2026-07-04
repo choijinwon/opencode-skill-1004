@@ -27,7 +27,7 @@ This applies regardless of the first user message. Examples:
 After printing the guide on the first response, immediately analyze the current workspace and decide `model_found` before asking any follow-up question.
 
 - Treat any first user message as an entry trigger, even if it is only one vague word.
-- Use `agent-mlflow-skill-project-analyze` or run `.opencode/scripts/01-project-analyze/validate_mlflow_project.py --project . --no-write-check` to inspect the current workspace and model list.
+- Use `agent-mlflow-skill-project-analyze` or run `& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/01-project-analyze/validate_mlflow_project.py" --project . --no-write-check -AutoInstallIfMissing` to inspect the current workspace and model list.
 - Step 1 workspace analysis is read-only. Do not create or modify `.env`, `requirements.txt`, `config/`, `saved_model/`, `aiu_custom/`, or template files during analysis.
 - Do not analyze `.opencode/`; it is the bundled skill/package source and may contain large dependency folders.
 - Report whether a model exists before continuing.
@@ -184,7 +184,7 @@ When the user types only a number, decide by the latest visible context:
    Execute:
 
    ```text
-   python .opencode/scripts/02-model-select/select_model.py --project . --model <number>
+   & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model <number> -AutoInstallIfMissing
    ```
 
    This is model selection only, not automatic preparation and not inference. It must keep all displayed paths relative to the selected workspace root. Do not print `C:\...` or any other absolute workspace path in the user-facing response.
@@ -196,13 +196,13 @@ When the user types only a number, decide by the latest visible context:
    Step 4 must always reuse the initially selected model with:
 
    ```text
-   python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute
+    & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/prepare_selected_model.py" --project . --model selected --execute -AutoInstallIfMissing
    ```
 
    For Step 5, execute the guarded registration command against the selected model work folder so the command runs inside that folder before MLflow registration:
 
    ```text
-   python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute
+    & ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/run_training.py" --project <선택모델작업폴더> --entrypoint runtest_2.py --execute -AutoInstallIfMissing
    ```
 
 3. If `model_found: false` and the sample choices are active, treat `1`, `2`, `3` as `sklearn`, `pytorch`, `tensorflow` sample choices.

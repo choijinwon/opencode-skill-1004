@@ -16,7 +16,9 @@ from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[2]
+ANALYZE_PROJECT_SCRIPT = ROOT / "scripts" / "01-project-analyze" / "validate_mlflow_project.py"
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+ANALYZE_PROJECT_COMMAND = ".opencode/scripts/01-project-analyze/validate_mlflow_project.py"
 PREPARE_SELECTED_MODEL_COMMAND = ".opencode/scripts/04-train-model/prepare_selected_model.py"
 PATH_SEPARATOR_TRANSLATION = str.maketrans({
     "\\": "/",
@@ -72,6 +74,29 @@ def load_prepare_module():
     return module
 
 
+def load_analyze_module():
+    spec = importlib.util.spec_from_file_location("validate_mlflow_project_impl", ANALYZE_PROJECT_SCRIPT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load analyze script: {ANALYZE_PROJECT_COMMAND}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def resolve_display_number_selector(project: str, selector: str) -> str:
+    if not selector.isdigit():
+        return selector
+    module = load_analyze_module()
+    project_path, reason = module.select_project(project)
+    report = module.build_report(project_path, reason, write_check=False)
+    display_paths = list(report.training_code_paths) + list(report.model_artifact_paths)
+    index = int(selector)
+    if 1 <= index <= len(display_paths):
+        return normalize_model_selector(display_paths[index - 1])
+    return selector
+
+
 def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
     print("| " + " | ".join(headers) + " |")
     print("|" + "|".join("---" for _ in headers) + "|")
@@ -119,9 +144,10 @@ def main() -> int:
         parser.error("2번 모델 선택에는 --model <번호|경로> 또는 위치 인자 <번호|경로>가 필요합니다.")
 
     module = load_prepare_module()
+    model_selector = resolve_display_number_selector(args.project, normalize_model_selector(raw_model))
     delegated_args = SimpleNamespace(
         project=args.project,
-        model=normalize_model_selector(raw_model),
+        model=model_selector,
         execute=not args.dry_run,
         force=False,
         select_only=True,

@@ -104,24 +104,24 @@ MLflow artifact:
 python .opencode/scripts/04-train-model/run_training.py --project .
 
 원격 MLflow 등록 실행:
-python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --execute
-python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/run_training.py" --project <선택모델작업폴더> --execute -AutoInstallIfMissing
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/run_training.py" --project <선택모델작업폴더> --entrypoint runtest_2.py --execute -AutoInstallIfMissing
 
 명시적 entrypoint 실행:
-python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint <file> --execute
-python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint run.py --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/run_training.py" --project . --entrypoint <file> --execute -AutoInstallIfMissing
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/run_training.py" --project . --entrypoint run.py --execute -AutoInstallIfMissing
 
 선택 모델 준비:
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project .
-python .opencode/scripts/02-model-select/select_model.py --project . --model 1
-python .opencode/scripts/02-model-select/select_model.py --project . --model 'data\torch\model.pt'
-python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/prepare_selected_model.py" --project . -AutoInstallIfMissing
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 1 -AutoInstallIfMissing
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 'data\torch\model.pt' -AutoInstallIfMissing
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/prepare_selected_model.py" --project . --model selected --execute -AutoInstallIfMissing
 
 AI Studio/MLflow 연결부 보강 dry-run:
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file>
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/adapt_ai_studio.py" --project . --entrypoint <file> -AutoInstallIfMissing
 
 AI Studio/MLflow 연결부 실제 보강:
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file> --execute
+& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/04-train-model/adapt_ai_studio.py" --project . --entrypoint <file> --execute -AutoInstallIfMissing
 ```
 
 ## Artifact Map
