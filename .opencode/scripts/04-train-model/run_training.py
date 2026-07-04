@@ -504,6 +504,8 @@ def sync_selected_model_runtime_before_registration(project: Path, python_bin: s
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=60,
     )
     if result.returncode != 0:

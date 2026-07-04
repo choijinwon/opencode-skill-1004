@@ -117,10 +117,12 @@ def run_environment_check_summary(work_project: Path, python_version: str | None
     ]
     if python_version:
         command.extend(["--python-version", python_version])
-    completed = subprocess.run(command, capture_output=True, text=True)
+    completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if completed.returncode != 0:
         return None, (completed.stderr or completed.stdout or "").strip()
     try:
+        if not completed.stdout:
+            return None, "environment check produced no JSON output"
         return json.loads(completed.stdout), None
     except json.JSONDecodeError:
         return None, "environment check JSON parse failed"
@@ -200,6 +202,7 @@ IMAGE_MODEL_MANUAL_REQUIREMENT_MAP = {
 }
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
 ai_STUDIO_COPY_IGNORE_FILES = {
+    ".gitkeep",
     ".env",
     "runtest.py",
     "runtest_2.py",
@@ -1159,7 +1162,7 @@ def runtest_2_sequence(project: Path, selected_model: Path, kind: str, reference
     sample_dir = template_sample_dir_name(kind)
     return [
         f"1. 선택 모델 경로 및 형식 확인: {rel(selected_model, project)} / MODEL_KIND={kind}",
-        f"2. samples/{sample_dir}/ 템플릿 전체를 모델 작업 폴더로 복사: {rel(selected_model_work_dir(project, selected_model), project)}",
+        f"2. samples/{sample_dir}/ local_serving/, aiu_custom/, config/ 폴더를 모델 작업 폴더로 복사/준비: {rel(selected_model_work_dir(project, selected_model), project)}",
         f"3. 참조 영역 확인: {reference_scope_display_path(kind, reference)}",
         "4. runtest.py 참조해서 runtest_2.py 변환",
         "5. 복사된 local_serving 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부 수정",
@@ -1177,43 +1180,69 @@ def copy_template_sample_folder(project: Path, kind: str | None, execute: bool) 
     if not sample_dir.is_dir():
         failures.append(f"{sample_dir_name}_folder_missing:{sample_dir}")
         return copied, skipped, failures
-    source_root = sample_dir / "local_serving"
-    if not source_root.is_dir():
-        failures.append(f"{sample_dir_name}_local_serving_missing:{source_root}")
-        return copied, skipped, failures
     if target.exists() and not target.is_dir():
         failures.append(f"workspace_target_not_directory:{target}")
         return copied, skipped, failures
     current_selected = current_selected_model_path(project)
     selected_model_locked = current_selected is not None and current_selected.exists()
-    if execute:
-        for source in source_root.rglob("*"):
-            relative = Path("local_serving") / source.relative_to(source_root)
-            if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
-                continue
-            if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
-                continue
-            destination = target / relative
-            if source.is_dir():
-                destination.mkdir(parents=True, exist_ok=True)
-                continue
-            if relative.as_posix() in PROTECTED_REFERENCE_ENTRYPOINTS and destination.exists():
-                skipped.append(f"{relative.as_posix()} protected_existing_reference")
-                continue
-            if selected_model_locked and relative.as_posix() in SELECTED_MODEL_LOCKED_RELATIVE_PATHS and destination.exists():
-                skipped.append(f"{relative.as_posix()} selected_model_locked")
-                continue
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
-    copied.append(f".opencode/samples/{sample_dir_name}/local_serving/ -> model work folder local_serving/")
+    runtime_roots = [("local_serving", True), ("config", True)]
+    for folder_name, required in runtime_roots:
+        source_root = sample_dir / folder_name
+        if not source_root.is_dir():
+            if required:
+                failures.append(f"{sample_dir_name}_{folder_name}_missing:{source_root}")
+                return copied, skipped, failures
+            if execute:
+                (target / folder_name).mkdir(parents=True, exist_ok=True)
+            copied.append(f"model work folder {folder_name}/ prepared")
+            continue
+        if execute:
+            for source in source_root.rglob("*"):
+                relative = Path(folder_name) / source.relative_to(source_root)
+                if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts[1:]):
+                    continue
+                if source.name in ai_STUDIO_COPY_IGNORE_FILES or relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
+                    continue
+                destination = target / relative
+                if source.is_dir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                    continue
+                if relative.as_posix() in PROTECTED_REFERENCE_ENTRYPOINTS and destination.exists():
+                    skipped.append(f"{relative.as_posix()} protected_existing_reference")
+                    continue
+                if selected_model_locked and relative.as_posix() in SELECTED_MODEL_LOCKED_RELATIVE_PATHS and destination.exists():
+                    skipped.append(f"{relative.as_posix()} selected_model_locked")
+                    continue
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+        copied.append(f".opencode/samples/{sample_dir_name}/{folder_name}/ -> model work folder {folder_name}/")
     return copied, skipped, failures
 
 
-def ensure_aiu_custom_template_copied(project: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
+def ensure_aiu_custom_template_copied(project: Path, kind: str | None, execute: bool) -> tuple[list[str], list[str], list[str]]:
     changed: list[str] = []
     skipped: list[str] = []
     failures: list[str] = []
-    skipped.append("aiu_custom/ template copy skipped: generated by selected-model conversion")
+    sample_dir = template_sample_dir(kind)
+    sample_dir_name = template_sample_dir_name(kind)
+    source_root = sample_dir / "aiu_custom"
+    if not source_root.is_dir():
+        failures.append(f"{sample_dir_name}_aiu_custom_missing:{source_root}")
+        return changed, skipped, failures
+    if execute:
+        for source in source_root.rglob("*"):
+            relative = Path("aiu_custom") / source.relative_to(source_root)
+            if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts[1:]):
+                continue
+            if source.name in ai_STUDIO_COPY_IGNORE_FILES or relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
+                continue
+            destination = project / relative
+            if source.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+    changed.append(f".opencode/samples/{sample_dir_name}/aiu_custom/ -> model work folder aiu_custom/")
     return changed, skipped, failures
 
 
@@ -1221,19 +1250,20 @@ def copied_template_relative_files(kind: str | None) -> list[str]:
     sample_dir = template_sample_dir(kind)
     if not sample_dir.is_dir():
         return []
-    source_root = sample_dir / "local_serving"
-    if not source_root.is_dir():
-        return []
     files: list[str] = []
-    for source in source_root.rglob("*"):
-        if not source.is_file():
+    for folder_name in ("local_serving", "aiu_custom", "config"):
+        source_root = sample_dir / folder_name
+        if not source_root.is_dir():
             continue
-        relative = Path("local_serving") / source.relative_to(source_root)
-        if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts):
-            continue
-        if relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
-            continue
-        files.append(relative.as_posix())
+        for source in source_root.rglob("*"):
+            if not source.is_file():
+                continue
+            relative = Path(folder_name) / source.relative_to(source_root)
+            if any(part in ai_STUDIO_COPY_IGNORE_DIRS for part in relative.parts[1:]):
+                continue
+            if source.name in ai_STUDIO_COPY_IGNORE_FILES or relative.as_posix() in ai_STUDIO_COPY_IGNORE_FILES:
+                continue
+            files.append(relative.as_posix())
     return sorted(files)
 
 
@@ -2403,7 +2433,6 @@ def generated_constant_free_runtest_text(project: Path, selected_model: Path, ki
     input_example = selected_model_input_example_data(project, selected_model, kind)
     config = selected_model_config_data(project, selected_model, kind)
     config_literal = pformat(config, width=100, sort_dicts=False)
-    loader = reference_style_loader_code(kind)
     input_example_code = reference_style_input_example_code(
         kind,
         input_example,
@@ -2604,14 +2633,12 @@ mlflow_input_example = request_input_example
 # ------------------------------------------------------------
 # 모델 준비
 # ------------------------------------------------------------
-{loader}
-
-model = load_selected_model()
+model_ready = os.path.isfile(selected_model_path) or os.path.isdir(selected_model_path)
 
 
-def compute_metrics(loaded_model):
+def compute_metrics(model_exists):
     return {{
-        "model_loaded": 1.0 if loaded_model is not None else 0.0,
+        "model_ready": 1.0 if model_exists else 0.0,
     }}
 
 
@@ -2718,7 +2745,7 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         }}
     )
 
-    metrics = compute_metrics(model)
+    metrics = compute_metrics(model_ready)
     mlflow.log_metrics(metrics)
 
     # --------------------------------------------------------
@@ -3882,7 +3909,7 @@ def sync_selected_model_runtime(
     failures: list[str] = []
 
     runtime_steps = [
-        ensure_aiu_custom_template_copied(project, execute),
+        ensure_aiu_custom_template_copied(project, kind, execute),
         read_copied_template_files(project, kind, execute),
         ensure_runtime_directories(project, execute),
         write_requirements(project, kind, execute),
@@ -3915,6 +3942,7 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     required_text_files = [
         project / "runtest_2.py",
         project / "aiu_custom" / "model.py",
+        project / "aiu_custom" / "predict.py",
         project / "inferencetest.py",
         project / "input_example.json",
         project / "config" / "config.json",
@@ -3944,12 +3972,20 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
         ):
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_relative}")
         if display_path == "runtest_2.py":
-            has_selected_path_connection = (
-                "selected_model_path =" in text
-                or "def selected_model_path(" in text
-            )
-            if "def load_selected_model(" not in text or not has_selected_path_connection:
-                failures.append("runtest_2_selected_model_loader_missing:runtest_2.py")
+            required_registration_markers = [
+                "from aiu_custom.predict import ModelWrapper",
+                '"python_model": ModelWrapper()',
+                '"code_paths": [aiu_custom_path]',
+                '"model": mlflow_artifact_uri(model_path)',
+                '"config": mlflow_config_artifact_uri(config_path)',
+                '"input_example": mlflow_input_example',
+                '"pip_requirements": "requirements.txt"',
+            ]
+            for marker in required_registration_markers:
+                if marker not in text:
+                    failures.append(f"runtest_2_registration_marker_missing:{marker}")
+            if "def load_selected_model(" in text:
+                failures.append("runtest_2_should_not_load_model_directly:runtest_2.py")
             if (
                 selected_relative not in normalized_text
                 and saved_model_relative not in normalized_text
@@ -3990,6 +4026,12 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 failures.append("aiu_custom_model_selected_path_resolver_missing:aiu_custom/model.py")
             if kind not in text:
                 failures.append(f"aiu_custom_model_kind_not_reflected:aiu_custom/model.py:{kind}")
+        if display_path == "aiu_custom/predict.py":
+            for marker in ["class ModelWrapper", "def load_context", "def predict", "def _load_selected_model"]:
+                if marker not in text:
+                    failures.append(f"aiu_custom_predict_marker_missing:{marker}")
+            if kind not in text:
+                failures.append(f"aiu_custom_predict_kind_not_reflected:aiu_custom/predict.py:{kind}")
         if display_path == "inferencetest.py":
             for marker in ['req_url = ""', 'requests.post(req_url', 'input_example.json']:
                 if marker not in text:
@@ -4474,9 +4516,9 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
         print_markdown_table(
             ["상태", "내용"],
             [
-                ["완료", "local_serving/ 폴더 통복사"],
-                ["변환", "runtest_2.py, aiu_custom/model.py, aiu_custom/predict.py"],
-                ["변환", "inferencetest.py, config/config.json, input_example.json"],
+                ["완료", "local_serving/, aiu_custom/, config/ 폴더 통복사"],
+                ["변환", "aiu_custom/model.py, aiu_custom/predict.py, config/config.json"],
+                ["생성", "runtest_2.py, inferencetest.py, input_example.json"],
                 ["갱신", "requirements.txt"],
             ],
         )
@@ -4593,9 +4635,9 @@ def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
                 print_markdown_table(
                     ["상태", "내용"],
                     [
-                        ["완료", "local_serving/ 폴더 통복사"],
-                        ["변환", "runtest_2.py와 런타임 연결부"],
-                        ["변환", "config/config.json, input_example.json"],
+                        ["완료", "local_serving/, aiu_custom/, config/ 폴더 통복사"],
+                        ["변환", "aiu_custom/model.py, aiu_custom/predict.py, config/config.json"],
+                        ["생성", "runtest_2.py, inferencetest.py, input_example.json"],
                         ["갱신", "requirements.txt 기본 항목"],
                     ],
                 )
