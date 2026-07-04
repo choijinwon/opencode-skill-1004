@@ -4231,10 +4231,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.prepared_paths.extend(work_changed)
         report.skipped.extend(work_skipped)
         report.failures.extend(work_failures)
-        changed, skipped, failures = write_config_json(work_project, selected_model, selected_kind, args.execute)
-        report.prepared_paths.extend(["selected_model locked"] + changed)
-        report.skipped.extend(skipped)
-        report.failures.extend(failures)
+        report.prepared_paths.append("selected_model selected")
         if args.execute and not report.failures:
             report.next_steps.extend(
                 [
