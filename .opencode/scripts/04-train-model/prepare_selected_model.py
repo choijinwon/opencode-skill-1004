@@ -2265,26 +2265,20 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
 
 
 def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
-    experiment_name, registered_model_name = default_mlflow_names(project, selected_model)
     return {
-        "model": model_profile(project, selected_model, kind),
-        "data": selected_model_data_config(project, selected_model, kind),
+        "model": {
+            "source_path": windows_relative_path(selected_model, project),
+            "model_kind": kind,
+        },
         "mlflow": {
-            "artifact_path": "ai_studio",
-            "experiment_name": experiment_name,
-            "registered_model_name": registered_model_name,
+            "tracking_uri": "",
+            "tracking_username": "",
+            "tracking_password": "",
+            "experiment_name": "",
+            "registered_model_name": "",
         },
         "runtime": {
             "entrypoint": "runtest_2.py",
-            "model_entrypoint": "aiu_custom/model.py",
-            "predict_entrypoint": "aiu_custom/predict.py",
-            "input_example": "input_example.json",
-            "inference_test": "inferencetest.py",
-        },
-        "policy": {
-            "copy_model_to_ai_studio": False,
-            "model_source": "selected_project_model_path",
-            "secret_output": "masked",
         },
     }
 
@@ -4231,6 +4225,11 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.prepared_paths.extend(work_changed)
         report.skipped.extend(work_skipped)
         report.failures.extend(work_failures)
+        if selected_model and selected_kind:
+            config_changed, config_skipped, config_failures = write_config_json(work_project, selected_model, selected_kind, args.execute)
+            report.prepared_paths.extend(config_changed)
+            report.skipped.extend(config_skipped)
+            report.failures.extend(config_failures)
         report.prepared_paths.append("selected_model selected")
         if args.execute and not report.failures:
             report.next_steps.extend(
