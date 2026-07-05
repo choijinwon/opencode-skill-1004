@@ -75,6 +75,7 @@ ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras",
 ARTIFACT_DIRS = ["ai_studio", "saved_model", "model", "artifacts"]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
+    ".mlflow-local",
     ".mypy_cache",
     ".opencode",
     ".pytest_cache",
@@ -1959,20 +1960,18 @@ def print_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
-        pinned_requirements = pinned_mandatory_requirements(report)
-        print("\nrequirements 선택한 모델 패키지 항목 (사용자가 직접 추가)")
+        print("\nrequirements 선택한 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Requirement"],
-            selected_requirement_rows + [[item] for item in pinned_requirements],
+            selected_requirement_rows,
         )
         selected_requirements = [
             item
             for item in report.selected_model_recommendations
             if item and item != "-"
         ]
-        selected_requirements.extend(pinned_requirements)
         if selected_requirements:
-            print("사용자가 직접 선택해 requirements.txt에 추가:")
+            print("필요한 항목만 사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)
     if report.image_model_recommendations:
         print("\n선택 모델 기준 이미지 모델 추천 (직접 requirements.txt 입력)")
@@ -2041,20 +2040,18 @@ def print_verbose_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
-        pinned_requirements = pinned_mandatory_requirements(report)
-        print("\nrequirements 선택한 모델 패키지 항목 (사용자가 직접 추가)")
+        print("\nrequirements 선택한 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Requirement"],
-            selected_requirement_rows + [[item] for item in pinned_requirements],
+            selected_requirement_rows,
         )
         selected_requirements = [
             item
             for item in report.selected_model_recommendations
             if item and item != "-"
         ]
-        selected_requirements.extend(pinned_requirements)
         if selected_requirements:
-            print("사용자가 직접 선택해 requirements.txt에 추가:")
+            print("필요한 항목만 사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)
     if report.image_model_recommendations:
         print("\n선택 모델 기준 이미지 모델 추천 (직접 requirements.txt 입력)")

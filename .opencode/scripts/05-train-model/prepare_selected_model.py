@@ -233,6 +233,7 @@ SELECTED_MODEL_LOCKED_RELATIVE_PATHS = {
 }
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
+    ".mlflow-local",
     ".mypy_cache",
     ".opencode",
     ".pytest_cache",
@@ -1360,15 +1361,41 @@ def write_saved_model(project: Path, selected_model: Path, execute: bool) -> tup
     if not execute:
         skipped.append("saved_model selected artifact:dry_run")
         return changed, skipped, failures
+    temp_target = target.parent / f".{target.name}.tmp-copy-{os.getpid()}"
+    backup_target = target.parent / f".{target.name}.backup-{os.getpid()}"
+    temp_file = target.parent / f".{target.name}.tmp-copy-{os.getpid()}"
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         if selected_model.is_dir():
+            if temp_target.exists():
+                shutil.rmtree(temp_target)
+            shutil.copytree(selected_model, temp_target)
             if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(selected_model, target)
+                target.rename(backup_target)
+            try:
+                temp_target.rename(target)
+            except OSError:
+                if backup_target.exists() and not target.exists():
+                    backup_target.rename(target)
+                raise
+            if backup_target.exists():
+                shutil.rmtree(backup_target)
         else:
-            shutil.copy2(selected_model, target)
+            shutil.copy2(selected_model, temp_file)
+            os.replace(temp_file, target)
     except OSError as exc:
+        if selected_model.is_dir() and temp_target.exists():
+            shutil.rmtree(temp_target, ignore_errors=True)
+        if backup_target.exists() and not target.exists():
+            try:
+                backup_target.rename(target)
+            except OSError:
+                pass
+        if temp_file.exists():
+            try:
+                temp_file.unlink()
+            except OSError:
+                pass
         failures.append(f"saved_model_copy_failed:{rel(selected_model, project)}:{exc}")
         return changed, skipped, failures
     changed.append(f"saved_model/{selected_model.name} (selected model copy)")
@@ -2689,6 +2716,11 @@ def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, s
     urls = {{
         "tracking_uri": base_url,
         "experiment_url": f"{{base_url}}/#/experiments/{{experiment_id}}",
+        "experiment_runs_url": (
+            f"{{base_url}}/#/experiments/{{experiment_id}}/runs"
+            "?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false"
+            "&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D"
+        ),
         "experiment_models_url": f"{{base_url}}/#/experiments/{{experiment_id}}/models",
         "traces_url": f"{{base_url}}/#/experiments/{{experiment_id}}/traces?startTime=ALL",
     }}
@@ -2704,12 +2736,56 @@ def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
     urls = mlflow_ui_urls(experiment_id, run_id)
     print("MLflow Tracking URI:", urls["tracking_uri"])
     print("MLflow Experiment URI:", urls["experiment_url"])
+    print("MLflow Runs URI:", urls["experiment_runs_url"])
     print("MLflow Experiment Models URI:", urls["experiment_models_url"])
     print("MLflow Traces URI:", urls["traces_url"])
     if "run_url" in urls:
         print("MLflow Run URI:", urls["run_url"])
     if "registered_model_url" in urls:
         print("MLflow Registered Model URI:", urls["registered_model_url"])
+
+
+def normalize_local_mlmodel_artifact_paths() -> None:
+    # 로컬 테스트 전용 helper입니다.
+    # 원격 MLflow 서버 등록 기준에서는 이 함수를 호출하지 않습니다.
+    # 사용자가 로컬 서버를 임시로 띄우고 .mlflow-local MLmodel artifact_path를
+    # 상대경로로 보고 싶을 때만 아래 호출부의 주석을 풀어 사용합니다.
+    workspace_root = os.path.abspath(os.path.join(project_dir, os.pardir))
+    search_roots = [
+        os.path.join(project_dir, ".mlflow-local"),
+        os.path.join(workspace_root, ".mlflow-local"),
+    ]
+    seen = set()
+    for search_root in search_roots:
+        search_root = normalize_local_path(search_root)
+        if search_root in seen or not os.path.isdir(search_root):
+            continue
+        seen.add(search_root)
+        for root, _dirs, files in os.walk(search_root):
+            if "MLmodel" not in files:
+                continue
+            mlmodel_path = os.path.join(root, "MLmodel")
+            try:
+                with open(mlmodel_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError:
+                continue
+            changed_lines = []
+            changed = False
+            for line in lines:
+                if line.startswith("artifact_path: "):
+                    value = line.split(":", 1)[1].strip().strip("'").strip('"')
+                    if os.path.isabs(value):
+                        try:
+                            value = os.path.relpath(normalize_local_path(value), workspace_root).replace(chr(92), "/")
+                            line = f"artifact_path: {{value}}\\n"
+                            changed = True
+                        except ValueError:
+                            pass
+                changed_lines.append(line)
+            if changed:
+                with open(mlmodel_path, "w", encoding="utf-8") as f:
+                    f.writelines(changed_lines)
 
 
 def ensure_registered_model(model_info) -> str:
@@ -2786,7 +2862,6 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
             "model": mlflow_artifact_uri(model_path),
             "config": mlflow_config_artifact_uri(config_path),
         }},
-        "input_example": mlflow_input_example,
         "pip_requirements": "requirements.txt",
     }}
 
@@ -2797,6 +2872,19 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         log_model_args["name"] = log_model_args.pop("artifact_path")
 
     model_info = mlflow.pyfunc.log_model(**log_model_args)
+
+    # --------------------------------------------------------
+    # 로컬 MLflow 테스트 전용
+    # --------------------------------------------------------
+    # 원격 MLflow 서버 기준에서는 사용하지 않습니다.
+    # 로컬에서 아래처럼 서버를 임시 실행한 경우에만 주석을 풀어 확인하세요.
+    #
+    # python -m mlflow server --host 127.0.0.1 --port 5002 \
+    #   --backend-store-uri sqlite:///./.mlflow-local/mlflow.db \
+    #   --default-artifact-root ./.mlflow-local/artifacts
+    #
+    # normalize_local_mlmodel_artifact_paths()
+
     registry_status = ensure_registered_model(model_info)
 
     print("MLflow Run ID:", run.info.run_id)
@@ -3991,7 +4079,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
                 '"code_paths": [aiu_custom_path]',
                 '"model": mlflow_artifact_uri(model_path)',
                 '"config": mlflow_config_artifact_uri(config_path)',
-                '"input_example": mlflow_input_example',
                 '"pip_requirements": "requirements.txt"',
             ]
             for marker in required_registration_markers:

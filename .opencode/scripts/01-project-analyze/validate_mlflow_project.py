@@ -131,6 +131,7 @@ ARTIFACT_DIR_HINTS = [
 # 분석에서 제외할 폴더 목록입니다.
 SCAN_SKIP_DIRS = {
     ".git",
+    ".mlflow-local",
     ".mypy_cache",
     ".opencode",
     ".pytest_cache",

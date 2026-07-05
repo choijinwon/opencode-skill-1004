@@ -93,6 +93,14 @@ Ai Studio - 7단계
 
 - Never print API keys, passwords, tokens, or secret values.
 - If a secret-like field must be discussed, report only `set`, `empty`, or `missing`.
+- After handling a user request in Ai Studio mode, append a short prompt/history entry to `.opencode/log/YYYYMMDD/prompts.md`.
+  Use the workspace-relative logger command:
+
+  ```text
+  python .opencode/scripts/common/prompt_history.py --project . --type prompt --step "<Ai Studio step or context>" --content "<latest user prompt summary>" --result "<short result>"
+  ```
+
+  Do not log passwords, tokens, API keys, or secret values. The logger masks common secret patterns, but the prompt summary should still avoid secret content.
 - Prefer local and closed-network assumptions unless the user explicitly asks for external network use.
 - Script commands are always workspace-relative. Use `--project .` only in user-facing commands.
 - Model paths are always workspace-relative. Use `data/...` or `data\...`; never use `C:\...`, `/Users/...`, `/home/...`, or any absolute path in user-facing commands.
@@ -135,6 +143,7 @@ The Ai Studio 7-step flow is not an automatic pipeline.
 - Step 7 runs only when the user selects `7` or explicitly asks to rerun a failed step.
 - Never execute multiple Ai Studio steps from one numeric input.
 - After each completed step, print the short result and the next available step, then stop.
+- For Step 5 results, do not omit MLflow URLs. If the script output contains `MLflow Run URI`, `Run URL`, `MLflow Registered Model URI`, or the `MLflow 갱신 내용` table, preserve those rows in the user-facing result. The user must be able to open the generated Run URL after registration.
 
 ## Skill Routing Rules
 

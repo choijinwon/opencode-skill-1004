@@ -2,11 +2,12 @@ import argparse
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,7 @@ ENTRYPOINTS = [
 REQUIRED_DIRS = ["aiu_custom", "local_serving", "saved_model"]
 ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
+GENERATED_ARTIFACT_IGNORE_FILES = {"model_info.json", "serving_input_example.json"}
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
 AI_STUDIO_ENV_KEYS = [
     "mlflow_tracking_uri",
@@ -73,6 +75,7 @@ MODEL_SETTING_FILES = [
 ]
 MODEL_SCAN_SKIP_DIRS = {
     ".git",
+    ".mlflow-local",
     ".mypy_cache",
     ".opencode",
     ".pytest_cache",
@@ -147,6 +150,7 @@ class TrainingReport:
     executed: bool
     return_code: int | None
     artifacts: list[str] = field(default_factory=list)
+    mlflow_summary: dict[str, str] = field(default_factory=dict)
     preflight: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
@@ -289,12 +293,12 @@ def iter_project_files(project: Path):
             yield root_path / filename
 
 
-def find_artifacts(project: Path) -> list[str]:
-    found: list[str] = []
+def find_artifacts(project: Path) -> list[Path]:
+    found: list[Path] = []
     for name in ARTIFACT_DIRS:
         path = project / name
         if path.is_file() or (path.is_dir() and any(child.name != ".gitkeep" for child in path.iterdir())):
-            found.append(str(path))
+            found.append(path)
     for ai_studio in [project / "ai_studio"]:
         if not ai_studio.exists():
             continue
@@ -302,13 +306,27 @@ def find_artifacts(project: Path) -> list[str]:
             if path.name == "meta.yaml":
                 continue
             if path.is_file() and any(part in MLFLOW_OUTPUT_DIRS for part in path.relative_to(ai_studio).parts):
-                found.append(str(path))
+                found.append(path)
     for path in iter_project_files(project):
-        if path.name == "model_info.json":
+        if path.name in GENERATED_ARTIFACT_IGNORE_FILES:
             continue
         if path.is_file() and (path.suffix.lower() in ARTIFACT_SUFFIXES or path.name in {"MLmodel", "python_model.pkl"}):
-            found.append(str(path))
-    return sorted(set(found))
+            found.append(path)
+    return sorted(set(found), key=lambda item: item.as_posix())
+
+
+def display_artifact_paths(artifacts: list[str | Path], workspace_root: Path) -> list[str]:
+    rows: list[str] = []
+    for artifact in artifacts:
+        path = Path(artifact)
+        if not path.is_absolute():
+            rows.append(path.as_posix())
+            continue
+        try:
+            rows.append(path.resolve().relative_to(workspace_root.resolve()).as_posix())
+        except ValueError:
+            rows.append(path.name)
+    return rows
 
 
 def local_generated_path_rows(work_path: Path, workspace_root: Path) -> list[list[str]]:
@@ -475,9 +493,174 @@ def is_opencode_sample_source(path: Path) -> bool:
     return False
 
 
-def run_command(cmd: list[str], cwd: Path) -> int:
-    result = subprocess.run(cmd, cwd=cwd)
-    return result.returncode
+def run_command(cmd: list[str], cwd: Path) -> tuple[int, str]:
+    result = subprocess.run(
+        cmd,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result.returncode, output
+
+
+def extract_prefixed_value(output: str, prefix: str) -> str | None:
+    for line in output.splitlines():
+        normalized = line.strip()
+        normalized = re.sub(r"^[-•*]\s*", "", normalized)
+        if normalized.startswith(prefix):
+            return normalized.split(":", 1)[1].strip()
+    return None
+
+
+def extract_first_prefixed_value(output: str, prefixes: list[str]) -> str | None:
+    for prefix in prefixes:
+        value = extract_prefixed_value(output, prefix)
+        if value:
+            return value
+    return None
+
+
+def experiment_id_from_uri(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = re.search(r"/#/experiments/([^/?#]+)", value)
+    return match.group(1) if match else None
+
+
+def first_mlflow_url(output: str, contains: str | None = None) -> str | None:
+    for match in re.finditer(r"https?://[^\s)>\]]+", output):
+        value = match.group(0).rstrip(".,")
+        if contains is None or contains in value:
+            return value
+    return None
+
+
+def run_url_from_output(output: str, run_id: str | None = None) -> str | None:
+    for match in re.finditer(r"https?://[^\s)>\]]+", output):
+        value = match.group(0).rstrip(".,")
+        if "/#/experiments/" not in value or "/runs/" not in value:
+            continue
+        if run_id is None or run_id in value:
+            return value
+    return None
+
+
+def lookup_experiment_id_from_mlflow(tracking_uri: str | None, run_id: str | None) -> str | None:
+    if not tracking_uri or not run_id:
+        return None
+    if os.environ.get("AI_STUDIO_LOOKUP_MLFLOW_RUN_URL") != "1":
+        return None
+    try:
+        import mlflow
+        client = mlflow.tracking.MlflowClient(tracking_uri=tracking_uri)
+        return str(client.get_run(run_id).info.experiment_id)
+    except Exception:
+        return None
+
+
+def build_experiment_runs_url(base_url: str, experiment_id: str) -> str:
+    return (
+        f"{base_url}/#/experiments/{experiment_id}/runs"
+        "?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false"
+        "&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D"
+    )
+
+
+def parse_registry_line(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    registered_match = re.search(r"registered:\s*([^,]+),\s*version=([^\s,]+)", value)
+    if registered_match:
+        return registered_match.group(1).strip(), registered_match.group(2).strip()
+    korean_match = re.search(r"^(.+?)\s+새\s*버전\s*생성", value)
+    if korean_match:
+        return korean_match.group(1).strip(), None
+    return value.strip(), None
+
+
+def parse_mlflow_summary(output: str, tracking_uri: str | None = None) -> dict[str, str]:
+    summary: dict[str, str] = {}
+    tracking_uri = tracking_uri or extract_first_prefixed_value(
+        output,
+        ["MLflow Tracking URI:", "Tracking URI:", "mlflow_tracking_uri:"],
+    )
+    experiment_uri = extract_first_prefixed_value(
+        output,
+        ["MLflow Experiment URI:", "Experiment URI:"],
+    )
+    experiment_id = extract_first_prefixed_value(
+        output,
+        ["MLflow Experiment ID:", "Experiment ID:", "experiment_id:"],
+    ) or experiment_id_from_uri(experiment_uri)
+    run_id = extract_first_prefixed_value(
+        output,
+        ["MLflow Run ID:", "Run ID:", "새 Run ID:"],
+    )
+    if run_id:
+        summary["MLflow Run ID"] = run_id
+
+    registry = extract_first_prefixed_value(output, ["MLflow Registry:", "Registry:"])
+    if registry:
+        summary["Registry"] = registry
+        model_name, version = parse_registry_line(registry)
+        if model_name:
+            summary["등록 모델"] = model_name
+        if version:
+            summary["새 모델 버전"] = version
+
+    registered_model = extract_first_prefixed_value(output, ["Registered Model:", "등록 모델:"])
+    if registered_model:
+        summary["등록 모델"] = registered_model
+
+    registered_version = extract_first_prefixed_value(
+        output,
+        ["Registered version:", "새 버전:", "새 모델 버전:", "등록 모델 버전:"],
+    )
+    if registered_version:
+        summary["새 모델 버전"] = registered_version
+
+    for label, prefix in [
+        ("Runs URL", "MLflow Runs URI:"),
+        ("Run URL", "MLflow Run URI:"),
+        ("Registered Model URL", "MLflow Registered Model URI:"),
+        ("Experiment Models URL", "MLflow Experiment Models URI:"),
+    ]:
+        value = extract_prefixed_value(output, prefix)
+        if value:
+            summary[label] = value
+
+    if "Run URL" not in summary:
+        run_url = run_url_from_output(output, run_id)
+        if run_url:
+            summary["Run URL"] = run_url
+            experiment_id = experiment_id or experiment_id_from_uri(run_url)
+
+    if "Runs URL" not in summary:
+        runs_url = first_mlflow_url(output, "/#/experiments/")
+        if runs_url and "/runs" in runs_url:
+            summary["Runs URL"] = runs_url
+            experiment_id = experiment_id or experiment_id_from_uri(runs_url)
+
+    base_url = tracking_uri.rstrip("/") if tracking_uri else ""
+    if base_url and run_id and not experiment_id:
+        experiment_id = lookup_experiment_id_from_mlflow(base_url, run_id)
+    if base_url and experiment_id:
+        if "Runs URL" not in summary:
+            summary["Runs URL"] = build_experiment_runs_url(base_url, experiment_id)
+        if "Experiment Models URL" not in summary:
+            summary["Experiment Models URL"] = f"{base_url}/#/experiments/{experiment_id}/models"
+    if base_url and experiment_id and run_id and "Run URL" not in summary:
+        summary["Run URL"] = f"{base_url}/#/experiments/{experiment_id}/runs/{run_id}"
+    if base_url and summary.get("등록 모델") and "Registered Model URL" not in summary:
+        summary["Registered Model URL"] = f"{base_url}/#/models/{quote(summary['등록 모델'], safe='')}"
+    return summary
 
 
 def is_runtest_2_entrypoint(entrypoint: Path | None, project: Path) -> bool:
@@ -594,6 +777,8 @@ def main():
             next_steps.append(PS_PREPARE_MODEL_COMMAND)
 
     return_code = None
+    command_output = ""
+    mlflow_summary: dict[str, str] = {}
     if args.execute and cmd and any(failure.startswith("selected_model_runtime_sync_failed") for failure in failures):
         next_steps.append("런타임 변환 실패로 원격 MLflow 등록 실행을 중단했습니다.")
     elif args.execute and cmd and remote_uri_failure:
@@ -608,7 +793,9 @@ def main():
             ".env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name 를 직접 입력한 뒤 다시 실행하세요."
         )
     elif args.execute and cmd:
-        return_code = run_command(cmd, cwd=work_path)
+        return_code, command_output = run_command(cmd, cwd=work_path)
+        tracking_uri = parse_setting_env_file(setting_env_file(work_path)).get("mlflow_tracking_uri")
+        mlflow_summary = parse_mlflow_summary(command_output, tracking_uri=tracking_uri)
         if return_code != 0:
             failures.append("runtime_error")
     elif cmd:
@@ -650,6 +837,9 @@ def main():
             EnvVarStatus("6. 산출물 확인", "done" if artifacts else "pending"),
         ]
 
+    workspace_root = find_workspace_root(work_path) or Path.cwd().resolve()
+    artifact_display_paths = display_artifact_paths(artifacts, workspace_root)
+
     report = TrainingReport(
         project_path=str(project),
         model_found=model_found,
@@ -659,7 +849,8 @@ def main():
         command=cmd,
         executed=args.execute,
         return_code=return_code,
-        artifacts=artifacts,
+        artifacts=artifact_display_paths,
+        mlflow_summary=mlflow_summary,
         preflight=preflight,
         failures=failures,
         next_steps=next_steps,
@@ -696,7 +887,6 @@ def main():
                 ["Return code", str(report.return_code)],
             ],
         )
-        workspace_root = find_workspace_root(Path(report.work_path)) or Path.cwd().resolve()
         local_rows = local_generated_path_rows(Path(report.work_path), workspace_root)
         if local_rows:
             print("워크스페이스 로컬 생성 경로:")
@@ -704,6 +894,24 @@ def main():
         if report.preflight:
             print("Preflight:")
             print_markdown_table(["No", "항목"], [[str(index), item] for index, item in enumerate(report.preflight, start=1)])
+        if report.mlflow_summary:
+            print("MLflow 갱신 내용:")
+            preferred_keys = [
+                "등록 모델",
+                "새 모델 버전",
+                "MLflow Run ID",
+                "Run URL",
+                "Registered Model URL",
+                "Runs URL",
+                "Experiment Models URL",
+                "Registry",
+            ]
+            rows = [
+                [key, report.mlflow_summary[key]]
+                for key in preferred_keys
+                if key in report.mlflow_summary
+            ]
+            print_markdown_table(["항목", "값"], rows)
         print("Process checklist:")
         print_markdown_table(["항목", "상태"], [[item.name, item.status] for item in report.process_checklist])
         print("Metrics and artifacts:")

@@ -103,7 +103,20 @@ def log_mlflow_outputs(summary_path: Path) -> None:
             mlflow.log_metric("sample_loss", 0.03)
             mlflow.log_artifact(str(summary_path), artifact_path="ai_studio/code")
             active_run = mlflow.active_run()
-            print(f"MLflow run created: {active_run.info.run_id if active_run else 'unknown'}")
+            if active_run:
+                experiment_id = active_run.info.experiment_id
+                run_id = active_run.info.run_id
+                base_url = str(mlflow_tracking_uri).strip().rstrip("/")
+                runs_url = (
+                    f"{base_url}/#/experiments/{experiment_id}/runs"
+                    "?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false"
+                    "&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D"
+                )
+                print(f"MLflow run created: {run_id}")
+                print(f"MLflow Runs URI: {runs_url}")
+                print(f"MLflow Run URI: {base_url}/#/experiments/{experiment_id}/runs/{run_id}")
+            else:
+                print("MLflow run created: unknown")
     except Exception as exc:
         print(f"MLflow logging failed; local ai_studio outputs were created. reason={exc}")
 

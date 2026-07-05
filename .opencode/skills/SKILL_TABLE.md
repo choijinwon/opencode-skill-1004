@@ -28,8 +28,8 @@
 | 항목 | 동작 |
 |---|---|
 | Python 버전 | 기대 버전 `3.11.9` 기준 확인 |
-| 필수 패키지 | `mlflow==3.10.0`, `torch==2.12.1`, `numpy==1.26.4`, `kserve==0.15.0`, `pandas==2.2.3` |
-| 추가 패키지 | 원격 MLflow URL과 선택 모델 `MODEL_KIND` 기준으로 `requirements.txt`를 변환하고, 선택 모델과 무관한 프레임워크 패키지는 제거 |
+| 필수 패키지 | `mlflow`, `kserve==0.15.0` |
+| 추가 패키지 | 선택 모델 `MODEL_KIND` 기준으로 추천만 표시하고, 사용자가 필요한 항목만 직접 `requirements.txt`에 추가 |
 | `.env` MLflow 5개 값 | `mlflow_tracking_uri`, `mlflow_tracking_username`, `mlflow_tracking_password`, `mlflow_experiment_name`, `mlflow_register_model_name` |
 | 원격 URL 조건 | `mlflow_tracking_uri`은 사용자가 직접 입력하며 5번 실행에서는 원격 `http://` 또는 `https://`만 허용 |
 | 표시 정책 | secret 값은 출력하지 않고 `set`, `empty`, `missing` 상태만 표시 |

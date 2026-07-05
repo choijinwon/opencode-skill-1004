@@ -76,6 +76,11 @@ def mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> dict[str, s
     urls = {
         "tracking_uri": base_url,
         "experiment_url": f"{base_url}/#/experiments/{experiment_id}",
+        "experiment_runs_url": (
+            f"{base_url}/#/experiments/{experiment_id}/runs"
+            "?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false"
+            "&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D"
+        ),
         "experiment_models_url": f"{base_url}/#/experiments/{experiment_id}/models",
         "traces_url": f"{base_url}/#/experiments/{experiment_id}/traces?startTime=ALL",
     }
@@ -91,6 +96,7 @@ def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
     urls = mlflow_ui_urls(experiment_id, run_id)
     print("MLflow Tracking URI:", urls["tracking_uri"])
     print("MLflow Experiment URI:", urls["experiment_url"])
+    print("MLflow Runs URI:", urls["experiment_runs_url"])
     print("MLflow Experiment Models URI:", urls["experiment_models_url"])
     print("MLflow Traces URI:", urls["traces_url"])
     if "run_url" in urls:
