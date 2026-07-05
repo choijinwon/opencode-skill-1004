@@ -2229,10 +2229,35 @@ def command_project_arg(project: Path) -> str:
         return project.as_posix()
 
 
+def command_script_path(project: Path, script_relative_path: str) -> str:
+    project = project.resolve()
+    if (project / ".opencode").is_dir():
+        return f".opencode/scripts/{script_relative_path}"
+    if (project.parent / ".opencode").is_dir():
+        return f"../.opencode/scripts/{script_relative_path}"
+    return f".opencode/scripts/{script_relative_path}"
+
+
+def command_project_arg_from_model_folder(project: Path) -> str:
+    project = project.resolve()
+    if (project.parent / ".opencode").is_dir() and not (project / ".opencode").is_dir():
+        return "."
+    return command_project_arg(project)
+
+
+def command_workspace_arg_from_model_folder(project: Path) -> str:
+    project = project.resolve()
+    if (project.parent / ".opencode").is_dir() and not (project / ".opencode").is_dir():
+        return ".."
+    return "."
+
+
 def recheck_command(report: EnvironmentReport) -> str:
-    project_arg = command_project_arg(Path(report.project_path))
+    project = Path(report.project_path)
+    project_arg = command_project_arg_from_model_folder(project)
+    script_path = command_script_path(project, "03-environment-check/check_environment.py")
     command = (
-        "python .opencode/scripts/03-environment-check/check_environment.py "
+        f"python {script_path} "
         f"--project {project_arg} --entrypoint runtest_2.py"
     )
     if report.selected_python_version:
@@ -2240,10 +2265,19 @@ def recheck_command(report: EnvironmentReport) -> str:
     return command
 
 
+def prepare_selected_command(report: EnvironmentReport) -> str:
+    project = Path(report.project_path)
+    script_path = command_script_path(project, "05-train-model/prepare_selected_model.py")
+    project_arg = command_workspace_arg_from_model_folder(project)
+    return f"python {script_path} --project {project_arg} --model selected --execute"
+
+
 def run_training_command(report: EnvironmentReport) -> str:
-    project_arg = command_project_arg(Path(report.project_path))
+    project = Path(report.project_path)
+    project_arg = command_project_arg_from_model_folder(project)
+    script_path = command_script_path(project, "05-train-model/run_training.py")
     return (
-        "python .opencode/scripts/05-train-model/run_training.py "
+        f"python {script_path} "
         f"--project {project_arg} --entrypoint runtest_2.py --execute"
     )
 
@@ -2281,7 +2315,7 @@ def print_action_items(report: EnvironmentReport) -> None:
         print_markdown_table(
             ["Step", "명령/안내"],
             [
-                ["4", f"템플릿 변환은 사용자가 선택: {PS_PREPARE_SELECTED_COMMAND}"],
+                ["4", f"템플릿 변환은 사용자가 선택: {prepare_selected_command(report)}"],
                 ["5", f"원격 MLflow 등록 실행: {run_training_command(report)}"],
                 ["6", f"추론 테스트는 사용자가 선택할 때만 실행: {inference_command(report)}"],
             ],
@@ -2346,7 +2380,7 @@ def print_action_items(report: EnvironmentReport) -> None:
     print_markdown_table(
         ["Step", "명령/안내"],
         [
-            ["4", f"템플릿 변환: {PS_PREPARE_SELECTED_COMMAND}"],
+            ["4", f"템플릿 변환: {prepare_selected_command(report)}"],
             ["5", f"원격 MLflow 등록 실행: {run_training_command(report)}"],
             ["6", f"추론 테스트: {inference_command(report)}"],
         ],

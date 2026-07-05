@@ -89,6 +89,32 @@ PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_env
 PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/05-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
 
 
+def is_model_work_project(work_project: Path) -> bool:
+    resolved = work_project.resolve()
+    return (resolved.parent / ".opencode").is_dir() and not (resolved / ".opencode").is_dir()
+
+
+def command_script_path_for_work_project(work_project: Path, script_relative_path: str) -> str:
+    resolved = work_project.resolve()
+    if (resolved / ".opencode").is_dir():
+        return f".opencode/scripts/{script_relative_path}"
+    if (resolved.parent / ".opencode").is_dir():
+        return f"../.opencode/scripts/{script_relative_path}"
+    return f".opencode/scripts/{script_relative_path}"
+
+
+def command_project_arg_for_work_project(work_project: Path) -> str:
+    if is_model_work_project(work_project):
+        return "."
+    return rel(work_project, Path.cwd())
+
+
+def command_workspace_arg_for_work_project(work_project: Path) -> str:
+    if is_model_work_project(work_project):
+        return ".."
+    return "."
+
+
 def normalize_python_version_text(value: str | None) -> str | None:
     text = (value or "").strip()
     if not text:
@@ -101,13 +127,30 @@ def normalize_python_version_text(value: str | None) -> str | None:
 
 
 def environment_check_command(work_project: Path, python_version: str | None) -> str:
+    script_path = command_script_path_for_work_project(work_project, "03-environment-check/check_environment.py")
+    project_arg = command_project_arg_for_work_project(work_project)
     command = (
-        "python .opencode/scripts/03-environment-check/check_environment.py "
-        f"--project {rel(work_project, Path.cwd())} --entrypoint runtest_2.py"
+        f"python {script_path} "
+        f"--project {project_arg} --entrypoint runtest_2.py"
     )
     if python_version:
         command += f" --python-version {python_version}"
     return command
+
+
+def prepare_selected_command(work_project: Path, python_version: str | None) -> str:
+    script_path = command_script_path_for_work_project(work_project, "05-train-model/prepare_selected_model.py")
+    project_arg = command_workspace_arg_for_work_project(work_project)
+    command = f"python {script_path} --project {project_arg} --model selected --execute"
+    if python_version:
+        command += f" --python-version {python_version}"
+    return command
+
+
+def run_training_command_for_work_project(work_project: Path) -> str:
+    script_path = command_script_path_for_work_project(work_project, "05-train-model/run_training.py")
+    project_arg = command_project_arg_for_work_project(work_project)
+    return f"python {script_path} --project {project_arg} --entrypoint runtest_2.py --execute"
 
 
 def run_environment_check_summary(work_project: Path, python_version: str | None) -> tuple[dict[str, object] | None, str | None]:
@@ -4351,7 +4394,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     f"작업 폴더: {rel(work_project, project)}",
                     "3번 환경 검증을 실행하세요.",
                     "4번 템플릿 변환은 사용자가 선택했을 때만 실행합니다.",
-                    f"python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
+                    report.env_check_command or environment_check_command(work_project, report.selected_python_version),
                 ]
             )
         elif not report.failures:
@@ -4366,7 +4409,9 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             f"{rel(work_project, project)}/.env에 mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, "
             "mlflow_experiment_name, mlflow_register_model_name 를 직접 입력하세요."
         )
-        report.next_steps.append(f"입력 후 실행: python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py")
+        report.next_steps.append(
+            f"입력 후 실행: {report.env_check_command or environment_check_command(work_project, report.selected_python_version)}"
+        )
         return report
 
     if args.sync_runtime:
@@ -4407,7 +4452,7 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
                     "후속 변환 완료: 복사된 템플릿 폴더 내부에서 선택 모델 경로와 모델 형식 연결부를 수정했습니다.",
                     "선택 모델 변환 완료: 모델 목록 확인 -> 모델 선택 -> 템플릿 변환",
                     "다음은 3번 환경 검증입니다.",
-                    f"python .opencode/scripts/03-environment-check/check_environment.py --project {rel(work_project, project)} --entrypoint runtest_2.py",
+                    report.env_check_command or environment_check_command(work_project, report.selected_python_version),
                 ]
             )
         elif not report.failures:
@@ -4572,11 +4617,10 @@ def attach_environment_check_result(report: PreparedModelReport, work_project: P
 
 def print_report(report: PreparedModelReport, verbose: bool = False) -> None:
     work_project = report.work_project_path or "."
-    check_env_command = report.env_check_command or f"python .opencode/scripts/03-environment-check/check_environment.py --project {work_project} --entrypoint runtest_2.py"
-    prepare_command = f"python .opencode/scripts/05-train-model/prepare_selected_model.py --project . --model selected --execute"
-    if report.selected_python_version:
-        prepare_command += f" --python-version {report.selected_python_version}"
-    run_training_command = f"python .opencode/scripts/05-train-model/run_training.py --project {work_project} --entrypoint runtest_2.py --execute"
+    work_project_path = Path(report.project_path) / work_project if work_project != "." else Path(report.project_path)
+    check_env_command = report.env_check_command or environment_check_command(work_project_path, report.selected_python_version)
+    prepare_command = prepare_selected_command(work_project_path, report.selected_python_version)
+    run_training_command = run_training_command_for_work_project(work_project_path)
     if (
         not verbose
         and report.execute
