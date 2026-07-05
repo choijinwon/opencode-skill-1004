@@ -27,7 +27,8 @@ if ($ScriptArguments) {
 }
 
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$OpenCodeRoot = Split-Path -Parent $ScriptRoot
+$OpenCodeScriptsRoot = Split-Path -Parent $ScriptRoot
+$OpenCodeRoot = Split-Path -Parent $OpenCodeScriptsRoot
 $ProjectRoot = Split-Path -Parent $OpenCodeRoot
 Set-Location -LiteralPath $ProjectRoot
 

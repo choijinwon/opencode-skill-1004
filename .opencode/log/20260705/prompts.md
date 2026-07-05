@@ -63,3 +63,7 @@
 | 21:39:56 | prompt | Ai Studio step 5 remote MLflow registration rerun | 사용자가 5번 원격 MLflow 등록 실행 네 번째 재실행 | sample_model runtest_2.py 재실행 성공, return code 0, MLflow run 생성 및 등록 모델 새 버전 16 생성 |
 | 21:43:47 | history | Ai Studio step 5 MLflow URL display | 5번 원격 MLflow 등록 결과에 Run URL이 보이지 않는 문제 확인 | run_training.py가 MLflow Run URI/Run URL을 우선 파싱하도록 수정하고 Step 5 응답에서 URL을 보존하도록 가이드 보강 |
 | 21:46:16 | prompt | Ai Studio step 5 remote MLflow registration rerun | 사용자가 5번 원격 MLflow 등록 실행 다섯 번째 재실행 | sample_model runtest_2.py 재실행 성공, return code 0, MLflow run 생성 및 등록 모델 새 버전 17 생성 |
+| 22:36:19 | prompt | 1 프로젝트 분석 | 첫 진입: 워크스페이스 분석 | model_found true, 모델 8개 발견 |
+| 22:37:10 | prompt | 2 모델 선택 | 모델 목록에서 3번 선택 | 선택 모델 data/case-tests/sample_model.pt |
+| 22:40:10 | prompt | 3 환경 검증 | 선택 모델 환경 검증 실행 | MLflow 설정값 비어 있음, PyTorch requirements 후보 확인 |
+| 22:42:24 | prompt | 3 환경 검증 | 환경 검증 재실행 | MLflow 설정값 set, 환경 검증 완료 |
