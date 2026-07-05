@@ -67,3 +67,7 @@
 | 22:37:10 | prompt | 2 모델 선택 | 모델 목록에서 3번 선택 | 선택 모델 data/case-tests/sample_model.pt |
 | 22:40:10 | prompt | 3 환경 검증 | 선택 모델 환경 검증 실행 | MLflow 설정값 비어 있음, PyTorch requirements 후보 확인 |
 | 22:42:24 | prompt | 3 환경 검증 | 환경 검증 재실행 | MLflow 설정값 set, 환경 검증 완료 |
+| 23:18:31 | prompt | Ai Studio step 1 workspace analysis | Initial greeting and workspace analysis | Started workspace analysis |
+| 23:18:40 | prompt | Ai Studio step 1 workspace analysis | Initial greeting and workspace analysis | model_found true; found 8 selectable models |
+| 23:19:01 | prompt | Ai Studio step 2 model selection | User selected model number 3 | Selected data/case-tests/sample_model.pt as pytorch; work folder sample_model |
+| 23:20:42 | history | Ai Studio step 5 remote-only cleanup | 5번 항목에서 로컬 테스트 항목 제거 요청 | Step 5 생성 템플릿과 환경 검증 문구에서 로컬 MLflow 테스트/환경 표현 제거, 원격 MLflow 등록만 유지 |

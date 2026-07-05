@@ -1867,7 +1867,7 @@ def requirement_basis(report: EnvironmentReport, item: RequirementStatus) -> str
         if report.remote_mlflow.tracking_uri_status == "set":
             return "MLflow 환경 접속 기준"
         if report.remote_mlflow.local_version:
-            return "사용자 로컬 MLflow 환경"
+            return "원격 MLflow 서버 버전 확인 필요"
         return "MLflow 환경 기준"
     if normalized_name == "numpy" and report.python_version.startswith("3.13"):
         return "Python 3.13 호환"

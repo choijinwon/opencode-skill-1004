@@ -39,7 +39,7 @@ metadata:
 1. 선택 모델 정보가 config/config.json 기준으로 유지되는지 확인한다.
 2. Python 실행 파일과 버전을 확인하되, 고정 버전 강제 대신 MLflow/requirements 호환성 기준으로 판단한다.
 3. dependency 파일과 핵심 패키지를 확인하되, 로컬 설치를 요구하지 않는다.
-4. 로컬 MLflow 설치 상태는 참고만 하고, 원격 MLflow 서버 version과 requirements.txt 변환 기준을 우선한다.
+4. 원격 MLflow 서버 version과 requirements.txt 변환 기준을 우선한다.
 5. mlflow_tracking_uri이 있으면 원격 MLflow 서버 version을 확인하고, 확인된 서버 version에 맞춰 requirements.txt의 mlflow 버전을 변환한다.
 6. 선택 모델 MODEL_KIND 기준으로 필요한 프레임워크 패키지만 requirements.txt에 반영한다. 선택 모델과 무관한 프레임워크 패키지는 제거한다.
 7. 변환된 코드 import 기준 추가 Python 패키지가 필요하면 requirements.txt를 변환한다. 이때 필수 패키지 5개는 항상 유지한다.

@@ -2745,49 +2745,6 @@ def print_mlflow_ui_urls(experiment_id: str, run_id: str | None = None) -> None:
         print("MLflow Registered Model URI:", urls["registered_model_url"])
 
 
-def normalize_local_mlmodel_artifact_paths() -> None:
-    # 로컬 테스트 전용 helper입니다.
-    # 원격 MLflow 서버 등록 기준에서는 이 함수를 호출하지 않습니다.
-    # 사용자가 로컬 서버를 임시로 띄우고 .mlflow-local MLmodel artifact_path를
-    # 상대경로로 보고 싶을 때만 아래 호출부의 주석을 풀어 사용합니다.
-    workspace_root = os.path.abspath(os.path.join(project_dir, os.pardir))
-    search_roots = [
-        os.path.join(project_dir, ".mlflow-local"),
-        os.path.join(workspace_root, ".mlflow-local"),
-    ]
-    seen = set()
-    for search_root in search_roots:
-        search_root = normalize_local_path(search_root)
-        if search_root in seen or not os.path.isdir(search_root):
-            continue
-        seen.add(search_root)
-        for root, _dirs, files in os.walk(search_root):
-            if "MLmodel" not in files:
-                continue
-            mlmodel_path = os.path.join(root, "MLmodel")
-            try:
-                with open(mlmodel_path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-            except OSError:
-                continue
-            changed_lines = []
-            changed = False
-            for line in lines:
-                if line.startswith("artifact_path: "):
-                    value = line.split(":", 1)[1].strip().strip("'").strip('"')
-                    if os.path.isabs(value):
-                        try:
-                            value = os.path.relpath(normalize_local_path(value), workspace_root).replace(chr(92), "/")
-                            line = f"artifact_path: {{value}}\\n"
-                            changed = True
-                        except ValueError:
-                            pass
-                changed_lines.append(line)
-            if changed:
-                with open(mlmodel_path, "w", encoding="utf-8") as f:
-                    f.writelines(changed_lines)
-
-
 def ensure_registered_model(model_info) -> str:
     model_name = str(mlflow_register_model_name).strip()
     if not model_name:
@@ -2872,18 +2829,6 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         log_model_args["name"] = log_model_args.pop("artifact_path")
 
     model_info = mlflow.pyfunc.log_model(**log_model_args)
-
-    # --------------------------------------------------------
-    # 로컬 MLflow 테스트 전용
-    # --------------------------------------------------------
-    # 원격 MLflow 서버 기준에서는 사용하지 않습니다.
-    # 로컬에서 아래처럼 서버를 임시 실행한 경우에만 주석을 풀어 확인하세요.
-    #
-    # python -m mlflow server --host 127.0.0.1 --port 5002 \
-    #   --backend-store-uri sqlite:///./.mlflow-local/mlflow.db \
-    #   --default-artifact-root ./.mlflow-local/artifacts
-    #
-    # normalize_local_mlmodel_artifact_paths()
 
     registry_status = ensure_registered_model(model_info)
 

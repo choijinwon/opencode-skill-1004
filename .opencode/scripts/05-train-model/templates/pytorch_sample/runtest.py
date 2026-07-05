@@ -64,16 +64,12 @@ class TinyTorchModel(nn.Module):
         return self.linear(inputs)
 
 
-def is_local_tracking_uri() -> bool:
-    value = str(mlflow_tracking_uri).strip().lower()
-    return value.startswith(("http://127.0.0.1", "http://localhost", "http://0.0.0.0"))
-
-
 def missing_mlflow_settings() -> list[str]:
-    required = {"mlflow_tracking_uri": mlflow_tracking_uri}
-    if not is_local_tracking_uri():
-        required["mlflow_tracking_username"] = mlflow_tracking_username
-        required["mlflow_tracking_password"] = mlflow_tracking_password
+    required = {
+        "mlflow_tracking_uri": mlflow_tracking_uri,
+        "mlflow_tracking_username": mlflow_tracking_username,
+        "mlflow_tracking_password": mlflow_tracking_password,
+    }
     return [name for name, value in required.items() if not value]
 
 
