@@ -50,3 +50,7 @@
 | 00:52:11 | history | Ai Studio mlflow requirement pinning | mlflow .env mlflow_tracking_uri 경로가 있으면 버전체크한걸로 수정, 없으면 mlflow | 원격 서버 버전 확인 성공 시만 mlflow==server_version, 없거나 확인 불가 시 mlflow 유지 |
 | 00:53:07 | prompt | Ai Studio step 1 workspace analysis | Initial greeting and workspace analysis | Printed Ai Studio and found 8 selectable models |
 | 00:53:32 | prompt | Ai Studio step 2 model select | Selected model number 3 | Selected data/case-tests/sample_model.pt as pytorch model |
+| 00:53:52 | prompt | Ai Studio step 3 environment check | Ran environment validation for selected pytorch model | Environment check found empty MLflow settings and listed required package candidates |
+| 00:55:07 | prompt | Ai Studio step 3 environment check | Re-ran environment validation after MLflow settings were filled | Environment check completed with MLflow settings set; step 4 available |
+| 00:55:29 | prompt | Ai Studio step 4 template conversion | Ran template conversion for selected pytorch model | Prepared sample_model template files and updated requirements.txt |
+| 00:58:37 | prompt | Ai Studio step 1 workspace analysis | Initial greeting; analyzed workspace on first entry | model_found true, 8 selectable models discovered |
