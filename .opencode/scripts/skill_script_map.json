@@ -9,15 +9,8 @@
     ],
     "purpose": "read-only workspace analysis, model_found decision, and model list"
   },
-  "02-sample-bootstrap": {
-    "skill_folder": "02-agent-mlflow-skill-sample-bootstrap",
-    "primary_scripts": [
-      "02-sample-bootstrap/bootstrap_sample_project.py"
-    ],
-    "purpose": "copy sklearn, pytorch, or tensorflow sample when no model exists"
-  },
   "02-model-select": {
-    "skill_folder": "04-agent-mlflow-skill-train-model",
+    "skill_folder": "02-agent-mlflow-skill-model-select",
     "process_steps": [
       "2. 모델 선택"
     ],
@@ -25,7 +18,7 @@
       "02-model-select/select_model.py"
     ],
     "delegates_to": [
-      "04-train-model/prepare_selected_model.py"
+      "05-train-model/prepare_selected_model.py"
     ],
     "purpose": "PowerShell-safe step 2 wrapper that locks the selected model only"
   },
@@ -37,27 +30,37 @@
     "primary_scripts": [
       "03-environment-check/check_environment.py"
     ],
-        "support_scripts": [
-            "03-environment-check/response_speed_check.py",
-            "03-environment-check/apply_index_ignore.py"
-        ],
-        "required_files": [
-            "03-environment-check/requirements.required.txt"
-        ],
+    "support_scripts": [
+      "03-environment-check/response_speed_check.py",
+      "03-environment-check/apply_index_ignore.py"
+    ],
+    "required_files": [
+      "03-environment-check/requirements.required.txt"
+    ],
     "purpose": "check Python, requirements.txt, MLflow settings, and closed-network speed"
   },
-  "04-train-model": {
-    "skill_folder": "04-agent-mlflow-skill-train-model",
+  "04-sample-bootstrap": {
+    "skill_folder": "04-agent-mlflow-skill-sample-bootstrap",
+    "process_steps": [
+      "4. 샘플 부트스트랩"
+    ],
+    "primary_scripts": [
+      "04-sample-bootstrap/bootstrap_sample_project.py"
+    ],
+    "purpose": "copy sklearn, pytorch, or tensorflow sample when no model exists"
+  },
+  "05-train-model": {
+    "skill_folder": "05-agent-mlflow-skill-train-model",
     "process_steps": [
       "4. 템플릿 변환",
       "5. 원격 MLflow 등록 실행"
     ],
     "primary_scripts": [
-      "04-train-model/prepare_selected_model.py",
-      "04-train-model/run_training.py"
+      "05-train-model/prepare_selected_model.py",
+      "05-train-model/run_training.py"
     ],
     "support_scripts": [
-      "04-train-model/adapt_ai_studio.py"
+      "05-train-model/adapt_ai_studio.py"
     ],
     "purpose": "lock selected model, transform templates on step 4, and run confirmed entrypoint on step 5"
   },
@@ -74,16 +77,13 @@
     ],
     "purpose": "run selected-model local serving smoke test and inference contract checks"
   },
-  "qa-maintenance": {
+  "07-qa-maintenance": {
     "primary_scripts": [
-      "qa-maintenance/doctor.py",
-      "qa-maintenance/test_local_sample.py",
-      "qa-maintenance/test_7_step_flow.py"
+      "07-qa-maintenance/doctor.py",
+      "07-qa-maintenance/test_local_sample.py",
+      "07-qa-maintenance/test_7_step_flow.py"
     ],
     "documents": [
-      "README.md",
-      "MAINTENANCE.md",
-      "SCRIPT_INDEX.md",
       "skill_script_map.json"
     ],
     "purpose": "one-page QA, bundled sample QA, and script maintenance"

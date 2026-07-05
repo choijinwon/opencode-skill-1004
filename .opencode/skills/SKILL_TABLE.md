@@ -5,20 +5,21 @@
 | 번호 | 스킬 문서 | 목적 | 주요 스크립트 | 주요 결과 |
 |---|---|---|---|---|
 | 1 | `01-agent-mlflow-skill-project-analyze` | 현재 워크스페이스 분석, 모델 있음/없음 판단 | `01-project-analyze/*` | `model_found`, 모델 목록, 프로젝트 상태 |
-| 2 | `02-agent-mlflow-skill-sample-bootstrap` | 샘플/템플릿 복사 | `02-sample-bootstrap/*` | 샘플 파일, 템플릿 파일 |
+| 2 | `02-agent-mlflow-skill-model-select` | 사용할 모델 번호/경로 선택 고정 | `02-model-select/*` | 선택 모델, `MODEL_KIND`, 작업 폴더 |
 | 3 | `03-agent-mlflow-skill-environment-check` | Python, 패키지, MLflow 설정 점검 | `03-environment-check/*` | 환경 점검 결과, `requirements.txt` 변환 |
-| 4 | `04-agent-mlflow-skill-train-model` | 모델 선택, `runtest_2.py` 변환, 템플릿 변환, 원격 MLflow 등록 실행 | `04-train-model/*` | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
+| 4 | `04-agent-mlflow-skill-sample-bootstrap` | 모델 없음 상태에서 샘플/템플릿 복사 | `04-sample-bootstrap/*` | 샘플 파일, 템플릿 파일 |
+| 5 | `05-agent-mlflow-skill-train-model` | 템플릿 변환, 원격 MLflow 등록 실행 | `05-train-model/*` | `runtest_2.py`, `aiu_custom/`, `local_serving/`, `saved_model/` |
 | 6 | `06-agent-mlflow-skill-inference-test` | 원격 추론 URL 테스트 | `06-inference-test/*` | 추론 테스트 결과 |
 
 ## 2. 모델 있을 때 프로세스
 
 | 단계 | 설명 | 실행 스크립트 | 주요 결과물 |
 |---|---|---|---|
-| 1 | 모델 목록 확인 | `python .opencode/scripts/04-train-model/prepare_selected_model.py --project .` | 현재 프로젝트 루트와 `data/**` 모델 목록 |
+| 1 | 모델 목록 확인 | `python .opencode/scripts/01-project-analyze/validate_mlflow_project.py --project . --no-write-check` | 현재 프로젝트 루트와 `data/**` 모델 목록 |
 | 2 | 모델 선택 | `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호 또는 경로>` | 명시 선택 반영, 이후 단계에서 선택 모델 유지 |
 | 3 | 환경 검증 | 사용자가 3번 선택 시 `python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py` | MLflow 입력값 확인, `requirements.txt` 변환 |
-| 4 | 템플릿 변환 | 사용자가 4번 선택 시 `python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute` | `local_serving/` 폴더만 복사 후, 선택 모델 기준 파일 변환 |
-| 5 | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `python .opencode/scripts/04-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute` | 선택 모델 작업 폴더에서 재검증/변환 후 원격 MLflow 서버에 기록/등록 |
+| 4 | 템플릿 변환 | 사용자가 4번 선택 시 `python .opencode/scripts/05-train-model/prepare_selected_model.py --project . --model selected --execute` | `local_serving/` 폴더만 복사 후, 선택 모델 기준 파일 변환 |
+| 5 | 원격 MLflow 등록 실행 | 사용자가 5번 선택 시 `python .opencode/scripts/05-train-model/run_training.py --project <선택모델작업폴더> --entrypoint runtest_2.py --execute` | 선택 모델 작업 폴더에서 재검증/변환 후 원격 MLflow 서버에 기록/등록 |
 | 6 | 추론 테스트 | 사용자가 6번 선택 시 `python inferencetest.py` | `input_example.json` 기반 원격 추론 URL 호출 |
 | 7 | 오류 재실행 | 사용자가 7번 선택 시 실패한 단계 스크립트 재실행 | `Failures`와 오류 메시지 기준으로 실패한 단계부터 다시 실행 |
 

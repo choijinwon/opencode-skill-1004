@@ -18,11 +18,11 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
+from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
 
 ROOT = Path(__file__).resolve().parents[2]
-PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
-PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
+PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "05-train-model" / "prepare_selected_model.py"
 
 ENV_KEYS = [
     "MLFLOW_TRACKING_URI",
@@ -34,7 +34,7 @@ ENV_KEYS = [
 ]
 
 AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_url",
+    "mlflow_tracking_uri",
     "mlflow_tracking_username",
     "mlflow_tracking_password",
     "mlflow_experiment_name",
@@ -346,8 +346,8 @@ REMOTE_MLFLOW_VERSION_ENDPOINTS = [
 ]
 REMOTE_MLFLOW_TIMEOUT_SECONDS = 3
 PS_CHECK_ENV_COMMAND = r"python .opencode/scripts/03-environment-check/check_environment.py --project . --entrypoint runtest_2.py"
-PS_PREPARE_SELECTED_COMMAND = r"python .opencode/scripts/04-train-model/prepare_selected_model.py --project . --model selected --execute"
-PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/04-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
+PS_PREPARE_SELECTED_COMMAND = r"python .opencode/scripts/05-train-model/prepare_selected_model.py --project . --model selected --execute"
+PS_RUN_TRAINING_COMMAND = r"python .opencode/scripts/05-train-model/run_training.py --project . --entrypoint runtest_2.py --execute"
 PS_INFERENCE_COMMAND = r"python inferencetest.py"
 
 
@@ -1687,7 +1687,7 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
             f"1. {AI_STUDIO_PROCESS_STEPS[0]}: 현재 프로젝트 루트와 data/**에서 사용할 모델 후보를 확인한다.",
             f"2. {AI_STUDIO_PROCESS_STEPS[1]}: Windows PowerShell에서 현재 워크스페이스 루트로 이동한 뒤 select_model.py --model <번호 또는 경로> 로 사용할 모델을 선택한다.",
             f"3. {AI_STUDIO_PROCESS_STEPS[2]}: .env의 원격 MLflow URL을 확인하고, requirements.txt의 mlflow 버전과 kserve 필수 항목만 맞춘다. 나머지 패키지는 사용자가 직접 입력한다.",
-            f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/scripts/04-train-model/templates/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
+            f"4. {AI_STUDIO_PROCESS_STEPS[3]}: .opencode/scripts/05-train-model/templates/pytorch_sample/ 템플릿 복사 후, 복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.",
             f"5. {AI_STUDIO_PROCESS_STEPS[4]}: python {entrypoint_display} 로 원격 MLflow 서버에 기록/등록한다.",
             f"6. {AI_STUDIO_PROCESS_STEPS[5]}: 자동 실행하지 않고 사용자가 6번을 선택했을 때 inferencetest.py 로 원격 추론 URL을 호출한다.",
             f"7. {AI_STUDIO_PROCESS_STEPS[6]}: 오류가 있으면 실패 단계부터 수정 후 다시 실행한다.",
@@ -1740,9 +1740,9 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
             if version_constraint_status(remote_mlflow.server_version, item.required_version) == "version_mismatch":
                 next_steps.append(f"requirements.txt의 mlflow 요구 버전을 mlflow=={remote_mlflow.server_version}로 변환하세요.")
                 break
-    tracking_ready = any(item.name in {"mlflow_tracking_uri", "mlflow_tracking_url"} and item.status == "set" for item in ai_env.key_status)
+    tracking_ready = any(item.name == "mlflow_tracking_uri" and item.status == "set" for item in ai_env.key_status)
     if env_status("MLFLOW_TRACKING_URI") == "missing" and not tracking_ready:
-        next_steps.append(".env 5개 필수 입력값 중 mlflow_tracking_url에 원격 MLflow/리포트 URL을 직접 입력하세요.")
+        next_steps.append(".env 5개 필수 입력값 중 mlflow_tracking_uri에 원격 MLflow/리포트 URI를 직접 입력하세요.")
     if source_input_required:
         required_names = ", ".join(item.name for item in source_input_required)
         next_steps.append(f".env 5개 필수 입력값을 직접 입력하세요: {required_names}.")
@@ -2164,7 +2164,7 @@ def recheck_command(report: EnvironmentReport) -> str:
 def run_training_command(report: EnvironmentReport) -> str:
     project_arg = command_project_arg(Path(report.project_path))
     return (
-        "python .opencode/scripts/04-train-model/run_training.py "
+        "python .opencode/scripts/05-train-model/run_training.py "
         f"--project {project_arg} --entrypoint runtest_2.py --execute"
     )
 
@@ -2228,7 +2228,7 @@ def print_action_items(report: EnvironmentReport) -> None:
             [
                 source_path,
                 "직접 입력 필요",
-                "mlflow_tracking_url, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name",
+                "mlflow_tracking_uri, mlflow_tracking_username, mlflow_tracking_password, mlflow_experiment_name, mlflow_register_model_name",
             ]
         )
     if action_rows:

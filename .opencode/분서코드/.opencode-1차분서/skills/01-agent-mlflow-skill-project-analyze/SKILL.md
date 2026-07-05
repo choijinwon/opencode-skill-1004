@@ -177,7 +177,7 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 ```text
 python .opencode/scripts/01-project-analyze/validate_mlflow_project.py --project . --no-write-check
 python .opencode/scripts/02-model-select/select_model.py --project . --model 1
-python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py --project . --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
+python .opencode/scripts/04-sample-bootstrap/bootstrap_sample_project.py --project . --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute
 ```
 
 </details>

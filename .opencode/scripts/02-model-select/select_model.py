@@ -17,9 +17,9 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 ANALYZE_PROJECT_SCRIPT = ROOT / "scripts" / "01-project-analyze" / "validate_mlflow_project.py"
-PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "04-train-model" / "prepare_selected_model.py"
+PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
 ANALYZE_PROJECT_COMMAND = ".opencode/scripts/01-project-analyze/validate_mlflow_project.py"
-PREPARE_SELECTED_MODEL_COMMAND = ".opencode/scripts/04-train-model/prepare_selected_model.py"
+PREPARE_SELECTED_MODEL_COMMAND = ".opencode/scripts/05-train-model/prepare_selected_model.py"
 PATH_SEPARATOR_TRANSLATION = str.maketrans({
     "\\": "/",
     "＼": "/",

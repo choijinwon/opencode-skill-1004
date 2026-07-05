@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|상대경로>"
-PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py"
+PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/04-sample-bootstrap/bootstrap_sample_project.py"
 
 # 실행 파일 후보명입니다. 고정 파일명은 없고, 분석 시 힌트로만 사용합니다.
 # The skill pack does not require a fixed file name. These common names are

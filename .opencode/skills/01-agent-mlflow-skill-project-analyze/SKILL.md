@@ -175,9 +175,9 @@ custom pyfunc: mlflow.pyfunc.PythonModel, aiu_custom, ModelWrapper
 보충 명령:
 
 ```text
-& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/01-project-analyze/validate_mlflow_project.py" --project . --no-write-check -AutoInstallIfMissing
-& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 1 -AutoInstallIfMissing
-& ".opencode/scripts/invoke-aistudio-python.ps1" ".opencode/scripts/02-sample-bootstrap/bootstrap_sample_project.py" --project . --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute -AutoInstallIfMissing
+& ".opencode/scripts/common/invoke-aistudio-python.ps1" ".opencode/scripts/01-project-analyze/validate_mlflow_project.py" --project . --no-write-check -AutoInstallIfMissing
+& ".opencode/scripts/common/invoke-aistudio-python.ps1" ".opencode/scripts/02-model-select/select_model.py" --project . --model 1 -AutoInstallIfMissing
+& ".opencode/scripts/common/invoke-aistudio-python.ps1" ".opencode/scripts/04-sample-bootstrap/bootstrap_sample_project.py" --project . --sample <sklearn|pytorch|tensorflow> --scaffold-existing --execute -AutoInstallIfMissing
 ```
 
 </details>

@@ -5,8 +5,8 @@ license: MIT
 compatibility: opencode
 metadata:
   flow: ml-workspace-development
-  stage: 02-environment-check
-  step: 2
+  stage: 03-environment-check
+  step: 3
 ---
 
 # Execution Environment Check

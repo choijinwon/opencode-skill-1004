@@ -9,16 +9,19 @@
    model_found: true | false 결정
    모델 있음이면 루트/data 모델 목록과 사용할 모델을 먼저 확정
 
-02. Sample Bootstrap
-   모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택
+02. Model Select
+   모델 있음이면 사용할 모델 번호/경로 선택 고정
 
 03. Environment Check
    현재 Python, dependency, 원격 MLflow 서버 version, 설정 상태 확인
 
-04. Train Model
+04. Sample Bootstrap
+   모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택
+
+05. Train Model
    선택 모델 기준 runtest_2.py 변환 또는 실제 entrypoint 실행
 
-05. Inference Test
+06. Inference Test
    input_example 기반 predict contract와 schema 확인
 ```
 
@@ -110,9 +113,10 @@ python .opencode/scripts/02-model-select/select_model.py --project . --model 1
 
 ```text
 01-agent-mlflow-skill-project-analyze
-02-agent-mlflow-skill-sample-bootstrap
+02-agent-mlflow-skill-model-select
 03-agent-mlflow-skill-environment-check
-04-agent-mlflow-skill-train-model
+04-agent-mlflow-skill-sample-bootstrap
+05-agent-mlflow-skill-train-model
 06-agent-mlflow-skill-inference-test
 ```
 
@@ -122,15 +126,11 @@ python .opencode/scripts/02-model-select/select_model.py --project . --model 1
 
 스킬별 대표 스크립트는 아래만 먼저 봅니다. 실제 구현 파일은 스킬 목록 기준 폴더에 있습니다.
 같은 매핑은 `.opencode/scripts/skill_script_map.json`에도 있습니다.
-상세 정리표는 `.opencode/scripts/SCRIPT_INDEX.md`에 있습니다.
 
 ```text
 01 Project Analyze
    01-project-analyze/validate_mlflow_project.py
-        04-train-model/prepare_selected_model.py
-
-02 Sample Bootstrap
-   02-sample-bootstrap/bootstrap_sample_project.py
+        05-train-model/prepare_selected_model.py
 
 02 Model Select
    02-model-select/select_model.py
@@ -140,20 +140,21 @@ python .opencode/scripts/02-model-select/select_model.py --project . --model 1
    03-environment-check/response_speed_check.py
    03-environment-check/apply_index_ignore.py
 
-04 Train Model / Selected Model Build
-   04-train-model/prepare_selected_model.py
-   04-train-model/run_training.py
-   04-train-model/adapt_ai_studio.py
+04 Sample Bootstrap
+   04-sample-bootstrap/bootstrap_sample_project.py
 
-05 Inference Test
+05 Train Model / Selected Model Build
+   05-train-model/prepare_selected_model.py
+   05-train-model/run_training.py
+   05-train-model/adapt_ai_studio.py
+
+06 Inference Test
    06-inference-test/test_inference.py
    generated: inferencetest.py
 
 QA / Maintenance
-   qa-maintenance/doctor.py
-   qa-maintenance/test_local_sample.py
-   SCRIPT_INDEX.md
-   MAINTENANCE.md
+   07-qa-maintenance/doctor.py
+   07-qa-maintenance/test_local_sample.py
 ```
 
 ## Doctor
@@ -161,8 +162,8 @@ QA / Maintenance
 전체 흐름을 한 번에 점검할 때는 doctor를 먼저 실행합니다.
 
 ```text
-python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project .
-python .opencode/scripts/qa-maintenance/doctor.py --workspace . --project . --entrypoint runtest.py
+python .opencode/scripts/07-qa-maintenance/doctor.py --workspace . --project .
+python .opencode/scripts/07-qa-maintenance/doctor.py --workspace . --project . --entrypoint runtest.py
 ```
 
 doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물 상태를 한 화면에 보여줍니다.
@@ -173,8 +174,8 @@ doctor는 실행 파일 확정, 샘플 규격, `.env` MLflow 5개 값, 산출물
 AI Studio/MLflow 연결부를 실제로 보강해야 하면 먼저 dry-run을 실행합니다.
 
 ```text
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file>
-python .opencode/scripts/04-train-model/adapt_ai_studio.py --project . --entrypoint <file> --execute
+python .opencode/scripts/05-train-model/adapt_ai_studio.py --project . --entrypoint <file>
+python .opencode/scripts/05-train-model/adapt_ai_studio.py --project . --entrypoint <file> --execute
 ```
 
 ## Common UI Pattern

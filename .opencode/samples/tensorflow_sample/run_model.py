@@ -113,7 +113,7 @@ def main() -> None:
     missing = missing_mlflow_settings()
     if missing:
         print("MLflow/AI Studio 설정을 run_model.py에 직접 입력하세요.")
-        print("missing settings:")
+        print("누락 항목: " + ", ".join(missing))
         for name in missing:
             print(f"- {name}")
         print("비밀번호 값은 출력하지 않습니다.")
