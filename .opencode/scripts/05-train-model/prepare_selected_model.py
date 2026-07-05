@@ -70,6 +70,11 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import format_model_selection_hint, format_todo_guide
+from common.selected_model_info import (
+    build_selected_model_info,
+    selected_model_kind as selected_model_kind_from_payload,
+    selected_model_source_path,
+)
 
 DEFAULT_TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
 TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "samples"
@@ -200,6 +205,15 @@ IMAGE_MODEL_MANUAL_REQUIREMENT_MAP = {
     "tensorflow_h5": ["pillow==12.3.0", "matplotlib==3.11.0"],
     "tensorflow_saved_model": ["pillow==12.3.0", "matplotlib==3.11.0"],
 }
+
+
+def is_image_model_path(selected_model: Path | None, kind: str | None) -> bool:
+    if selected_model is None or kind not in IMAGE_MODEL_KINDS:
+        return False
+    model_text = normalize_path_text(str(selected_model)).lower()
+    return any(keyword in model_text for keyword in IMAGE_MODEL_KEYWORDS)
+
+
 ai_STUDIO_COPY_IGNORE_DIRS = {"__pycache__", "code", "config", "data", "metrics", "saved_model", "tracking"}
 ai_STUDIO_COPY_IGNORE_FILES = {
     ".gitkeep",
@@ -854,11 +868,12 @@ def selected_model_from_config_path(project: Path, config_path: Path) -> tuple[P
         return None, None, f"selected_model_config_parse_error:{exc.lineno}"
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
-        return None, None, "selected_model_config_model_missing"
+        return selected_model_from_input_example_path(config_project / "input_example.json")
     source_path = model.get("source_path") or model.get("original_path") or model.get("path") or model.get("model_relative_path") or model.get("runtime_model_path") or model.get("relative_path")
     kind = model.get("model_kind") or model.get("kind")
     if not isinstance(source_path, str) or not source_path.strip():
-        return None, kind if isinstance(kind, str) else None, "selected_model_config_source_path_missing"
+        selected_model, input_kind, error = selected_model_from_input_example_path(config_project / "input_example.json")
+        return selected_model, kind if isinstance(kind, str) else input_kind, error
     normalized = normalize_path_text(source_path.strip())
     candidate = Path(normalized).expanduser()
     if not candidate.is_absolute():
@@ -869,16 +884,72 @@ def selected_model_from_config_path(project: Path, config_path: Path) -> tuple[P
     return candidate, kind if isinstance(kind, str) else None, None
 
 
+def selected_model_from_input_example_path(input_example_path: Path) -> tuple[Path | None, str | None, str | None]:
+    if not input_example_path.is_file():
+        return None, None, "selected_model_input_example_missing"
+    try:
+        payload = json.loads(input_example_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return None, None, f"selected_model_input_example_parse_error:{exc.lineno}"
+    if not isinstance(payload, dict):
+        return None, None, "selected_model_input_example_invalid"
+    source_path = selected_model_source_path(payload)
+    kind = selected_model_kind_from_payload(payload)
+    if not isinstance(source_path, str) or not source_path.strip():
+        return None, kind if isinstance(kind, str) else None, "selected_model_input_example_source_path_missing"
+    normalized = normalize_path_text(source_path.strip())
+    candidate = Path(normalized).expanduser()
+    if not candidate.is_absolute():
+        candidate = input_example_path.parent / candidate
+    candidate = candidate.resolve()
+    if not candidate.exists():
+        return candidate, kind if isinstance(kind, str) else None, f"selected_model_input_example_not_found:{source_path}"
+    return candidate, kind if isinstance(kind, str) else None, None
+
+
+def selected_model_from_saved_model(project: Path) -> tuple[Path | None, str | None, str | None]:
+    saved_model_dir = project / "saved_model"
+    if not saved_model_dir.is_dir():
+        return None, None, "selected_model_saved_model_missing"
+    saved_models = [
+        path
+        for path in sorted(saved_model_dir.iterdir(), key=lambda item: item.name.lower())
+        if (path.is_file() or path.is_dir()) and model_kind(path)
+    ]
+    if not saved_models:
+        return None, None, "selected_model_saved_model_empty"
+    if len(saved_models) > 1:
+        return None, None, "selected_model_saved_model_ambiguous:" + ",".join(path.name for path in saved_models[:5])
+
+    saved_model = saved_models[0]
+    kind = model_kind(saved_model)
+    workspace_project = project.parent
+    source_candidates = [
+        path
+        for path in scan_model_artifacts(workspace_project)
+        if path.name == saved_model.name
+        and normalize_path_text(rel(path, workspace_project)) != normalize_path_text(rel(saved_model, workspace_project))
+    ]
+    if len(source_candidates) == 1:
+        return source_candidates[0].resolve(), kind, None
+    if len(source_candidates) > 1:
+        return None, kind, "selected_model_source_ambiguous:" + ",".join(rel(path, workspace_project) for path in source_candidates[:5])
+    return saved_model.resolve(), kind, None
+
+
 def selected_model_from_config(project: Path) -> tuple[Path | None, str | None, str | None]:
     candidates = selected_model_config_candidates(project)
     if not candidates:
-        return None, None, "selected_model_config_missing"
+        return selected_model_from_saved_model(project)
     last_error = "selected_model_config_missing"
     for config_path in candidates:
         selected_model, kind, error = selected_model_from_config_path(project, config_path)
         if error is None:
             return selected_model, kind, None
         last_error = error
+    saved_model, saved_kind, saved_error = selected_model_from_saved_model(candidates[0].parents[1])
+    if saved_error is None:
+        return saved_model, saved_kind, None
     return None, None, last_error
 
 
@@ -1125,28 +1196,12 @@ def default_mlflow_names(project: Path, selected_model: Path) -> tuple[str, str]
 
 def model_profile(project: Path, selected_model: Path, kind: str) -> dict[str, str]:
     details = MODEL_KIND_DETAILS.get(kind, {})
-    source_linux_path = rel(selected_model, project)
-    source_windows_path = windows_relative_path(selected_model, project)
-    saved_model_linux_path = f"saved_model/{selected_model.name}"
-    saved_model_windows_path = saved_model_linux_path.replace("/", "\\")
+    selected_info = build_selected_model_info(project, selected_model, kind)
     return {
         "model_name": selected_model.name,
         "selected_model_name": selected_model_display_name(project, selected_model),
         "model_suffix": selected_model.suffix.lower(),
-        "model_kind": kind,
-        "url": saved_model_linux_path,
-        "path": saved_model_windows_path,
-        "windows_path": saved_model_windows_path,
-        "linux_path": saved_model_linux_path,
-        "model_relative_path": saved_model_windows_path,
-        "runtime_model_path": saved_model_windows_path,
-        "saved_model_url": saved_model_linux_path,
-        "saved_model_path": saved_model_windows_path,
-        "source_url": source_linux_path,
-        "source_path": source_windows_path,
-        "linux_saved_model_path": saved_model_linux_path,
-        "linux_source_path": source_linux_path,
-        "windows_source_path": source_windows_path,
+        **selected_info,
         "model_parent": rel(selected_model.parent, project),
         "required_package": details.get("required_package", "unknown"),
         "load_hint": details.get("load_hint", "custom loader required"),
@@ -2275,14 +2330,25 @@ def write_selected_input_example():
 
 
 def selected_model_input_example_data(project: Path, selected_model: Path, kind: str) -> dict:
-    if kind in {"pytorch", "safetensors"}:
+    if kind in {"pytorch", "safetensors"} and is_image_model_path(selected_model, kind):
         payload = {
             "inputs": [
                 {
-                    "name": "selected_pytorch_tensor",
+                    "name": "selected_image_tensor",
                     "shape": [1, 1, 28, 28],
                     "datatype": "FP32",
                     "data": [0.0 for _ in range(1 * 1 * 28 * 28)],
+                }
+            ],
+        }
+    elif kind in {"pytorch", "safetensors"}:
+        payload = {
+            "inputs": [
+                {
+                    "name": "selected_tensor",
+                    "shape": [1, 4],
+                    "datatype": "FP32",
+                    "data": [[0.0, 0.0, 0.0, 0.0]],
                 }
             ],
         }
@@ -2299,18 +2365,6 @@ def selected_model_input_example_data(project: Path, selected_model: Path, kind:
         }
     else:
         payload = {"inputs": []}
-    payload["model_kind"] = kind
-    source_linux_path = rel(selected_model, project)
-    selected_windows_path = windows_relative_path(selected_model, project)
-    saved_model_linux_path = f"saved_model/{selected_model.name}"
-    saved_model_windows_path = f"saved_model\\{selected_model.name}"
-    payload["url"] = saved_model_linux_path
-    payload["path"] = saved_model_windows_path
-    payload["linux_path"] = saved_model_linux_path
-    payload["windows_path"] = saved_model_windows_path
-    payload["model_path"] = payload["path"]
-    payload["source_url"] = source_linux_path
-    payload["source_path"] = selected_windows_path
     return payload
 
 
@@ -2319,48 +2373,17 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
     inputs = input_example.get("inputs", [])
     first_input = inputs[0] if inputs and isinstance(inputs[0], dict) else {}
     return {
-        "training_data_source": "not_embedded",
-        "training_data_note": "실제 학습 데이터 원본은 config.json에 저장하지 않습니다.",
-        "dataset_path": None,
-        "input_example": "input_example.json",
         "input_schema": {
             "name": first_input.get("name"),
             "shape": first_input.get("shape"),
             "datatype": first_input.get("datatype"),
         },
-        "model_kind": kind,
-        "url": f"saved_model/{selected_model.name}",
-        "path": f"saved_model\\{selected_model.name}",
-        "linux_path": f"saved_model/{selected_model.name}",
-        "windows_path": f"saved_model\\{selected_model.name}",
-        "model_path": f"saved_model\\{selected_model.name}",
-        "source_url": rel(selected_model, project),
-        "source_path": windows_relative_path(selected_model, project),
     }
 
 
 def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
     return {
-        "model": model_profile(project, selected_model, kind),
         "data": selected_model_data_config(project, selected_model, kind),
-        "mlflow": {
-            "tracking_uri": "",
-            "tracking_username": "",
-            "tracking_password": "",
-            "experiment_name": "",
-            "registered_model_name": "",
-        },
-        "runtime": {
-            "entrypoint": "runtest_2.py",
-            "model_entrypoint": "aiu_custom/model.py",
-            "predict_entrypoint": "aiu_custom/predict.py",
-            "input_example": "input_example.json",
-            "inference_test": "inferencetest.py",
-        },
-        "policy": {
-            "model_source": "selected_project_model_path",
-            "secret_output": "masked",
-        },
     }
 
 
@@ -2451,9 +2474,6 @@ request_input_example = {{
     "model_kind": model_kind,
     "url": {saved_model_url!r},
     "path": {saved_model_path!r},
-    "linux_path": {saved_model_url!r},
-    "windows_path": {saved_model_path!r},
-    "model_path": {saved_model_path!r},
     "source_url": {source_model_path.replace(chr(92), "/")!r},
     "source_path": {source_model_path!r},
 }}
@@ -2501,13 +2521,15 @@ def generated_constant_free_runtest_text(project: Path, selected_model: Path, ki
     saved_model_relative = f"saved_model/{selected_model.name}"
     saved_model_windows_relative = saved_model_relative.replace("/", "\\")
     saved_model_windows_relative = f"saved_model\\{selected_model.name}"
-    selected_linux_relative = normalize_path_text(selected_relative)
-    saved_model_linux_relative = saved_model_relative
+    selected_info = build_selected_model_info(project, selected_model, kind)
+    selected_linux_relative = selected_info["source_url"]
+    saved_model_linux_relative = selected_info["url"]
     default_experiment_name, default_register_model_name = default_mlflow_names(project, selected_model)
     profile = model_profile(project, selected_model, kind)
     input_example = selected_model_input_example_data(project, selected_model, kind)
     config = selected_model_config_data(project, selected_model, kind)
     config_literal = pformat(config, width=100, sort_dicts=False)
+    selected_model_info_literal = pformat(selected_info, width=100, sort_dicts=False)
     input_example_code = reference_style_input_example_code(
         kind,
         input_example,
@@ -2683,18 +2705,21 @@ except Exception as exc:
 
 
 # ------------------------------------------------------------
+selected_model_info = {selected_model_info_literal}
+model_kind = selected_model_info["model_kind"]
+
+
 # 데이터 준비
 # ------------------------------------------------------------
 selected_model_path = first_existing_file(
     "selected_model",
     [
-        workspace_relative_path({saved_model_windows_relative!r}),
-        workspace_relative_path({selected_windows_relative!r}),
+        workspace_relative_path(selected_model_info["path"]),
+        workspace_relative_path(selected_model_info["source_path"]),
         workspace_path("saved_model", {selected_model.name!r}),
         workspace_path({selected_model.name!r}),
     ],
 )
-model_kind = {kind!r}
 
 {input_example_code}
 
@@ -2727,13 +2752,6 @@ os.makedirs(config_dir_path, exist_ok=True)
 config_path = workspace_path(config_dir, "config.json")
 
 params = {config_literal}
-params["model"]["url"] = {saved_model_linux_relative!r}
-params["model"]["path"] = {saved_model_windows_relative!r}
-params["model"]["runtime_model_path"] = {saved_model_windows_relative!r}
-params["model"]["model_relative_path"] = {saved_model_windows_relative!r}
-params["model"]["linux_path"] = {saved_model_linux_relative!r}
-params["model"]["source_path"] = {selected_windows_relative!r}
-params["model"]["linux_source_path"] = {selected_linux_relative!r}
 
 with open(config_path, "w", encoding="utf-8") as f:
     json.dump(params, f, indent=4, ensure_ascii=False)
@@ -2814,15 +2832,15 @@ with mlflow.start_run(run_name=mlflow_register_model_name) as run:
         mlflow.log_input(mlflow_test_ds, context="test")
 
     mlflow.set_tag("data.name", "selected_model")
-    mlflow.set_tag("model.type", params["model"]["model_name"])
+    mlflow.set_tag("model.type", {selected_model.name!r})
     mlflow.set_tag("framework", model_kind)
 
     mlflow.log_params(
         {{
-            "model_name": params["model"]["model_name"],
-            "model_kind": model_kind,
-            "model_url": {saved_model_linux_relative!r},
-            "model_path": {saved_model_windows_relative!r},
+            "model_name": {selected_model.name!r},
+            "model_kind": selected_model_info["model_kind"],
+            "model_url": selected_model_info["url"],
+            "model_path": selected_model_info["path"],
         }}
     )
 
@@ -3712,10 +3730,7 @@ def requirements_packages_for_kind(kind: str, project: Path | None = None) -> tu
 
 
 def looks_like_image_model(selected_model: Path | None, kind: str | None) -> bool:
-    if selected_model is None or kind not in IMAGE_MODEL_KINDS:
-        return False
-    model_text = normalize_path_text(str(selected_model)).lower()
-    return any(keyword in model_text for keyword in IMAGE_MODEL_KEYWORDS)
+    return is_image_model_path(selected_model, kind)
 
 
 def image_model_manual_requirements(selected_model: Path | None, kind: str | None) -> list[str]:
@@ -4032,8 +4047,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
     failures: list[str] = []
     direct_selected_path_files = {
         "runtest_2.py",
-        "input_example.json",
-        "config/config.json",
     }
 
     for path in required_text_files:
@@ -4052,6 +4065,29 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             and saved_model_windows_relative not in text
         ):
             failures.append(f"selected_model_not_reflected:{display_path}:{selected_relative}")
+        if display_path == "config/config.json":
+            try:
+                config_payload = json.loads(text)
+            except json.JSONDecodeError as exc:
+                failures.append(f"config_json_invalid:{exc}")
+                continue
+            data_payload = config_payload.get("data")
+            if not isinstance(data_payload, dict):
+                failures.append("config_data_section_missing:config/config.json")
+            elif "input_schema" not in data_payload:
+                failures.append("config_input_schema_missing:config/config.json")
+            unexpected_top_level = sorted(set(config_payload) - {"data"})
+            if unexpected_top_level:
+                failures.append("config_unexpected_sections:" + ",".join(unexpected_top_level))
+        if display_path == "input_example.json":
+            try:
+                input_payload = json.loads(text)
+            except json.JSONDecodeError as exc:
+                failures.append(f"input_example_json_invalid:{exc}")
+                continue
+            leaked_keys = sorted({"model_kind", "url", "path", "source_url", "source_path"}.intersection(input_payload))
+            if leaked_keys:
+                failures.append("input_example_selected_model_info_forbidden:" + ",".join(leaked_keys))
         if display_path == "runtest_2.py":
             required_registration_markers = [
                 "from aiu_custom.predict import ModelWrapper",
@@ -4116,27 +4152,6 @@ def verify_selected_model_conversion(project: Path, selected_model: Path, kind: 
             for marker in ['req_url = ""', 'requests.post(req_url', 'input_example.json']:
                 if marker not in text:
                     failures.append(f"inferencetest_template_missing:{marker}")
-        if display_path == "config/config.json":
-            try:
-                config = json.loads(text)
-            except json.JSONDecodeError as exc:
-                failures.append(f"selected_model_config_invalid_json:{exc.lineno}")
-                config = {}
-            model_config = config.get("model", {}) if isinstance(config, dict) else {}
-            config_path = model_config.get("path") or model_config.get("model_relative_path") or model_config.get("runtime_model_path")
-            config_source_path = model_config.get("source_path") or model_config.get("original_path")
-            config_kind = model_config.get("model_kind")
-            if normalize_path_text(str(config_path or "")) != normalize_path_text(saved_model_relative):
-                failures.append(f"selected_model_config_path_mismatch:{config_path}->{saved_model_relative}")
-            if normalize_path_text(str(config_source_path or "")) != normalize_path_text(selected_relative):
-                failures.append(f"selected_model_config_source_path_mismatch:{config_source_path}->{selected_relative}")
-            config_url = model_config.get("url")
-            expected_url = saved_model_relative
-            if config_url != expected_url:
-                failures.append(f"selected_model_config_url_mismatch:{config_url}->{expected_url}")
-            if config_kind != kind:
-                failures.append(f"selected_model_config_kind_mismatch:{config_kind}->{kind}")
-
         for other_model in models:
             other_relative = rel(other_model, project)
             other_absolute = absolute_path_text(other_model)
@@ -4320,6 +4335,14 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
             report.prepared_paths.extend(config_changed)
             report.skipped.extend(config_skipped)
             report.failures.extend(config_failures)
+            input_changed, input_skipped, input_failures = write_input_example(work_project, selected_model, selected_kind, args.execute)
+            report.prepared_paths.extend(input_changed)
+            report.skipped.extend(input_skipped)
+            report.failures.extend(input_failures)
+            saved_changed, saved_skipped, saved_failures = write_saved_model(work_project, selected_model, args.execute)
+            report.prepared_paths.extend(saved_changed)
+            report.skipped.extend(saved_skipped)
+            report.failures.extend(saved_failures)
         report.prepared_paths.append("selected_model selected")
         if args.execute and not report.failures:
             report.next_steps.extend(

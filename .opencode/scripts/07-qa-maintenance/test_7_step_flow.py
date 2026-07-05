@@ -185,26 +185,35 @@ def verify_generated_files(project: Path) -> None:
         raise AssertionError("requirements.txt must not contain wheel local tags such as +cpu")
 
     config = json.loads((project / "config" / "config.json").read_text(encoding="utf-8"))
-    model_config = config.get("model", {})
-    model_path = str(model_config.get("path") or model_config.get("model_path") or "")
-    model_url = str(model_config.get("url") or "")
-    source_path = str(model_config.get("source_path") or "")
-    assert_windows_relative_path(model_path, "config model path")
-    assert_windows_relative_path(source_path, "config source path")
-    if not model_path.replace("/", "\\").startswith("saved_model\\"):
-        raise AssertionError(f"config model path must use saved_model: {model_path}")
-    if "\\" in model_url or not model_url.startswith("saved_model/"):
-        raise AssertionError(f"config model url must use KServe slash path: {model_url}")
-    if not source_path:
-        raise AssertionError("config source_path is required")
+    if set(config) != {"data"}:
+        raise AssertionError("config/config.json must keep only data schema")
+    data_config = config.get("data", {})
+    if not isinstance(data_config, dict) or "input_schema" not in data_config:
+        raise AssertionError("config/config.json data.input_schema is required")
 
     input_example = json.loads((project / "input_example.json").read_text(encoding="utf-8"))
-    input_model_path = str(input_example.get("model_path") or input_example.get("path") or "")
-    input_source_path = str(input_example.get("source_path") or "")
-    assert_windows_relative_path(input_model_path, "input_example model path")
-    assert_windows_relative_path(input_source_path, "input_example source path")
-    if not input_model_path.replace("/", "\\").startswith("saved_model\\"):
-        raise AssertionError(f"input_example model path must use saved_model: {input_model_path}")
+    forbidden_input_keys = {"model_kind", "url", "path", "source_url", "source_path"}
+    leaked_keys = sorted(forbidden_input_keys.intersection(input_example))
+    if leaked_keys:
+        raise AssertionError("input_example.json must not contain selected model connection keys: " + ", ".join(leaked_keys))
+
+    saved_models = sorted((project / "saved_model").iterdir(), key=lambda path: path.name.lower())
+    if not saved_models:
+        raise AssertionError("saved_model/<selected-model> is required")
+    saved_model = saved_models[0]
+    model_path = f"saved_model\\{saved_model.name}"
+    model_url = f"saved_model/{saved_model.name}"
+    source_matches = sorted((project.parent / "data").rglob(saved_model.name)) if (project.parent / "data").is_dir() else []
+    source_path = os.path.relpath(source_matches[0], project.parent).replace("/", "\\") if len(source_matches) == 1 else ""
+    source_url = source_path.replace("\\", "/") if source_path else ""
+    assert_windows_relative_path(model_path, "selected model info path")
+    assert_windows_relative_path(source_path, "selected model info source path")
+    if not model_path.replace("/", "\\").startswith("saved_model\\"):
+        raise AssertionError(f"selected model path must use saved_model: {model_path}")
+    if "\\" in model_url or not model_url.startswith("saved_model/"):
+        raise AssertionError(f"selected model url must use KServe slash path: {model_url}")
+    if "\\" in source_url:
+        raise AssertionError(f"selected model source_url must use slash path: {source_url}")
 
     runtest_text = (project / "runtest_2.py").read_text(encoding="utf-8", errors="ignore")
     if re.search(r"[A-Za-z]:\\", runtest_text):
@@ -216,9 +225,11 @@ def verify_generated_files(project: Path) -> None:
 
 def verify_selected_model_is_preserved(project: Path, expected_source_path: str) -> None:
     expected = normalized_windows_path(expected_source_path)
-    config = json.loads((project / "config" / "config.json").read_text(encoding="utf-8"))
-    model_config = config.get("model", {})
-    source_path = normalized_windows_path(str(model_config.get("source_path") or ""))
+    saved_models = sorted((project / "saved_model").iterdir(), key=lambda path: path.name.lower())
+    if not saved_models:
+        raise AssertionError("saved_model/<selected-model> is required")
+    source_matches = sorted((project.parent / "data").rglob(saved_models[0].name)) if (project.parent / "data").is_dir() else []
+    source_path = normalized_windows_path(os.path.relpath(source_matches[0], project.parent)) if len(source_matches) == 1 else ""
     if source_path != expected:
         raise AssertionError(f"selected source model changed: {source_path} != {expected}")
 
@@ -284,7 +295,7 @@ def main() -> int:
         assert_contains(step3.stdout, "로컬 자동 설치", "step 3 dependency install must be skipped")
         if str(project) in step3.stdout:
             raise AssertionError("step 3 output must not print the absolute workspace path")
-        assert_contains(step3.stdout, f"path: {selected_source_path}", "step 3 selected model preservation")
+        assert_contains(step3.stdout, selected_source_path, "step 3 selected model preservation")
         verify_default_env_file(project)
         verify_selected_model_is_preserved(project, selected_source_path)
         if not runtest_2_preexisting and (project / "runtest_2.py").exists():

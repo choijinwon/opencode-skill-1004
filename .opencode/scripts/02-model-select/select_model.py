@@ -118,6 +118,15 @@ def print_selected_entrypoint_only(report) -> None:
     print(f"MODEL_KIND: {report.model_kind or 'missing'}")
     print(f"실행 파일: {selected_entrypoint_path(report)}")
     print(f"작업 폴더: {report.work_project_path or '.'}")
+    prepared = list(getattr(report, "prepared_paths", []) or [])
+    config_copied = any("config/" in item and "-> model work folder config/" in item for item in prepared)
+    config_transformed = any(item.startswith("config/config.json transformed") for item in prepared)
+    if config_copied or config_transformed:
+        print("준비 결과:")
+        if config_copied:
+            print("- config/: .opencode/samples/pytorch_sample/config/ 샘플 폴더 복사")
+        if config_transformed:
+            print("- config/config.json: 선택 모델 기준 변환")
     print("다음 가능 단계:")
     print_markdown_table(
         ["Status", "Step", "Action"],

@@ -19,6 +19,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
+from common.selected_model_info import normalize_path_text
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
@@ -184,6 +185,19 @@ MODEL_KIND_REQUIRED_PACKAGE = {
     "xgboost_bst": "xgboost",
     "xgboost_ubj": "xgboost",
 }
+MODEL_KIND_BY_SUFFIX = {
+    ".pkl": "sklearn_pickle",
+    ".joblib": "sklearn_joblib",
+    ".pt": "pytorch",
+    ".pth": "pytorch",
+    ".ckpt": "pytorch",
+    ".onnx": "onnx",
+    ".h5": "tensorflow_h5",
+    ".keras": "tensorflow_keras",
+    ".safetensors": "safetensors",
+    ".bst": "xgboost_bst",
+    ".ubj": "xgboost_ubj",
+}
 MODEL_KIND_REQUIREMENT_MAP = {
     "sklearn_pickle": ["joblib==1.5.1", "scikit-learn==1.7.0"],
     "sklearn_joblib": ["joblib==1.5.1", "scikit-learn==1.7.0"],
@@ -302,11 +316,7 @@ def apply_mlflow_environment_version(
     if remote_mlflow and remote_mlflow.server_version:
         versions["mlflow"] = f"=={remote_mlflow.server_version}"
         return versions
-    local_version = package_version("mlflow")
-    if local_version:
-        versions["mlflow"] = f"=={local_version}"
-    else:
-        versions["mlflow"] = ""
+    versions["mlflow"] = ""
     return versions
 LOCAL_IMPORT_ROOTS = {"aiu_custom"}
 REQUIREMENT_SCAN_FILES = [
@@ -721,7 +731,7 @@ def looks_like_image_model(selected_path: str | None, model_kind: str | None) ->
 
 
 def selected_image_model_manual_requirements(selected_path: str | None, model_kind: str | None) -> list[str]:
-    if not looks_like_image_model(selected_path, model_kind):
+    if model_kind not in IMAGE_MODEL_KINDS:
         return []
     return list(IMAGE_MODEL_MANUAL_REQUIREMENT_MAP.get(model_kind or "", []))
 
@@ -942,6 +952,13 @@ def selected_model_config_candidates(project: Path) -> list[Path]:
     return sorted(candidates, key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
 
 
+def infer_model_kind_from_path(path_text: str | None) -> str | None:
+    if not path_text:
+        return None
+    suffix = Path(normalize_path_text(path_text)).suffix.lower()
+    return MODEL_KIND_BY_SUFFIX.get(suffix)
+
+
 def selected_model_project(project: Path) -> Path:
     candidates = selected_model_config_candidates(project)
     if not candidates:
@@ -949,20 +966,59 @@ def selected_model_project(project: Path) -> Path:
     return candidates[0].parents[1]
 
 
+def selected_model_status_from_input_example(project: Path) -> tuple[str | None, str | None, str | None, str | None]:
+    saved_model_dir = project / "saved_model"
+    if not saved_model_dir.is_dir():
+        return None, None, None, None
+    saved_models = [
+        path
+        for path in sorted(saved_model_dir.iterdir(), key=lambda item: item.name.lower())
+        if path.is_file() or path.is_dir()
+        if infer_model_kind_from_path(path.name)
+    ]
+    if not saved_models:
+        return None, None, None, None
+    saved_model = saved_models[0]
+    workspace_project = project.parent
+    data_root = workspace_project / "data"
+    source_matches: list[Path] = []
+    if data_root.is_dir():
+        for path in data_root.rglob(saved_model.name):
+            if path.is_file() or path.is_dir():
+                source_matches.append(path)
+    selected_path = (
+        normalize_path_text(os.path.relpath(source_matches[0], workspace_project))
+        if len(source_matches) == 1
+        else f"saved_model/{saved_model.name}"
+    )
+    model_kind = infer_model_kind_from_path(saved_model.name)
+    required_package = MODEL_KIND_REQUIRED_PACKAGE.get(model_kind) if isinstance(model_kind, str) else None
+    normalized_package = normalize_package_name(required_package) if isinstance(required_package, str) else None
+    package_status = "set" if normalized_package and package_version(normalized_package) else ("missing" if normalized_package else None)
+    return (
+        selected_path if isinstance(selected_path, str) else None,
+        model_kind if isinstance(model_kind, str) else None,
+        normalized_package,
+        package_status,
+    )
+
+
 def selected_model_status(project: Path) -> tuple[str | None, str | None, str | None, str | None]:
     candidates = selected_model_config_candidates(project)
     if not candidates:
-        return None, None, None, None
+        return selected_model_status_from_input_example(project)
     config_path = candidates[0]
     try:
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return None, None, None, None
+        return selected_model_status_from_input_example(config_path.parents[1])
     model = payload.get("model") if isinstance(payload, dict) else None
     if not isinstance(model, dict):
-        return None, None, None, None
+        return selected_model_status_from_input_example(config_path.parents[1])
     selected_path = model.get("source_path") or model.get("original_path") or model.get("relative_path") or model.get("model_relative_path") or model.get("runtime_model_path")
-    model_kind = model.get("model_kind") or model.get("kind")
+    model_kind = model.get("model_kind") or model.get("kind") or infer_model_kind_from_path(
+        selected_path if isinstance(selected_path, str) else None
+    )
     required_package = model.get("required_package")
     if isinstance(required_package, str) and required_package == "unknown":
         required_package = None
@@ -1658,14 +1714,8 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
         item.name: item.required_version
         for item in requirements
     }
-    selected_recommendations = filter_existing_requirement_recommendations(
-        selected_model_manual_requirements(selected_kind),
-        requirements,
-    )
-    image_model_recommendations = filter_existing_requirement_recommendations(
-        selected_image_model_manual_requirements(selected_path, selected_kind),
-        requirements,
-    )
+    selected_recommendations = selected_model_manual_requirements(selected_kind)
+    image_model_recommendations = selected_image_model_manual_requirements(selected_path, selected_kind)
     packages = []
     package_names = unique_preserve_order(
         [
@@ -1743,7 +1793,7 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
     elif remote_mlflow.status == "missing_local_mlflow" and remote_mlflow.server_version:
         next_steps.append(f"로컬 mlflow 설치 여부와 관계없이 requirements.txt의 mlflow를 {remote_mlflow.required_version}로 반영했습니다.")
     elif remote_mlflow.status == "unreachable":
-        next_steps.append("원격 MLflow 서버 버전 확인에 실패했습니다. 서버 URL/방화벽/인증 정보를 확인하세요.")
+        next_steps.append("원격 MLflow 서버 버전 확인에 실패했습니다. requirements.txt의 mlflow는 버전 고정 없이 유지합니다.")
     if remote_mlflow.server_version:
         for item in requirements:
             if normalize_package_name(item.name) != "mlflow":
@@ -1910,6 +1960,20 @@ def selected_model_requirement_rows(report: EnvironmentReport) -> list[list[str]
     return []
 
 
+def selected_model_info_rows(report: EnvironmentReport) -> list[list[str]]:
+    if not report.selected_model_path or not report.selected_model_kind:
+        return []
+    source_url = normalize_path_text(report.selected_model_path)
+    model_name = Path(source_url).name
+    return [
+        ["model_kind", report.selected_model_kind],
+        ["url", f"saved_model/{model_name}"],
+        ["path", f"saved_model\\{model_name}"],
+        ["source_url", source_url],
+        ["source_path", source_url.replace("/", "\\")],
+    ]
+
+
 def pinned_mandatory_requirements(report: EnvironmentReport) -> list[str]:
     requirements: list[str] = []
     if report.remote_mlflow and report.remote_mlflow.server_version:
@@ -1956,6 +2020,10 @@ def print_text(report: EnvironmentReport):
         ["Key", "상태"],
         env_setting_rows(report),
     )
+    selected_info_rows = selected_model_info_rows(report)
+    if selected_info_rows:
+        print("\n선택 모델 연결 정보")
+        print_markdown_table(["Key", "Value"], selected_info_rows)
 
     if report.requirements:
         print("\n2. requirements 기본 항목")
@@ -2036,6 +2104,10 @@ def print_verbose_text(report: EnvironmentReport):
         ["Key", "상태"],
         env_setting_rows(report),
     )
+    selected_info_rows = selected_model_info_rows(report)
+    if selected_info_rows:
+        print("\n선택 모델 연결 정보")
+        print_markdown_table(["Key", "Value"], selected_info_rows)
 
     if report.requirements:
         print("\n2. requirements 기본 항목")
@@ -2091,9 +2163,9 @@ def print_verbose_text(report: EnvironmentReport):
         if report.remote_mlflow.server_version:
             remote_rows.append(["requirements transform", "mlflow version follows remote server"])
         elif report.remote_mlflow.tracking_uri_status == "set":
-            remote_rows.append(["requirements transform", "remote URL checked; local mlflow version applied when server version is unavailable"])
+            remote_rows.append(["requirements transform", "remote URL set; mlflow stays unpinned until server version is confirmed"])
         else:
-            remote_rows.append(["requirements transform", "remote URL missing; local mlflow version applied"])
+            remote_rows.append(["requirements transform", "remote URL missing; mlflow stays unpinned"])
         print_markdown_table(["항목", "값"], remote_rows)
 
     if report.ai_studio_env:
