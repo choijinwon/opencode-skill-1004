@@ -1353,6 +1353,32 @@ def ensure_model_work_dir(project: Path, work_project: Path, execute: bool) -> t
     return changed, skipped, failures
 
 
+def copy_template_config_folder(project: Path, kind: str | None, execute: bool) -> tuple[list[str], list[str], list[str]]:
+    changed: list[str] = []
+    skipped: list[str] = []
+    failures: list[str] = []
+    sample_dir = template_sample_dir(kind)
+    sample_dir_name = template_sample_dir_name(kind)
+    source_root = sample_dir / "config"
+    target_root = project / "config"
+    if not source_root.is_dir():
+        failures.append(f"{sample_dir_name}_config_missing:{source_root}")
+        return changed, skipped, failures
+    if not execute:
+        skipped.append("config/ template copy:dry_run")
+        return changed, skipped, failures
+    for source in source_root.rglob("*"):
+        relative = source.relative_to(source_root)
+        destination = target_root / relative
+        if source.is_dir():
+            destination.mkdir(parents=True, exist_ok=True)
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    changed.append(f".opencode/samples/{sample_dir_name}/config/ -> model work folder config/")
+    return changed, skipped, failures
+
+
 def write_saved_model(project: Path, selected_model: Path, execute: bool) -> tuple[list[str], list[str], list[str]]:
     target = project / "saved_model" / selected_model.name
     changed: list[str] = []
@@ -2316,8 +2342,9 @@ def selected_model_data_config(project: Path, selected_model: Path, kind: str) -
 def selected_model_config_data(project: Path, selected_model: Path, kind: str) -> dict:
     return {
         "model": model_profile(project, selected_model, kind),
+        "data": selected_model_data_config(project, selected_model, kind),
         "mlflow": {
-            "tracking_url": "",
+            "tracking_uri": "",
             "tracking_username": "",
             "tracking_password": "",
             "experiment_name": "",
@@ -2325,6 +2352,14 @@ def selected_model_config_data(project: Path, selected_model: Path, kind: str) -
         },
         "runtime": {
             "entrypoint": "runtest_2.py",
+            "model_entrypoint": "aiu_custom/model.py",
+            "predict_entrypoint": "aiu_custom/predict.py",
+            "input_example": "input_example.json",
+            "inference_test": "inferencetest.py",
+        },
+        "policy": {
+            "model_source": "selected_project_model_path",
+            "secret_output": "masked",
         },
     }
 
@@ -4277,6 +4312,10 @@ def build_report(args: argparse.Namespace) -> PreparedModelReport:
         report.skipped.extend(work_skipped)
         report.failures.extend(work_failures)
         if selected_model and selected_kind:
+            config_template_changed, config_template_skipped, config_template_failures = copy_template_config_folder(work_project, selected_kind, args.execute)
+            report.prepared_paths.extend(config_template_changed)
+            report.skipped.extend(config_template_skipped)
+            report.failures.extend(config_template_failures)
             config_changed, config_skipped, config_failures = write_config_json(work_project, selected_model, selected_kind, args.execute)
             report.prepared_paths.extend(config_changed)
             report.skipped.extend(config_skipped)

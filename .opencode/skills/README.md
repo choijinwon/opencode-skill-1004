@@ -44,7 +44,7 @@
 - 모델 선택 단계에서는 사용할 모델만 확정하고 이후 단계가 같은 선택 모델을 계속 사용한다.
 - 템플릿 변환은 사용자가 4번을 선택했을 때만 실행한다.
 - 4번 템플릿 변환에서 기존 `runtest.py`를 읽기 전용으로 참조해 `runtest_2.py`를 변환한다.
-- 4번 템플릿 변환에서 `.opencode/samples/pytorch_sample/local_serving/` 폴더만 작업 폴더의 `local_serving/`로 복사한 뒤 선택 모델 기준으로 변환한다.
+- 4번 템플릿 변환에서 `.opencode/samples/pytorch_sample/`의 `local_serving/`, `aiu_custom/`, `config/` 폴더를 작업 폴더로 복사한 뒤 선택 모델 기준으로 변환한다.
 - `data/`와 `requirements.txt`는 템플릿에서 복사하지 않고, `requirements.txt`는 3번 환경검증에서 워크스페이스 루트에 변환한다.
 - 사용자에게 프로세스를 보여줄 때는 현재 복사/변환 흐름만 보여주고 하위 호환 또는 미사용 경로 설명은 넣지 않는다.
 - 복사된 템플릿 파일 구성은 고정하지 않고 비교/수정하지 않는다.
@@ -84,8 +84,8 @@ Step 3. 환경 검증
         로컬 dependency 설치는 자동 실행하지 않는다.
 Step 4. 템플릿 변환
         사용자가 4번을 선택했을 때만 실행한다.
-        워크스페이스 루트 아래 선택 모델명 작업 폴더를 만들고 .opencode/samples/pytorch_sample/local_serving/ 폴더만 먼저 복사한다.
-        복사된 local_serving 템플릿 파일을 다시 읽은 뒤 선택 모델 기준 연결부만 최소 변환한다.
+        워크스페이스 루트 아래 선택 모델명 작업 폴더를 만들고 .opencode/samples/pytorch_sample/의 local_serving/, aiu_custom/, config/ 폴더를 먼저 복사한다.
+        복사된 템플릿 파일을 다시 읽은 뒤 선택 모델 기준 연결부만 최소 변환한다.
         기존 runtest.py를 읽기 전용으로 참조해 runtest_2.py를 변환한다.
         복사된 템플릿 기준으로 선택 모델 경로와 모델 형식 연결부를 수정한다.
         `--sync-runtime`은 이미 선택된 모델 기준으로 런타임 파일을 다시 맞출 때 사용한다.

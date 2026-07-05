@@ -80,3 +80,6 @@
 | 23:55:15 | prompt | Ai Studio step 3 environment check | User reran step 3 after MLflow URI update | Env check complete for sample_model; required settings remain set and step 5 can be retried |
 | 23:56:01 | prompt | Ai Studio step 3 environment check | User reran step 3 environment validation again | Env check passed for sample_model; all required MLflow settings remain set |
 | 23:56:19 | history | Ai Studio step 3 image package candidates | 환경 검증 출력에 이미지 모델 패키지 후보 섹션 추가 요청 | requirements 기본 항목, 선택 모델 패키지 후보, 이미지 모델 패키지 후보 섹션명 정리 및 문서 반영 |
+| 23:57:18 | prompt | Ai Studio step 1 workspace analysis | Initial greeting and workspace entry | Printed Ai Studio guide and analyzed workspace; model_found true with 8 selectable models |
+| 23:57:46 | prompt | Ai Studio step 2 model selection | Selected model number 3 | Locked selected model data/case-tests/sample_model.pt (pytorch) with work folder sample_model |
+| 23:58:02 | prompt | Ai Studio step 3 environment check | Ran environment validation for selected model | Environment check found empty MLflow settings and showed required packages for pytorch model |
