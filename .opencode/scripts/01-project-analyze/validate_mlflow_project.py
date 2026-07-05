@@ -1171,19 +1171,15 @@ def print_model_list(report: ValidationReport):
 
 
 def print_text(report: ValidationReport):
-    # 기본 출력은 짧은 요약과 목록만 보여주는 간단 모드입니다.
+    # 기본 출력은 사용자가 바로 판단할 수 있는 결과만 보여줍니다.
+    # 모델 목록/상세 점검표는 --list 또는 --verbose 옵션에서만 출력합니다.
     count = len(report.selectable_model_paths) or (len(report.model_artifact_paths) + len(report.training_code_paths))
-    print_markdown_table(
-        ["항목", "값"],
-        [
-            ["현재 단계", "1. 프로젝트 분석"],
-            ["model_found", str(report.model_found).lower()],
-            ["analysis_case", report.analysis_case or "none"],
-            ["발견 개수", str(count)],
-        ],
-    )
-    print()
-    print_model_list(report)
+    if report.model_found:
+        print(f"분석 완료: 모델 있음 ({count}개)")
+        print("다음 단계: 사용할 모델 번호를 선택해주세요.")
+        return
+    print("분석 완료: 모델 없음")
+    print("다음 단계: 샘플을 선택해주세요. 1 sklearn / 2 pytorch / 3 tensorflow")
 
 
 def print_verbose_text(report: ValidationReport):
