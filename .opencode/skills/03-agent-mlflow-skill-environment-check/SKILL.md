@@ -60,6 +60,9 @@ metadata:
 - 원격 MLflow URI 상태
 - 처리해야 할 항목
 - 다시 검증 명령
+- requirements 기본 항목: `mlflow`, `kserve==0.15.0`
+- 선택 모델 패키지 후보: 모델 형식 기준 후보를 사용자가 직접 선택해 `requirements.txt`에 입력
+- 이미지 모델 패키지 후보: 이미지/CNN/vision 모델일 때 `pillow`, `matplotlib` 등 보조 후보를 별도 표시
 
 상세 출력은 사용자가 요청하거나 --verbose 실행 시에만 보여준다:
 - OS, virtualenv, dependency 파일 전체

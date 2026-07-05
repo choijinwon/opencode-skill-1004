@@ -1404,19 +1404,29 @@ def check_remote_mlflow_version(project: Path, entrypoint_name: str | None = Non
             local_version=local_version,
             detail="mlflow_tracking_uri is missing",
         )
-    if tracking_uri.lower().startswith("file://"):
+    lowered_tracking_uri = tracking_uri.lower()
+    if lowered_tracking_uri.startswith(("file://", "sqlite:")):
         return RemoteMlflowStatus(
             tracking_uri_status="unsupported",
             status="skipped",
             local_version=local_version,
-            detail="file:// tracking URI is not allowed for AI Studio deployment; use remote MLflow/report URL",
+            detail="local file/sqlite tracking URI is not allowed for AI Studio deployment; use remote MLflow/report URL",
         )
-    if not tracking_uri.lower().startswith(("http://", "https://")):
+    if not lowered_tracking_uri.startswith(("http://", "https://")):
         return RemoteMlflowStatus(
             tracking_uri_status="unsupported",
             status="skipped",
             local_version=local_version,
             detail="tracking URI must start with http:// or https:// for remote version check",
+        )
+    parsed = urllib.parse.urlparse(tracking_uri)
+    host = (parsed.hostname or "").lower()
+    if host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}:
+        return RemoteMlflowStatus(
+            tracking_uri_status="unsupported",
+            status="skipped",
+            local_version=local_version,
+            detail="localhost/127.0.0.1 tracking URI is not allowed for step 5; use remote MLflow/report URL",
         )
 
     username = settings.get("mlflow_tracking_username")
@@ -1948,7 +1958,7 @@ def print_text(report: EnvironmentReport):
     )
 
     if report.requirements:
-        print("\nrequirements.txt 기본 항목")
+        print("\n2. requirements 기본 항목")
         print_markdown_table(
             ["Package", "Required", "기준"],
             [
@@ -1960,7 +1970,7 @@ def print_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
-        print("\nrequirements 선택한 모델 패키지 후보 (선택 사항)")
+        print("\n3. 선택 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Requirement"],
             selected_requirement_rows,
@@ -1974,7 +1984,7 @@ def print_text(report: EnvironmentReport):
             print("필요한 항목만 사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)
     if report.image_model_recommendations:
-        print("\n선택 모델 기준 이미지 모델 추천 (직접 requirements.txt 입력)")
+        print("\n3-1. 이미지 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Package", "Version"],
             [
@@ -2028,7 +2038,7 @@ def print_verbose_text(report: EnvironmentReport):
     )
 
     if report.requirements:
-        print("\nrequirements.txt 기본 항목")
+        print("\n2. requirements 기본 항목")
         print_markdown_table(
             ["Package", "Required", "기준"],
             [
@@ -2040,7 +2050,7 @@ def print_verbose_text(report: EnvironmentReport):
         )
     selected_requirement_rows = selected_model_requirement_rows(report)
     if selected_requirement_rows:
-        print("\nrequirements 선택한 모델 패키지 후보 (선택 사항)")
+        print("\n3. 선택 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Requirement"],
             selected_requirement_rows,
@@ -2054,7 +2064,7 @@ def print_verbose_text(report: EnvironmentReport):
             print("필요한 항목만 사용자가 직접 선택해 requirements.txt에 추가:")
             print_copy_block(selected_requirements)
     if report.image_model_recommendations:
-        print("\n선택 모델 기준 이미지 모델 추천 (직접 requirements.txt 입력)")
+        print("\n3-1. 이미지 모델 패키지 후보 (선택 사항)")
         print_markdown_table(
             ["Package", "Version"],
             [

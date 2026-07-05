@@ -71,3 +71,12 @@
 | 23:18:40 | prompt | Ai Studio step 1 workspace analysis | Initial greeting and workspace analysis | model_found true; found 8 selectable models |
 | 23:19:01 | prompt | Ai Studio step 2 model selection | User selected model number 3 | Selected data/case-tests/sample_model.pt as pytorch; work folder sample_model |
 | 23:20:42 | history | Ai Studio step 5 remote-only cleanup | 5번 항목에서 로컬 테스트 항목 제거 요청 | Step 5 생성 템플릿과 환경 검증 문구에서 로컬 MLflow 테스트/환경 표현 제거, 원격 MLflow 등록만 유지 |
+| 23:45:28 | prompt | Ai Studio step 3 environment check | User selected step 3 environment validation | Env check complete for sample_model; MLflow settings empty; requirements guidance shown |
+| 23:46:41 | prompt | Ai Studio step 4 template conversion | User selected step 4 template conversion | Template conversion blocked because required MLflow env values are missing in sample_model/.env |
+| 23:46:59 | prompt | Ai Studio step 3 environment check | User reran step 3 environment validation | Env check passed for sample_model; required MLflow settings are set |
+| 23:47:17 | prompt | Ai Studio step 4 template conversion | User selected step 4 template conversion | Prepared selected model in sample_model; generated runtest_2.py inferencetest.py input_example.json and updated requirements |
+| 23:54:17 | history | Ai Studio step 5 remote URI guard | 5번 원격 등록에서 로컬 경로/localhost 설정 시 오류 표시 및 환경 재설정 안내 요청 | run_training.py와 check_environment.py에서 localhost/127.0.0.1/0.0.0.0/file/sqlite tracking URI를 차단하고 사용자 안내 표시 |
+| 23:54:49 | prompt | Ai Studio step 5 remote MLflow registration | User selected step 5 remote MLflow registration | Remote MLflow registration blocked because mlflow_tracking_uri is set to a local address |
+| 23:55:15 | prompt | Ai Studio step 3 environment check | User reran step 3 after MLflow URI update | Env check complete for sample_model; required settings remain set and step 5 can be retried |
+| 23:56:01 | prompt | Ai Studio step 3 environment check | User reran step 3 environment validation again | Env check passed for sample_model; all required MLflow settings remain set |
+| 23:56:19 | history | Ai Studio step 3 image package candidates | 환경 검증 출력에 이미지 모델 패키지 후보 섹션 추가 요청 | requirements 기본 항목, 선택 모델 패키지 후보, 이미지 모델 패키지 후보 섹션명 정리 및 문서 반영 |

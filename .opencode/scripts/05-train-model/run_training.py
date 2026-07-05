@@ -450,6 +450,10 @@ def validate_mlflow_tracking_uri(value: str) -> str | None:
         return "invalid_remote_tracking_uri:sqlite_or_file"
     if not lowered.startswith(("http://", "https://")):
         return "invalid_remote_tracking_uri:scheme"
+    parsed = urlparse(tracking_uri)
+    host = (parsed.hostname or "").lower()
+    if host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}:
+        return "invalid_remote_tracking_uri:local_host"
     return None
 
 
@@ -663,6 +667,16 @@ def parse_mlflow_summary(output: str, tracking_uri: str | None = None) -> dict[s
     return summary
 
 
+def display_failure_message(failure: str) -> str:
+    if failure == "invalid_remote_tracking_uri:local_host":
+        return "mlflow_tracking_uri가 로컬 주소(localhost/127.0.0.1/0.0.0.0)로 설정되어 원격 MLflow 등록을 실행하지 않았습니다."
+    if failure == "invalid_remote_tracking_uri:sqlite_or_file":
+        return "mlflow_tracking_uri가 file/sqlite 로컬 경로로 설정되어 원격 MLflow 등록을 실행하지 않았습니다."
+    if failure == "invalid_remote_tracking_uri:scheme":
+        return "mlflow_tracking_uri는 원격 http:// 또는 https:// URI여야 합니다."
+    return failure
+
+
 def is_runtest_2_entrypoint(entrypoint: Path | None, project: Path) -> bool:
     if entrypoint is None:
         return False
@@ -785,7 +799,8 @@ def main():
         failures.append(remote_uri_failure)
         next_steps.append("5번 원격 MLflow 등록 실행에는 원격 MLflow URL이 필요합니다.")
         next_steps.append(".env의 mlflow_tracking_uri는 5개 필수 입력값 중 하나입니다. 원격 http:// 또는 https:// URI를 직접 입력하세요.")
-        next_steps.append("file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
+        next_steps.append("localhost, 127.0.0.1, 0.0.0.0, file://, sqlite: tracking URI는 5번에서 사용할 수 없습니다.")
+        next_steps.append(".env 환경설정을 원격 MLflow 서버 URI로 다시 입력한 뒤 5번을 재실행하세요.")
     elif args.execute and cmd and missing_env:
         failures.append("execution_blocked_missing_env")
         next_steps.append("MLflow 필수 환경변수가 비어 있어 실행을 중단했습니다.")
@@ -874,6 +889,9 @@ def main():
             if report.entrypoint
             else "missing"
         )
+        executed_display = str(report.executed)
+        if report.executed and report.return_code is None and report.failures:
+            executed_display = "False (blocked)"
         print_markdown_table(
             ["항목", "값"],
             [
@@ -883,7 +901,7 @@ def main():
                 ["Selected sample", report.selected_sample or "none"],
                 ["Entrypoint", entrypoint_display],
                 ["Command", " ".join(report.command) if report.command else "none"],
-                ["Executed", str(report.executed)],
+                ["Executed", executed_display],
                 ["Return code", str(report.return_code)],
             ],
         )
@@ -921,7 +939,10 @@ def main():
             print_markdown_table(["No", "Artifact"], [["-", "none"]])
         if report.failures:
             print("Failures:")
-            print_markdown_table(["No", "Failure"], [[str(index), failure] for index, failure in enumerate(report.failures, start=1)])
+            print_markdown_table(
+                ["No", "Failure"],
+                [[str(index), display_failure_message(failure)] for index, failure in enumerate(report.failures, start=1)],
+            )
         if report.next_steps:
             print("Next steps:")
             print_markdown_table(["No", "Next Step"], [[str(index), step] for index, step in enumerate(report.next_steps, start=1)])
