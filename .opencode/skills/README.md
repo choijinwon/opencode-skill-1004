@@ -65,7 +65,7 @@
 Step 1. 모델 목록 확인
         현재 --project 루트 바로 아래와 그 안의 data/**에서 지원 모델 확장자 10개를 검색한다.
 Step 2. 모델 선택
-        model_artifact_paths를 선택한 워크스페이스 기준 상대경로 알파벳 순서로 번호 표시한다.
+        selectable_model_paths를 선택한 워크스페이스 기준 상대경로 알파벳 순서로 번호 표시한다.
         `python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|경로>`를 실행하면 그 모델을 새 선택값으로 반영한다.
         PowerShell에서 `--model3`, `--model 3`, `data\...`, `data￦...` 입력을 모두 2번 선택값으로 정규화한다.
         같은 파일 목록이면 분석 화면과 준비 스크립트의 번호가 항상 같다.

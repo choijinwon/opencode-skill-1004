@@ -41,7 +41,7 @@ metadata:
 
 ```text
 1. 현재 워크스페이스 경로를 확인한다.
-2. 프로젝트 루트 전체와 data/** 모델 원본 파일을 model_artifact_paths로 나열한다.
+2. 프로젝트 루트 전체에서 학습 코드와 모델 원본 파일을 감지하고, 사용자가 선택할 수 있는 항목은 selectable_model_paths 기준으로 나열한다.
 3. `.csv`는 모델이 아니라 데이터 파일로 data_file_paths에 표시한다.
 4. `.opencode/` 전체는 스킬 번들이므로 분석 대상에서 제외한다.
 5. 아래 3가지 케이스 중 하나로 먼저 분기한다.
@@ -50,8 +50,8 @@ metadata:
 8. case 3: 학습 코드와 모델 파일이 모두 없으면 샘플 선택 흐름으로 안내한다.
 9. model_found 값은 case 1 또는 case 2이면 true, case 3이면 false로 표시한다.
 10. case 1 학습 코드가 있으면 `.py`, `.ipynb` 학습 코드 후보를 2번 목록에 번호로 표시한다.
-11. case 2 모델 artifact가 있으면 model_artifact_paths를 프로젝트 상대경로 알파벳 순서로 콘솔 표로 표시하고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
-12. 번호 선택은 표시된 model_artifact_paths 순서 그대로 처리하며, 프레임워크/확장자 기준으로 다시 정렬하지 않는다.
+11. case 1 학습 코드와 case 2 모델 artifact가 있으면 selectable_model_paths를 프로젝트 상대경로 알파벳 순서의 콘솔 표로 표시하고, 모델이 없으면 1 sklearn / 2 pytorch / 3 tensorflow 선택지를 보여준다.
+12. 번호 선택은 표시된 selectable_model_paths 순서 그대로 처리하며, 프레임워크/확장자 기준으로 다시 정렬하지 않는다.
 13. 1번 분석 단계는 읽기 전용이다. `.env`, `requirements.txt`, `config/`, `saved_model/`, `aiu_custom/` 또는 템플릿 파일을 생성하거나 수정하지 않는다.
 ```
 

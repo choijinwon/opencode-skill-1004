@@ -196,6 +196,7 @@ class ValidationReport:
     checks: list[Check]
     next_steps: list[str]
     model_artifact_paths: list[str] = field(default_factory=list)
+    selectable_model_paths: list[str] = field(default_factory=list)
     model_found: bool = False
     analysis_case: str = ""
     training_code_paths: list[str] = field(default_factory=list)
@@ -1025,7 +1026,10 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     else:
         input_message = "input example not found"
 
-    gap_status = "pass" if config_file and input_example_file and artifacts else "warn"
+    selectable_paths = [safe_relative(path, project) for path in training_code_paths]
+    selectable_paths.extend(safe_relative(path, project) for path in artifacts)
+
+    gap_status = "pass" if config_file and input_example_file and (artifacts or training_code_paths) else "warn"
     checks.append(
         Check(
             "gap guidance",
@@ -1034,7 +1038,9 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
             [
                 f"config: {config_message}",
                 f"input_example: {input_message}",
+                f"selectable_model_count: {len(selectable_paths)}",
                 f"artifact_count: {len(artifacts)}",
+                f"training_code_count: {len(training_code_paths)}",
             ],
         )
     )
@@ -1132,6 +1138,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         checks,
         next_steps,
         model_artifact_paths=[safe_relative(path, project) for path in artifacts],
+        selectable_model_paths=selectable_paths,
         model_found=model_found,
         analysis_case=analysis_case,
         training_code_paths=[safe_relative(path, project) for path in training_code_paths],
@@ -1150,7 +1157,7 @@ def print_model_list(report: ValidationReport):
         location = "data"
         rows.append((path, kind, location, "선택 가능"))
     if rows:
-        print("| No | Path | MODEL_KIND | Location | Status |")
+        print("| No | Model Path | MODEL_KIND | Location | Status |")
         print("|---:|---|---|---|---|")
         for index, (path, kind, location, status) in enumerate(rows, start=1):
             print(f"| {index} | {path} | {kind} | {location} | {status} |")
@@ -1164,7 +1171,7 @@ def print_model_list(report: ValidationReport):
 
 def print_text(report: ValidationReport):
     # 기본 출력은 짧은 요약과 목록만 보여주는 간단 모드입니다.
-    count = len(report.model_artifact_paths) + len(report.training_code_paths)
+    count = len(report.selectable_model_paths) or (len(report.model_artifact_paths) + len(report.training_code_paths))
     print_markdown_table(
         ["항목", "값"],
         [

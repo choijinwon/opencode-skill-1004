@@ -181,7 +181,7 @@ If the user says `sklearn`, `pytorch`, `tensorflow`, `샘플 생성`, `폴더째
 
 When the user types only a number, decide by the latest visible context:
 
-1. If `model_artifact_paths` or a model list was just shown and no model has been selected yet, treat the number as the model list index.
+1. If `selectable_model_paths` or a model list was just shown and no model has been selected yet, treat the number as the model list index.
    The model list order is exactly the project-relative alphabetical order displayed to the user.
    Do not re-sort by framework, model kind, file extension, or any hidden internal priority.
    Do not say that the selected model changed because of an internal sorting difference.

@@ -90,7 +90,9 @@ def resolve_display_number_selector(project: str, selector: str) -> str:
     module = load_analyze_module()
     project_path, reason = module.select_project(project)
     report = module.build_report(project_path, reason, write_check=False)
-    display_paths = list(report.training_code_paths) + list(report.model_artifact_paths)
+    display_paths = list(getattr(report, "selectable_model_paths", []) or [])
+    if not display_paths:
+        display_paths = list(report.training_code_paths) + list(report.model_artifact_paths)
     index = int(selector)
     if 1 <= index <= len(display_paths):
         return normalize_model_selector(display_paths[index - 1])
