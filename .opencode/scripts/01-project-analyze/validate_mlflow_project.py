@@ -14,8 +14,9 @@ SCRIPT_ROOT = ROOT / "scripts"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from common.mlflow_settings import AI_STUDIO_ENV_KEYS, AUTO_DEFAULT_SETTING_KEYS
-from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
+from common.mlflow_settings import AI_STUDIO_ENV_KEYS, AUTO_DEFAULT_SETTING_KEYS, parse_env_file
+from common.ai_studio_process import print_markdown_table
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project, unique_paths
 
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|상대경로>"
 PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/04-sample-bootstrap/bootstrap_sample_project.py"
@@ -194,14 +195,6 @@ class ValidationReport:
     model_found: bool = False
     analysis_case: str = ""
     training_code_paths: list[str] = field(default_factory=list)
-
-
-def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
-    # 콘솔 출력용 Markdown 표를 만듭니다.
-    print("| " + " | ".join(headers) + " |")
-    print("|" + "|".join("---" for _ in headers) + "|")
-    for row in rows:
-        print("| " + " | ".join(str(value) for value in row) + " |")
 
 
 def read_text(path: Path) -> str:
@@ -528,20 +521,6 @@ def check_json_file(path: Path) -> tuple[bool, str]:
     return True, "valid json"
 
 
-def parse_env_file(path: Path) -> dict[str, str]:
-    # .env 파일을 단순 key=value 형태로 읽습니다.
-    values: dict[str, str] = {}
-    if not safe_exists(path):
-        return values
-    for raw_line in read_text(path).splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
 def check_ai_studio_env(project: Path, code_settings: list[str]) -> Check:
     # .env 안에 필수 MLflow 설정값이 모두 들어있는지 검사합니다.
     path = project / ".env"
@@ -581,22 +560,6 @@ def find_first_existing(project: Path, names: list[str]) -> Path | None:
         if safe_exists(candidate):
             return candidate
     return None
-
-
-def unique_paths(paths: list[Path]) -> list[Path]:
-    # resolve 기준으로 중복 경로를 제거합니다.
-    unique = []
-    seen = set()
-    for path in paths:
-        try:
-            key = path.resolve()
-        except OSError:
-            continue
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(path)
-    return unique
 
 
 def find_entrypoints(project: Path) -> list[Path]:

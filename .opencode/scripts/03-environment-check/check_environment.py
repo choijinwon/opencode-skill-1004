@@ -18,14 +18,19 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
+from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide, print_copy_block, print_markdown_table
 from common.mlflow_settings import (
     AI_STUDIO_ENV_KEYS,
-    ALIAS_TO_SETTING,
     EXPORT_ENV_MAP,
+    default_env_text,
+    parse_env_file,
+    parse_python_string_assignments,
+    parse_setting_env_file,
+    setting_env_file,
+    todo_placeholder,
 )
 from common.selected_model_info import normalize_path_text
-from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project, unique_paths
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
@@ -40,7 +45,6 @@ ENV_KEYS = [
     "MLFLOW_EXPERIMENT_ID",
 ]
 
-ENV_SETTING_FILE_NAMES = [".env"]
 MODEL_SETTING_FILES = [
     "runtest_2.py",
     "runtest.py",
@@ -1232,18 +1236,6 @@ def is_sample_project(project: Path) -> bool:
     return project.name in SAMPLE_PROJECT_NAMES
 
 
-def unique_paths(paths: list[Path]) -> list[Path]:
-    unique = []
-    seen = set()
-    for path in paths:
-        key = path.resolve()
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(path)
-    return unique
-
-
 def find_entrypoint_candidates(project: Path) -> list[Path]:
     found = []
     for name in ENTRYPOINTS:
@@ -1254,42 +1246,11 @@ def find_entrypoint_candidates(project: Path) -> list[Path]:
     return unique_paths(found)
 
 
-def parse_env_file(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    for raw_line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
-def parse_setting_env_file(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for key, value in parse_env_file(path).items():
-        setting_key = ALIAS_TO_SETTING.get(key)
-        if setting_key is not None:
-            values[setting_key] = value
-    return values
-
-
-def setting_env_file(project: Path) -> Path:
-    for name in ENV_SETTING_FILE_NAMES:
-        path = project / name
-        if path.exists():
-            return path
-    return project / ".env"
-
-
 def ensure_setting_env_file(project: Path) -> Path:
     path = project / ".env"
     if path.exists():
         return path
-    content = "\n".join(f'{key}=""' for key in AI_STUDIO_ENV_KEYS) + "\n"
-    path.write_text(content, encoding="utf-8")
+    path.write_text(default_env_text(), encoding="utf-8")
     return path
 
 
@@ -1321,13 +1282,6 @@ def resolved_mlflow_settings(project: Path, entrypoint_name: str | None = None) 
         if value is not None:
             values[key] = value
     return values
-
-
-def todo_placeholder(value: str | None) -> bool:
-    if value is None:
-        return False
-    normalized = value.strip().lower()
-    return normalized in {"{todo}", "todo", "<todo>", "[todo]"}
 
 
 def setting_value_status(key: str, value: str | None, missing_status: str = "missing") -> str:
@@ -1454,49 +1408,6 @@ def ai_studio_env_status(project: Path) -> EnvFileStatus:
         status = setting_value_status(key, values.get(key) if key in values else None)
         statuses.append(EnvVarStatus(key, status))
     return EnvFileStatus(str(path), statuses)
-
-
-def literal_string(node: ast.AST) -> str | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    return None
-
-
-def target_name(node: ast.AST) -> str | None:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Subscript):
-        return literal_string(node.slice)
-    return None
-
-
-def record_setting(values: dict[str, str], key: str | None, value: str | None) -> None:
-    if key is None or value is None:
-        return
-    setting_key = ALIAS_TO_SETTING.get(key)
-    if setting_key and value:
-        values[setting_key] = value
-
-
-def parse_python_string_assignments(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-    except SyntaxError:
-        return values
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            value = literal_string(node.value)
-            for target in node.targets:
-                record_setting(values, target_name(target), value)
-        elif isinstance(node, ast.AnnAssign):
-            record_setting(values, target_name(node.target), literal_string(node.value))
-        elif isinstance(node, ast.Dict):
-            for key_node, value_node in zip(node.keys, node.values):
-                record_setting(values, literal_string(key_node), literal_string(value_node))
-    return values
 
 
 def resolve_setting_file(project: Path, entrypoint_name: str | None = None) -> Path | None:
@@ -1852,22 +1763,6 @@ def requirement_basis(report: EnvironmentReport, item: RequirementStatus) -> str
     if normalized_name == "kserve":
         return "requirements.txt 필수 유지"
     return "Python/AI Studio 기준"
-
-
-def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
-    print("| " + " | ".join(headers) + " |")
-    print("|" + "|".join("---" for _ in headers) + "|")
-    for row in rows:
-        print("| " + " | ".join(str(value) for value in row) + " |")
-
-
-def print_copy_block(requirements: list[str]) -> None:
-    if not requirements:
-        return
-    print("```txt")
-    for item in requirements:
-        print(item)
-    print("```")
 
 
 def selected_model_requirement_rows(report: EnvironmentReport) -> list[list[str]]:

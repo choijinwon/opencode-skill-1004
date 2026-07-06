@@ -1,5 +1,4 @@
 import argparse
-import ast
 import json
 import os
 import re
@@ -18,11 +17,13 @@ if str(SCRIPT_ROOT) not in sys.path:
 from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS
 from common.mlflow_settings import (
     AI_STUDIO_ENV_KEYS,
-    ALIAS_TO_SETTING,
     AUTO_DEFAULT_SETTING_KEYS,
     parse_env_file,
+    parse_python_string_assignments,
+    parse_setting_env_file,
+    setting_env_file,
 )
-from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project, unique_paths
 
 SAMPLES_DIR = ROOT / "samples"
 PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "05-train-model" / "prepare_selected_model.py"
@@ -46,7 +47,6 @@ ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
 GENERATED_ARTIFACT_IGNORE_FILES = {"model_info.json", "serving_input_example.json"}
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
-ENV_SETTING_FILE_NAMES = [".env"]
 MODEL_SETTING_FILES = [
     "runtest_2.py",
     "runtest.py",
@@ -120,18 +120,6 @@ def has_model_project(project: Path) -> bool:
 
 def is_sample_project(project: Path) -> bool:
     return project.name in SAMPLE_PROJECT_NAMES
-
-
-def unique_paths(paths: list[Path]) -> list[Path]:
-    unique = []
-    seen = set()
-    for path in paths:
-        key = path.resolve()
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(path)
-    return unique
 
 
 def find_entrypoint(project: Path) -> Path | None:
@@ -290,66 +278,6 @@ def local_generated_path_rows(work_path: Path, workspace_root: Path) -> list[lis
 
 def missing_required_dirs(project: Path) -> list[str]:
     return [name for name in REQUIRED_DIRS if not (project / name).is_dir()]
-
-
-def parse_setting_env_file(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for key, value in parse_env_file(path).items():
-        setting_key = ALIAS_TO_SETTING.get(key)
-        if setting_key is not None:
-            values[setting_key] = value
-    return values
-
-
-def setting_env_file(project: Path) -> Path:
-    for name in ENV_SETTING_FILE_NAMES:
-        path = project / name
-        if path.exists():
-            return path
-    return project / ".env"
-
-
-def literal_string(node: ast.AST) -> str | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    return None
-
-
-def target_name(node: ast.AST) -> str | None:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Subscript):
-        return literal_string(node.slice)
-    return None
-
-
-def record_setting(values: dict[str, str], key: str | None, value: str | None) -> None:
-    if key is None or value is None:
-        return
-    setting_key = ALIAS_TO_SETTING.get(key)
-    if setting_key and value:
-        values[setting_key] = value
-
-
-def parse_python_string_assignments(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-    except SyntaxError:
-        return values
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            value = literal_string(node.value)
-            for target in node.targets:
-                record_setting(values, target_name(target), value)
-        elif isinstance(node, ast.AnnAssign):
-            record_setting(values, target_name(node.target), literal_string(node.value))
-        elif isinstance(node, ast.Dict):
-            for key_node, value_node in zip(node.keys, node.values):
-                record_setting(values, literal_string(key_node), literal_string(value_node))
-    return values
 
 
 def find_model_settings(project: Path, entrypoint: Path | None = None) -> dict[str, str]:

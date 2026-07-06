@@ -65,3 +65,19 @@ def format_model_selection_hint(indent: str = "") -> str:
         f"{indent}{ANSI_YELLOW_BOLD}{line}{ANSI_RESET}"
         for line in MODEL_SELECTION_HINT_LINES
     )
+
+
+def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(value) for value in row) + " |")
+
+
+def print_copy_block(items: list[str]) -> None:
+    if not items:
+        return
+    print("```txt")
+    for item in items:
+        print(item)
+    print("```")

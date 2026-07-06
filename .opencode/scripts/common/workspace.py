@@ -32,3 +32,18 @@ def is_filesystem_root(path: Path) -> bool:
 
 def is_opencode_sample_source(path: Path) -> bool:
     return ".opencode" in path.resolve().parts
+
+
+def unique_paths(paths: list[Path]) -> list[Path]:
+    unique = []
+    seen = set()
+    for path in paths:
+        try:
+            key = path.resolve()
+        except OSError:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique

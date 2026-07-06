@@ -69,7 +69,7 @@ SCRIPT_ROOT = ROOT / "scripts"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from common.ai_studio_process import format_model_selection_hint, format_todo_guide
+from common.ai_studio_process import format_model_selection_hint, format_todo_guide, print_copy_block, print_markdown_table
 from common.mlflow_settings import (
     REQUIRED_MLFLOW_GATE_KEYS,
     mlflow_setting_value,
@@ -4490,22 +4490,6 @@ def todo_statuses(report: PreparedModelReport) -> list[str]:
 
 def print_todo_guide(report: PreparedModelReport) -> None:
     print(format_todo_guide(todo_statuses(report)))
-
-
-def print_markdown_table(headers: list[str], rows: list[list[str]]) -> None:
-    print("| " + " | ".join(headers) + " |")
-    print("|" + "|".join("---" for _ in headers) + "|")
-    for row in rows:
-        print("| " + " | ".join(str(value) for value in row) + " |")
-
-
-def print_copy_block(requirements: list[str]) -> None:
-    if not requirements:
-        return
-    print("```txt")
-    for item in requirements:
-        print(item)
-    print("```")
 
 
 def attach_environment_check_result(report: PreparedModelReport, work_project: Path) -> None:
