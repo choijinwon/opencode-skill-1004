@@ -1,2 +1,2 @@
-mlflow
+mlflow==3.10.0
 kserve==0.15.0

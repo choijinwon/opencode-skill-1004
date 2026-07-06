@@ -35,6 +35,7 @@ KIND_REQUIREMENTS = {
 }
 KIND_PACKAGE = {"pytorch": "torch", "onnx": "onnxruntime", "tensorflow_keras": "tensorflow", "tensorflow_h5": "tensorflow", "tensorflow_saved_model": "tensorflow", "safetensors": "safetensors", "xgboost_bst": "xgboost", "xgboost_ubj": "xgboost", "sklearn_pickle": "joblib", "sklearn_joblib": "joblib"}
 KIND_BY_SUFFIX = {".pt": "pytorch", ".pth": "pytorch", ".ckpt": "pytorch", ".onnx": "onnx", ".keras": "tensorflow_keras", ".h5": "tensorflow_h5", ".safetensors": "safetensors", ".bst": "xgboost_bst", ".ubj": "xgboost_ubj", ".pkl": "sklearn_pickle", ".joblib": "sklearn_joblib"}
+IMAGE_REQUIREMENTS = ["pillow==11.3.0", "matplotlib==3.10.3", "opencv-python-headless==4.12.0.88"]
 
 
 @dataclass
@@ -86,8 +87,11 @@ class EnvironmentReport:
     selected_model_path: str | None = None; selected_model_kind: str | None = None
     selected_required_package: str | None = None; selected_package_status: str | None = None
     selected_python_version: str | None = None
+    requirements_path: str | None = None
+    requirements_updated: bool = False
     requirement_candidates: list[RequirementCandidate] = field(default_factory=list)
     selected_model_recommendations: list[str] = field(default_factory=list)
+    image_model_recommendations: list[str] = field(default_factory=list)
 
 
 def read_text(path: Path) -> str:
@@ -106,6 +110,29 @@ def rel(path: Path, base: Path) -> str:
 
 def package_name(requirement: str) -> str:
     return re.split(r"[<>=!~ ]", requirement.strip(), maxsplit=1)[0].lower().replace("_", "-")
+
+
+def unique_requirements(lines: list[str]) -> list[str]:
+    out, seen = [], set()
+    for line in lines:
+        clean = line.strip()
+        if not clean or clean.startswith("#"):
+            continue
+        name = package_name(clean)
+        if name in seen:
+            continue
+        seen.add(name)
+        out.append(clean)
+    return out
+
+
+def merge_requirements(lines: list[str]) -> list[str]:
+    merged: dict[str, str] = {}
+    for line in lines:
+        clean = line.strip()
+        if clean and not clean.startswith("#"):
+            merged[package_name(clean)] = clean
+    return list(merged.values())
 
 
 def version_spec(requirement: str) -> str:
@@ -136,16 +163,44 @@ def required_lines() -> list[str]:
     return lines or ["mlflow", "kserve==0.15.0"]
 
 
-def requirement_lines(project: Path) -> tuple[list[str], list[str]]:
-    path = project / "requirements.txt"
-    files = ["requirements.txt"] if path.exists() else []
+def workspace_root(project: Path) -> Path:
+    project = project.resolve()
+    if (project / ".opencode").is_dir():
+        return project
+    if (project.parent / ".opencode").is_dir():
+        return project.parent
+    return project
+
+
+def selected_work(project: Path) -> Path | None:
+    if (project / "runtest_2.py").exists():
+        return project
+    candidates = [path.parent for path in project.glob("*/runtest_2.py") if (path.parent / "requirements.txt").exists()]
+    return max(candidates, key=lambda path: path.stat().st_mtime) if candidates else None
+
+
+def requirements_file(project: Path) -> Path:
+    if (project / ".opencode").is_dir():
+        work = selected_work(project)
+        return (work or project / "data") / "requirements.txt"
+    return project / "requirements.txt"
+
+
+def requirement_lines(project: Path) -> tuple[Path, list[str], list[str]]:
+    path = requirements_file(project)
+    files = [str(path)] if path.exists() else []
     lines = [line.strip() for line in read_text(path).splitlines() if line.strip() and not line.strip().startswith("#")]
-    return files, lines or required_lines()
+    return path, files, lines
+
+
+def workspace_env_file(project: Path) -> Path:
+    return workspace_root(project) / ".env"
 
 
 def ensure_env(project: Path) -> Path:
-    path = project / ".env"
+    path = workspace_env_file(project)
     if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(default_env_text(), encoding="utf-8")
     return path
 
@@ -189,12 +244,21 @@ def requirement_candidates(kind: str | None, requirements: list[str]) -> list[Re
     return base + selected + imports
 
 
-def build_requirements(project: Path, kind: str | None) -> tuple[list[str], list[RequirementStatus], list[PackageStatus], list[RequirementCandidate]]:
-    files, lines = requirement_lines(project)
-    merged = list(dict.fromkeys(required_lines() + lines))
+def pin_checked_versions(path: Path, reqs: list[RequirementStatus]) -> bool:
+    lines = [f"{item.name}=={item.installed_version}" if item.installed_version else item.requirement for item in reqs]
+    text = "\n".join(unique_requirements(lines)) + "\n"
+    if read_text(path) == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def build_requirements(project: Path, kind: str | None) -> tuple[list[str], list[RequirementStatus], list[PackageStatus], list[RequirementCandidate], Path, bool]:
+    path, files, lines = requirement_lines(project)
+    merged = merge_requirements(required_lines() + lines)
     candidates = requirement_candidates(kind, merged)
     for item in candidates:
-        if item.source == "selected_model" and item.package not in merged:
+        if item.source == "selected_model" and package_name(item.package) not in {package_name(req) for req in merged}:
             merged.append(item.package)
     reqs: list[RequirementStatus] = []
     packages: list[PackageStatus] = []
@@ -204,11 +268,26 @@ def build_requirements(project: Path, kind: str | None) -> tuple[list[str], list
         status = requirement_status(version, spec)
         reqs.append(RequirementStatus("requirements.txt" if line in lines else "base", line, name, spec, version, status))
         packages.append(PackageStatus(name, "set" if status == "installed" else status, version, spec))
-    return files, reqs, packages, candidates
+    return files, reqs, packages, candidates, path, pin_checked_versions(path, reqs)
 
 
 def blocked(project: Path, message: str, failure: str, step: str) -> EnvironmentReport:
     return EnvironmentReport(str(project), f"{platform.system()} {platform.release()}", sys.executable, platform.python_version(), "MLflow/requirements compatibility", "blocked", os.environ.get("VIRTUAL_ENV") or os.environ.get("CONDA_PREFIX") or "not detected", [], failures=[failure], next_steps=[message, step])
+
+
+def project_arg(project: Path) -> str:
+    if (project / ".opencode").is_dir():
+        return "."
+    if (project.parent / ".opencode").is_dir():
+        return project.name
+    return "."
+
+
+def env_check_command(project: Path, entrypoint: str | None) -> str:
+    return (
+        "3번 환경 검증 재실행: python .opencode/scripts/03-environment-check/check_environment.py "
+        f"--project {project_arg(project)} --entrypoint {entrypoint or 'runtest_2.py'} --no-fix-packages"
+    )
 
 
 def build_report(project: Path, entrypoint_name: str | None = None, selected_python_version: str | None = None) -> EnvironmentReport:
@@ -223,7 +302,7 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
     ai_env = env_status(env_file)
     settings = model_settings_status(project, entrypoint_name)
     model_path, kind = selected_model(project, entrypoint_name)
-    deps, reqs, packages, candidates = build_requirements(project, kind)
+    deps, reqs, packages, candidates, req_path, req_updated = build_requirements(project, kind)
     missing_env = [item for item in ai_env.key_status if item.status != "set"]
     bad_packages = [item.name for item in packages if item.status in {"missing", "version_mismatch"}]
     failures = [f"missing_env:{item.name}" for item in missing_env]
@@ -231,12 +310,14 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
     if missing_env:
         next_steps.append(".env 5개 필수 입력값을 직접 입력하세요: " + ", ".join(item.name for item in missing_env))
     if bad_packages:
-        next_steps.append("패키지 설치는 실행하지 않습니다. requirements.txt 기본 항목과 선택 모델 후보 패키지를 확인하세요.")
+        next_steps.append("패키지 설치는 실행하지 않습니다. requirements.txt는 버전 체크 결과로 갱신됩니다.")
     if entrypoint_name and settings is None and entrypoint_name.replace("\\", "/").lstrip("./") == "runtest_2.py":
         next_steps.append("runtest_2.py는 4번 템플릿 변환에서 생성될 수 있습니다.")
     elif entrypoint_name and settings is None:
         failures.append(f"entrypoint_not_found:{entrypoint_name}")
         next_steps.append(f"지정한 실행 파일 경로를 찾지 못했습니다: {entrypoint_name}")
+    if failures:
+        next_steps.append(env_check_command(project, entrypoint_name))
     required_pkg = KIND_PACKAGE.get(kind or "")
     package_status = next((item.status for item in packages if item.name == required_pkg), None)
     return EnvironmentReport(
@@ -246,7 +327,9 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
         ai_studio_env=ai_env, model_settings=settings, export_ready=env_vars_from_file(ai_env), failures=failures,
         next_steps=next_steps or ["환경 검증 완료. 4번 템플릿 변환으로 진행하세요."], source_input_required=missing_env,
         selected_model_path=model_path, selected_model_kind=kind, selected_required_package=required_pkg, selected_package_status=package_status,
-        selected_python_version=selected_python, requirement_candidates=candidates, selected_model_recommendations=KIND_REQUIREMENTS.get(kind or "", []),
+        selected_python_version=selected_python, requirements_path=str(req_path), requirements_updated=req_updated,
+        requirement_candidates=candidates, selected_model_recommendations=KIND_REQUIREMENTS.get(kind or "", []),
+        image_model_recommendations=IMAGE_REQUIREMENTS,
     )
 
 
@@ -254,10 +337,28 @@ def result_status(report: EnvironmentReport) -> str:
     return "차단" if report.failures else "확인"
 
 
+def copy_block(title: str, lines: list[str]) -> None:
+    if not lines:
+        return
+    print(f"\n{title}")
+    print("```txt")
+    for line in unique_requirements(lines):
+        print(line)
+    print("```")
+
+
+def print_package_recommendations(report: EnvironmentReport) -> None:
+    copy_block("권장 패키지", required_lines())
+    copy_block("추천 패키지", report.selected_model_recommendations)
+    copy_block("이미지 모델 패키지", report.image_model_recommendations)
+
+
 def print_text(report: EnvironmentReport):
     print(f"3번 환경 검증: {result_status(report)}")
     print(f"Python: {report.python_version} ({report.python_version_status})")
     print(f".env: {report.ai_studio_env.path if report.ai_studio_env else 'missing'}")
+    print(f"requirements.txt: {report.requirements_path or 'missing'} ({'updated' if report.requirements_updated else 'checked'})")
+    print_package_recommendations(report)
     print("다음 단계:")
     for step in report.next_steps:
         print(f"- {step}")

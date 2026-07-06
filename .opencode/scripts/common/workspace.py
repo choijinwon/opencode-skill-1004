@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -10,12 +11,19 @@ PROJECT_PLACEHOLDERS = {
 }
 
 
+def is_absolute_project_arg(raw: str) -> bool:
+    value = raw.strip().strip('"').strip("'")
+    return value.startswith("~") or Path(value).is_absolute() or bool(re.match(r"^[A-Za-z]:|^\\\\", value))
+
+
 def resolve_workspace_project(raw_project: str) -> Path:
     raw = raw_project.strip()
     if raw in PROJECT_PLACEHOLDERS:
         raw = "."
     elif "<" in raw or ">" in raw:
         raise ValueError("replace placeholder project path before running, for example: --project .")
+    elif is_absolute_project_arg(raw):
+        raise ValueError("--project must be a relative path. Use --project . or --project <selected_model_work_folder>")
 
     project = Path(raw).expanduser().resolve()
     parts = project.parts
