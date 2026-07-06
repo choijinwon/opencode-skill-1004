@@ -14,11 +14,12 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import print_markdown_table
-from common.mlflow_settings import AI_STUDIO_ENV_KEYS, EXPORT_ENV_MAP, default_env_text, parse_python_string_assignments, parse_setting_env_file
+from common.mlflow_settings import AI_STUDIO_ENV_KEYS, EXPORT_ENV_MAP, default_env_text, parse_python_string_assignments, parse_setting_env_file, todo_placeholder
 from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
 
 
 ENV_KEYS = ["MLFLOW_TRACKING_URI", "MLFLOW_TRACKING_USERNAME", "MLFLOW_TRACKING_PASSWORD", "MLFLOW_EXPERIMENT_NAME", "MLFLOW_REGISTER_MODEL_NAME"]
+MLFLOW_VERSION_GATE_KEYS = ("mlflow_tracking_uri", "mlflow_tracking_username", "mlflow_tracking_password")
 ENTRYPOINTS = ["runtest_2.py", "runtest.py", "run_test.py", "train.py", "run_model.py", "run.py", "main.py", "app.py", "scripts/train.py"]
 REQUIRED_FILE = Path(__file__).resolve().parent / "requirements.required.txt"
 KIND_REQUIREMENTS = {
@@ -207,8 +208,13 @@ def ensure_env(project: Path) -> Path:
 
 def env_status(path: Path) -> EnvFileStatus:
     values = parse_setting_env_file(path)
-    rows = [EnvVarStatus(key, "set" if values.get(key) else "missing") for key in AI_STUDIO_ENV_KEYS]
+    rows = [EnvVarStatus(key, "set" if values.get(key) and not todo_placeholder(values.get(key)) else "missing") for key in AI_STUDIO_ENV_KEYS]
     return EnvFileStatus(str(path), rows)
+
+
+def missing_keys(status: EnvFileStatus, keys: tuple[str, ...] = AI_STUDIO_ENV_KEYS) -> list[EnvVarStatus]:
+    by_key = {item.name: item for item in status.key_status}
+    return [by_key[key] for key in keys if by_key.get(key, EnvVarStatus(key, "missing")).status != "set"]
 
 
 def model_settings_status(project: Path, entrypoint: str | None) -> EnvFileStatus | None:
@@ -302,8 +308,29 @@ def build_report(project: Path, entrypoint_name: str | None = None, selected_pyt
     ai_env = env_status(env_file)
     settings = model_settings_status(project, entrypoint_name)
     model_path, kind = selected_model(project, entrypoint_name)
+    req_path = requirements_file(project)
+    candidates = requirement_candidates(kind, [])
+    gate_missing = missing_keys(ai_env, MLFLOW_VERSION_GATE_KEYS)
+    if gate_missing:
+        names = ", ".join(item.name for item in gate_missing)
+        return EnvironmentReport(
+            str(project), f"{platform.system()} {platform.release()}", sys.executable, platform.python_version(),
+            "MLflow/requirements compatibility", python_status, os.environ.get("VIRTUAL_ENV") or os.environ.get("CONDA_PREFIX") or "not detected", [str(req_path)] if req_path.exists() else [],
+            packages=[], requirements=[], env_vars=[EnvVarStatus(key, "set" if os.environ.get(key) else "missing") for key in ENV_KEYS],
+            ai_studio_env=ai_env, model_settings=settings, export_ready=env_vars_from_file(ai_env),
+            failures=[f"missing_mlflow_env:{item.name}" for item in gate_missing],
+            next_steps=[
+                "MLflow 버전 체크와 requirements.txt 갱신 전에 .env 3개 값을 먼저 입력하세요: " + names,
+                env_check_command(project, entrypoint_name),
+            ],
+            source_input_required=gate_missing,
+            selected_model_path=model_path, selected_model_kind=kind, selected_required_package=KIND_PACKAGE.get(kind or ""),
+            selected_package_status=None, selected_python_version=selected_python, requirements_path=str(req_path), requirements_updated=False,
+            requirement_candidates=candidates, selected_model_recommendations=KIND_REQUIREMENTS.get(kind or "", []),
+            image_model_recommendations=IMAGE_REQUIREMENTS,
+        )
     deps, reqs, packages, candidates, req_path, req_updated = build_requirements(project, kind)
-    missing_env = [item for item in ai_env.key_status if item.status != "set"]
+    missing_env = missing_keys(ai_env)
     bad_packages = [item.name for item in packages if item.status in {"missing", "version_mismatch"}]
     failures = [f"missing_env:{item.name}" for item in missing_env]
     next_steps = []

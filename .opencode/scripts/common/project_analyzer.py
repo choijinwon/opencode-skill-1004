@@ -40,7 +40,6 @@ class ValidationReport:
     selected_project: str
     selection_reason: str
     os: str
-    python: str
     checks: list[Check]
     next_steps: list[str]
     model_artifact_paths: list[str] = field(default_factory=list)
@@ -137,6 +136,12 @@ def find_artifacts(project: Path, max_depth: int = 8) -> list[Path]:
     return sorted(unique(found), key=lambda path: model_sort_key(path, project))
 
 
+def ensure_data_root(project: Path) -> Path:
+    data_root = project / "data"
+    data_root.mkdir(parents=True, exist_ok=True)
+    return data_root
+
+
 def notebook_text(path: Path) -> str:
     raw = read_text(path)
     try:
@@ -216,7 +221,7 @@ def check_write(project: Path) -> Check:
 
 def blocked_report(reason: str, message: str, next_step: str) -> ValidationReport:
     check = Check("local model path selection", "block", message, ["."])
-    return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], [check], [next_step])
+    return ValidationReport(".", reason, platform.platform(), [check], [next_step])
 
 
 def build_report(project: Path, reason: str, write_check: bool) -> ValidationReport:
@@ -228,9 +233,10 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
     if is_opencode_sample_source(project):
         return blocked_report(reason, ".opencode/ is bundled skill source, not a user model project", "Use the actual selected model project folder as --project.")
 
+    data_root = ensure_data_root(project)
     requirements_path, requirements_text, packages = read_requirements(project)
-    artifacts = find_artifacts(project)
-    training_paths, training_evidence, training_frameworks = detect_training_code(project)
+    artifacts = find_artifacts(data_root)
+    training_paths, training_evidence, training_frameworks = detect_training_code(data_root)
     framework, framework_evidence = detect_framework(requirements_text, artifacts, training_frameworks)
     entrypoints = find_entrypoints(project)
     model_found = bool(training_paths or artifacts)
@@ -259,7 +265,7 @@ def build_report(project: Path, reason: str, write_check: bool) -> ValidationRep
         if artifacts else
         ["Case 3: 모델이 없습니다. 샘플 선택 1 sklearn / 2 pytorch / 3 tensorflow 중 하나를 선택하세요."]
     )
-    return ValidationReport(".", reason, platform.platform(), sys.version.split()[0], checks, next_steps, [rel(path, project) for path in artifacts], selectable, model_found, case, [rel(path, project) for path in training_paths])
+    return ValidationReport(".", reason, platform.platform(), checks, next_steps, [rel(path, project) for path in artifacts], selectable, model_found, case, [rel(path, project) for path in training_paths])
 
 
 def print_model_list(report: ValidationReport):
@@ -287,7 +293,7 @@ def print_text(report: ValidationReport):
 
 
 def print_verbose_text(report: ValidationReport):
-    print_markdown_table(["항목", "값"], [["Selected project", report.selected_project], ["Selection reason", report.selection_reason], ["OS", report.os], ["Python", report.python], ["model_found", str(report.model_found).lower()], ["analysis_case", report.analysis_case or "none"]])
+    print_markdown_table(["항목", "값"], [["Selected project", report.selected_project], ["Selection reason", report.selection_reason], ["OS", report.os], ["model_found", str(report.model_found).lower()], ["analysis_case", report.analysis_case or "none"]])
     if report.training_code_paths:
         print("Training code paths:")
         print_markdown_table(["No", "Entrypoint Path"], [[str(i), path] for i, path in enumerate(report.training_code_paths, 1)])
