@@ -6,8 +6,6 @@ Skill folder:
 Scripts:
 
 - `check_environment.py`
-- `response_speed_check.py`
-- `apply_index_ignore.py`
 
 Required files:
 
@@ -19,5 +17,3 @@ Responsibility:
 - 선택 모델 작업 폴더 `requirements.txt`가 없으면 생성하고 패키지 상태 확인
 - 로컬 dependency 설치는 자동 실행하지 않음
 - 선택 모델 작업 폴더 `.env`의 MLflow 5개 값 상태 확인
-- 폐쇄망/Windows 응답 속도 진단
-- `.opencode/`, `.opencode/node_modules/`, 생성물, 모델 파일 인덱싱 제외 적용

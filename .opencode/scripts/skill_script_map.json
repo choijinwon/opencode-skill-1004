@@ -30,14 +30,10 @@
     "primary_scripts": [
       "03-environment-check/check_environment.py"
     ],
-    "support_scripts": [
-      "03-environment-check/response_speed_check.py",
-      "03-environment-check/apply_index_ignore.py"
-    ],
     "required_files": [
       "03-environment-check/requirements.required.txt"
     ],
-    "purpose": "check Python, requirements.txt, MLflow settings, and closed-network speed"
+    "purpose": "check Python, requirements.txt, and MLflow .env settings without installing packages"
   },
   "04-sample-bootstrap": {
     "skill_folder": "04-agent-mlflow-skill-sample-bootstrap",
