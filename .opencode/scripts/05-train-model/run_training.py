@@ -16,6 +16,13 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS
+from common.mlflow_settings import (
+    AI_STUDIO_ENV_KEYS,
+    ALIAS_TO_SETTING,
+    AUTO_DEFAULT_SETTING_KEYS,
+    parse_env_file,
+)
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
 
 SAMPLES_DIR = ROOT / "samples"
 PROJECT_PREPARE_SELECTED_MODEL_SCRIPT = Path(".opencode") / "scripts" / "05-train-model" / "prepare_selected_model.py"
@@ -39,34 +46,7 @@ ARTIFACT_DIRS = ["saved_model", "model", "artifacts"]
 MLFLOW_OUTPUT_DIRS = {"metrics", "params", "artifacts", "tags", "code"}
 GENERATED_ARTIFACT_IGNORE_FILES = {"model_info.json", "serving_input_example.json"}
 ARTIFACT_SUFFIXES = {".pkl", ".joblib", ".pt", ".pth", ".ckpt", ".h5", ".keras", ".onnx", ".safetensors", ".bst", ".ubj"}
-AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-]
 ENV_SETTING_FILE_NAMES = [".env"]
-AUTO_DEFAULT_SETTING_KEYS = {
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-}
-
-
-def resolve_workspace_project(raw_project: str) -> Path:
-    raw = raw_project.strip()
-    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
-        raw = "."
-    elif "<" in raw or ">" in raw:
-        raise ValueError("replace placeholder project path before running, for example: --project .")
-
-    project = Path(raw).expanduser().resolve()
-    parts = project.parts
-    if ".opencode" in parts:
-        opencode_index = parts.index(".opencode")
-        if opencode_index > 0:
-            return Path(*parts[:opencode_index]).resolve()
-    return project
 MODEL_SETTING_FILES = [
     "runtest_2.py",
     "runtest.py",
@@ -89,49 +69,6 @@ MODEL_SCAN_SKIP_DIRS = {
     "node_modules",
     "venv",
 }
-
-SETTING_ALIASES = {
-    "mlflow_tracking_uri": {
-        "mlflow_tracking_uri",
-        "mlflow_tracking_url",
-        "tracking_uri",
-        "tracking_url",
-        "MLFLOW_TRACKING_URI",
-        "MLFLOW_TRACKING_URL",
-    },
-    "mlflow_tracking_username": {
-        "mlflow_tracking_username",
-        "tracking_username",
-        "mlflow_username",
-        "username",
-        "MLFLOW_TRACKING_USERNAME",
-    },
-    "mlflow_tracking_password": {
-        "mlflow_tracking_password",
-        "tracking_password",
-        "mlflow_password",
-        "password",
-        "MLFLOW_TRACKING_PASSWORD",
-    },
-    "mlflow_experiment_name": {
-        "mlflow_experiment_name",
-        "experiment_name",
-        "MLFLOW_EXPERIMENT_NAME",
-    },
-    "mlflow_register_model_name": {
-        "mlflow_register_model_name",
-        "register_model_name",
-        "registered_model_name",
-        "MLFLOW_REGISTER_MODEL_NAME",
-    },
-}
-
-ALIAS_TO_SETTING = {
-    alias: setting_key
-    for setting_key, aliases in SETTING_ALIASES.items()
-    for alias in aliases
-}
-
 
 @dataclass
 class EnvVarStatus:
@@ -355,19 +292,6 @@ def missing_required_dirs(project: Path) -> list[str]:
     return [name for name in REQUIRED_DIRS if not (project / name).is_dir()]
 
 
-def parse_env_file(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    for raw_line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
 def parse_setting_env_file(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for key, value in parse_env_file(path).items():
@@ -481,20 +405,6 @@ def remote_tracking_uri_failure(project: Path, entrypoint: Path | None = None) -
 
 def checklist_status(condition: bool) -> str:
     return "done" if condition else "pending"
-
-
-def is_filesystem_root(path: Path) -> bool:
-    return path.parent == path
-
-
-def is_opencode_sample_source(path: Path) -> bool:
-    parts = path.resolve().parts
-    if ".opencode" in parts:
-        return True
-    for index, part in enumerate(parts[:-1]):
-        if part == ".opencode" and parts[index + 1] in {"sample", "samples"}:
-            return True
-    return False
 
 
 def run_command(cmd: list[str], cwd: Path) -> tuple[int, str]:

@@ -19,7 +19,13 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import AI_STUDIO_PROCESS_STEPS, format_todo_guide
+from common.mlflow_settings import (
+    AI_STUDIO_ENV_KEYS,
+    ALIAS_TO_SETTING,
+    EXPORT_ENV_MAP,
+)
 from common.selected_model_info import normalize_path_text
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE_SELECTED_MODEL_SCRIPT = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
@@ -34,13 +40,6 @@ ENV_KEYS = [
     "MLFLOW_EXPERIMENT_ID",
 ]
 
-AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-]
 ENV_SETTING_FILE_NAMES = [".env"]
 MODEL_SETTING_FILES = [
     "runtest_2.py",
@@ -89,57 +88,6 @@ MODEL_SCAN_SKIP_DIRS = {
     "env",
     "node_modules",
     "venv",
-}
-
-SETTING_ALIASES = {
-    "mlflow_tracking_uri": {
-        "mlflow_tracking_uri",
-        "mlflow_tracking_url",
-        "tracking_uri",
-        "tracking_url",
-        "MLFLOW_TRACKING_URI",
-        "MLFLOW_TRACKING_URL",
-    },
-    "mlflow_tracking_username": {
-        "mlflow_tracking_username",
-        "tracking_username",
-        "mlflow_username",
-        "username",
-        "MLFLOW_TRACKING_USERNAME",
-    },
-    "mlflow_tracking_password": {
-        "mlflow_tracking_password",
-        "tracking_password",
-        "mlflow_password",
-        "password",
-        "MLFLOW_TRACKING_PASSWORD",
-    },
-    "mlflow_experiment_name": {
-        "mlflow_experiment_name",
-        "experiment_name",
-        "MLFLOW_EXPERIMENT_NAME",
-    },
-    "mlflow_register_model_name": {
-        "mlflow_register_model_name",
-        "mlflow_register_mdoel_name",
-        "register_model_name",
-        "registered_model_name",
-        "MLFLOW_REGISTER_MODEL_NAME",
-    },
-}
-
-ALIAS_TO_SETTING = {
-    alias: setting_key
-    for setting_key, aliases in SETTING_ALIASES.items()
-    for alias in aliases
-}
-
-EXPORT_ENV_MAP = {
-    "mlflow_tracking_uri": "MLFLOW_TRACKING_URI",
-    "mlflow_tracking_username": "MLFLOW_TRACKING_USERNAME",
-    "mlflow_tracking_password": "MLFLOW_TRACKING_PASSWORD",
-    "mlflow_experiment_name": "MLFLOW_EXPERIMENT_NAME",
-    "mlflow_register_model_name": "MLFLOW_REGISTER_MODEL_NAME",
 }
 
 CORE_PACKAGES = [
@@ -258,22 +206,6 @@ MANDATORY_REQUIREMENT_VERSIONS = {
     "kserve": "==0.15.0",
 }
 MANDATORY_REQUIREMENT_NAMES = {"mlflow", "kserve"}
-
-
-def resolve_workspace_project(raw_project: str) -> Path:
-    raw = raw_project.strip()
-    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
-        raw = "."
-    elif "<" in raw or ">" in raw:
-        raise ValueError("replace placeholder project path before running, for example: --project .")
-
-    project = Path(raw).expanduser().resolve()
-    parts = project.parts
-    if ".opencode" in parts:
-        opencode_index = parts.index(".opencode")
-        if opencode_index > 0:
-            return Path(*parts[:opencode_index]).resolve()
-    return project
 
 
 def load_required_requirement_versions() -> dict[str, str]:
@@ -1260,20 +1192,6 @@ def run_pip_dry_run_check(project: Path, selected_python_version: str) -> PipDry
         package_results=package_results,
         output_lines=[line for line in output.splitlines() if line.strip()][:40],
     )
-
-
-def is_filesystem_root(path: Path) -> bool:
-    return path.parent == path
-
-
-def is_opencode_sample_source(path: Path) -> bool:
-    parts = path.resolve().parts
-    if ".opencode" in parts:
-        return True
-    for index, part in enumerate(parts[:-1]):
-        if part == ".opencode" and parts[index + 1] in {"sample", "samples"}:
-            return True
-    return False
 
 
 def has_model_project(project: Path) -> bool:

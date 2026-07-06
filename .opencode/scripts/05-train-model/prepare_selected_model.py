@@ -70,11 +70,18 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common.ai_studio_process import format_model_selection_hint, format_todo_guide
+from common.mlflow_settings import (
+    REQUIRED_MLFLOW_GATE_KEYS,
+    mlflow_setting_value,
+    parse_env_file,
+    todo_placeholder,
+)
 from common.selected_model_info import (
     build_selected_model_info,
     selected_model_kind as selected_model_kind_from_payload,
     selected_model_source_path,
 )
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
 
 DEFAULT_TEMPLATE_SAMPLE_DIR_NAME = "pytorch_sample"
 TRAIN_MODEL_TEMPLATE_ROOT = ROOT / "samples"
@@ -304,34 +311,7 @@ MODEL_SCAN_SKIP_DIRS = {
     "node_modules",
     "venv",
 }
-MLFLOW_SETTING_NAMES = {
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-}
-MLFLOW_SETTING_ALIASES = {
-    "mlflow_tracking_uri": (
-        "mlflow_tracking_uri",
-        "mlflow_tracking_url",
-        "tracking_uri",
-        "tracking_url",
-        "MLFLOW_TRACKING_URI",
-        "MLFLOW_TRACKING_URL",
-    ),
-    "mlflow_tracking_username": ("mlflow_tracking_username", "tracking_username", "MLFLOW_TRACKING_USERNAME"),
-    "mlflow_tracking_password": ("mlflow_tracking_password", "tracking_password", "MLFLOW_TRACKING_PASSWORD"),
-    "mlflow_experiment_name": ("mlflow_experiment_name", "experiment_name", "MLFLOW_EXPERIMENT_NAME"),
-    "mlflow_register_model_name": ("mlflow_register_model_name", "registered_model_name", "MLFLOW_REGISTER_MODEL_NAME"),
-}
-REQUIRED_MLFLOW_GATE_KEYS = (
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-)
+MLFLOW_SETTING_NAMES = set(REQUIRED_MLFLOW_GATE_KEYS)
 MODEL_RELATED_SETTING_NAMES = {
     "SOURCE_MODEL_PATH",
     "DATA_MODEL_PATH",
@@ -496,20 +476,6 @@ PATH_SEPARATOR_TRANSLATION = str.maketrans({
 WINDOWS_ABSOLUTE_PATH_PATTERN = re.compile(r"^[A-Za-z]:/")
 
 
-def resolve_workspace_project(raw_project: str) -> Path:
-    raw = raw_project.strip()
-    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
-        raw = "."
-    elif "<" in raw or ">" in raw:
-        raise ValueError("replace placeholder project path before running, for example: --project .")
-
-    project = Path(raw).expanduser().resolve()
-    parts = project.parts
-    if ".opencode" in parts:
-        opencode_index = parts.index(".opencode")
-        if opencode_index > 0:
-            return Path(*parts[:opencode_index]).resolve()
-    return project
 PATH_LIKE_STRING_PATTERN = re.compile(
     r"("
     r"(?:/mnt|/data|/home|/workspace|/tmp|ai_studio|data|models?|artifacts?|saved_model)"
@@ -641,39 +607,6 @@ def normalize_path_text(value: str) -> str:
     return re.sub(r"/+", "/", value.translate(PATH_SEPARATOR_TRANSLATION))
 
 
-def strip_env_value(value: str) -> str:
-    text = value.strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
-        text = text[1:-1].strip()
-    return text
-
-
-def todo_placeholder(value: str) -> bool:
-    text = strip_env_value(value).strip().lower()
-    return text in {"", "todo", "{todo}", "<todo>", "tbd", "none", "null", "입력", "입력필요"}
-
-
-def parse_env_file(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.is_file():
-        return values
-    for raw_line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = strip_env_value(value)
-    return values
-
-
-def mlflow_setting_value(values: dict[str, str], key: str) -> str:
-    for alias in MLFLOW_SETTING_ALIASES.get(key, (key,)):
-        value = values.get(alias)
-        if value is not None:
-            return value
-    return ""
-
-
 def missing_required_mlflow_values(project: Path) -> list[str]:
     values = parse_env_file(project / ".env")
     missing: list[str] = []
@@ -710,20 +643,6 @@ def model_sort_key(path: Path, project: Path) -> str:
     except ValueError:
         relative = path
     return normalize_path_text(str(relative)).lower()
-
-
-def is_filesystem_root(path: Path) -> bool:
-    return path.parent == path
-
-
-def is_opencode_sample_source(path: Path) -> bool:
-    parts = path.resolve().parts
-    if ".opencode" in parts:
-        return True
-    for index, part in enumerate(parts[:-1]):
-        if part == ".opencode" and parts[index + 1] in {"sample", "samples"}:
-            return True
-    return False
 
 
 def scan_model_artifacts(project: Path) -> list[Path]:

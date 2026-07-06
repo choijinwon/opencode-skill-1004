@@ -10,6 +10,13 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_ROOT = ROOT / "scripts"
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from common.mlflow_settings import AI_STUDIO_ENV_KEYS, AUTO_DEFAULT_SETTING_KEYS
+from common.workspace import is_filesystem_root, is_opencode_sample_source, resolve_workspace_project
+
 PS_PREPARE_MODEL_COMMAND = r"python .opencode/scripts/02-model-select/select_model.py --project . --model <번호|상대경로>"
 PS_BOOTSTRAP_COMMAND = r"python .opencode/scripts/04-sample-bootstrap/bootstrap_sample_project.py"
 
@@ -163,20 +170,6 @@ SAMPLE_SPEC_FILES = [
     "requirements.txt",
     "input_example.json",
 ]
-
-# AI Studio 실행에 필요한 .env 키입니다.
-AI_STUDIO_ENV_KEYS = [
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-]
-AUTO_DEFAULT_SETTING_KEYS = {
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-}
-
 
 @dataclass
 class Check:
@@ -333,23 +326,6 @@ def score_project(path: Path) -> int:
     return score
 
 
-def resolve_workspace_project(raw_project: str) -> Path:
-    # 사용자가 넘긴 경로를 실제 워크스페이스 프로젝트 루트 기준으로 정규화합니다.
-    raw = raw_project.strip()
-    if raw in {"<workspace-root>", "<current-project-folder>", "<model-project-folder>"}:
-        raw = "."
-    elif "<" in raw or ">" in raw:
-        raise ValueError("replace placeholder project path before running, for example: --project .")
-
-    project = Path(raw).expanduser().resolve()
-    parts = project.parts
-    if ".opencode" in parts:
-        opencode_index = parts.index(".opencode")
-        if opencode_index > 0:
-            return Path(*parts[:opencode_index]).resolve()
-    return project
-
-
 def select_project(explicit: str | None) -> tuple[Path, str]:
     # 현재 단계는 사용자가 지정한 프로젝트를 우선 사용하고, 없으면 현재 폴더를 씁니다.
     if explicit:
@@ -357,22 +333,6 @@ def select_project(explicit: str | None) -> tuple[Path, str]:
         return project, "explicit path"
 
     return resolve_workspace_project("."), "current directory only"
-
-
-def is_filesystem_root(path: Path) -> bool:
-    # 드라이브/파일시스템 루트 전체 검색을 막기 위한 판별입니다.
-    return path.parent == path
-
-
-def is_opencode_sample_source(path: Path) -> bool:
-    # .opencode 번들/샘플 원본은 사용자 프로젝트가 아니므로 분석 대상에서 제외합니다.
-    parts = path.resolve().parts
-    if ".opencode" in parts:
-        return True
-    for index, part in enumerate(parts[:-1]):
-        if part == ".opencode" and parts[index + 1] in {"sample", "samples"}:
-            return True
-    return False
 
 
 def iter_files(path: Path, max_depth: int = 4):
