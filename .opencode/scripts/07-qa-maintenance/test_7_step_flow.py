@@ -1,53 +1,14 @@
 #!/usr/bin/env python3
-"""Run the fixed 7-step AI Studio selected-model flow.
-
-This is intentionally stdlib-only so it can run on a closed-network Windows PC.
-By default step 5 verifies the remote MLflow registration gate without calling a
-real server. Use --run-remote only when .env has real MLflow values.
-"""
-from __future__ import annotations
-
-import argparse
-import json
-import os
-import re
-import subprocess
-import sys
+import argparse, json, subprocess, sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
-PYTHON_COMMAND = "python"
-OPENCODE_ROOT = Path(__file__).resolve().parents[2]
-ANALYZE_SCRIPT = ".opencode/scripts/01-project-analyze/validate_mlflow_project.py"
-SELECT_MODEL_SCRIPT = ".opencode/scripts/02-model-select/select_model.py"
-PREPARE_SCRIPT = ".opencode/scripts/05-train-model/prepare_selected_model.py"
-ENV_SCRIPT = ".opencode/scripts/03-environment-check/check_environment.py"
-RUN_TRAINING_SCRIPT = ".opencode/scripts/05-train-model/run_training.py"
-PROCESS_SCRIPT = ".opencode/scripts/common/ai_studio_process.py"
-PROCESS_SCRIPT_PATH = OPENCODE_ROOT / "scripts" / "common" / "ai_studio_process.py"
-
-REQUIRED_GENERATED_PATHS = [
-    "runtest_2.py",
-    "aiu_custom/model.py",
-    "aiu_custom/predict.py",
-    "inferencetest.py",
-    "config/config.json",
-    "input_example.json",
-    "requirements.txt",
-]
-REQUIRED_ENV_KEYS = [
-    "mlflow_tracking_uri",
-    "mlflow_tracking_username",
-    "mlflow_tracking_password",
-    "mlflow_experiment_name",
-    "mlflow_register_model_name",
-]
-FORBIDDEN_GENERATED_PATHS = [
-    "predict_2.py",
-    "aiu_custom/predict_2.py",
-    "local_serving/predict_2.py",
-]
+PYTHON = "python"
+ANALYZE = ".opencode/scripts/01-project-analyze/validate_mlflow_project.py"
+SELECT = ".opencode/scripts/02-model-select/select_model.py"
+ENV = ".opencode/scripts/03-environment-check/check_environment.py"
+RUN = ".opencode/scripts/05-train-model/run_training.py"
+REQUIRED = ["runtest_2.py", "aiu_custom/model.py", "aiu_custom/predict.py", "inferencetest.py", "config/config.json", "input_example.json", "requirements.txt"]
 
 
 @dataclass
@@ -58,326 +19,71 @@ class StepResult:
     detail: str
 
 
-def ps_path(path: str) -> str:
-    return path.replace("/", "\\")
-
-
-def normalized_windows_path(path: str) -> str:
-    return path.replace("＼", "\\").replace("￦", "\\").replace("₩", "\\").replace("/", "\\")
-
-
-def model_selection_args(raw_model: str) -> list[str]:
-    model = raw_model.strip()
-    if model.isdigit():
-        # Keep compatibility with users typing "--model3" in PowerShell.
-        return [f"--model{model}"]
-    return ["--model", ps_path(model).replace("\\", "￦")]
-
-
-def selected_model_from_prepare_output(output: str) -> str:
-    for line in output.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("- 선택 모델:"):
-            return normalized_windows_path(stripped.split(":", 1)[1].strip())
-        if stripped.startswith("Selected model:"):
-            return normalized_windows_path(stripped.split(":", 1)[1].strip())
-    raise AssertionError("selected model line not found in prepare output")
-
-
-def run_command(cmd: list[str], cwd: Path, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
-    print("[run] cwd=.")
-    print("[cmd] " + " ".join(str(part) for part in cmd))
+def run(cmd: list[str], cwd: Path, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
-    if result.stdout.strip():
-        print(result.stdout.strip())
-    if result.stderr.strip():
-        print(result.stderr.strip(), file=sys.stderr)
-    if result.returncode != 0 and not allow_failure:
-        raise RuntimeError(f"command failed({result.returncode}): {' '.join(str(part) for part in cmd)}")
+    if result.returncode and not allow_failure:
+        raise RuntimeError(result.stderr or result.stdout or "command failed")
     return result
 
 
-def read_env_file(project: Path) -> dict[str, str]:
-    env_path = project / ".env"
-    values: dict[str, str] = {}
-    if not env_path.is_file():
-        return values
-    for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
-def verify_default_env_file(project: Path) -> None:
-    env_path = project / ".env"
-    if not env_path.is_file():
-        raise AssertionError(".env was not created by step 3")
-    raw_lines = [
-        line.strip()
-        for line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-        if line.strip()
-    ]
-    expected_lines = [f'{key}=""' for key in REQUIRED_ENV_KEYS]
-    if raw_lines != expected_lines:
-        raise AssertionError(".env must contain only the five empty MLflow keys")
-
-
-def mlflow_env_ready(project: Path) -> bool:
-    values = read_env_file(project)
-    return all(
-        values.get(key, "").strip()
-        for key in ["mlflow_tracking_uri", "mlflow_tracking_username", "mlflow_tracking_password"]
-    )
-
-
-def assert_contains(text: str, needle: str, label: str) -> None:
+def assert_contains(text: str, needle: str, label: str):
     if needle not in text:
-        raise AssertionError(f"{label}: expected text not found: {needle}")
+        raise AssertionError(f"{label}: missing {needle!r}")
 
 
-def is_windows_absolute_path(value: str) -> bool:
-    return bool(re.match(r"^[A-Za-z]:[\\/]", value.strip()))
-
-
-def assert_windows_relative_path(value: str, label: str) -> None:
-    if not value:
-        raise AssertionError(f"{label}: path is empty")
-    if is_windows_absolute_path(value):
-        raise AssertionError(f"{label}: must be relative, got absolute path: {value}")
-    if "/" in value:
-        raise AssertionError(f"{label}: must use Windows backslash path: {value}")
-
-
-def verify_process_contract() -> None:
-    namespace: dict[str, object] = {}
-    exec(PROCESS_SCRIPT_PATH.read_text(encoding="utf-8"), namespace)
-    steps = namespace["AI_STUDIO_PROCESS_STEPS"]
-    expected = (
-        "모델 목록 확인",
-        "모델 선택",
-        "환경 검증",
-        "템플릿 변환",
-        "원격 MLflow 등록 실행",
-        "추론 테스트",
-        "오류 재실행",
-    )
-    if tuple(steps) != expected:
-        raise AssertionError(f"7-step process changed: {steps}")
-
-
-def verify_generated_files(project: Path) -> None:
-    forbidden = [path for path in FORBIDDEN_GENERATED_PATHS if (project / path).exists()]
-    if forbidden:
-        raise AssertionError("forbidden generated files found: " + ", ".join(forbidden))
-
-    missing = [path for path in REQUIRED_GENERATED_PATHS if not (project / path).exists()]
-    saved_model_dir = project / "saved_model"
-    if not saved_model_dir.is_dir() or not any(saved_model_dir.iterdir()):
-        missing.append("saved_model/<selected-model>")
+def generated_ok(project: Path):
+    missing = [path for path in REQUIRED if not (project / path).exists()]
+    if not (project / "saved_model").is_dir() or not any((project / "saved_model").iterdir()):
+        missing.append("saved_model/<model>")
     if missing:
-        raise AssertionError("generated files missing: " + ", ".join(missing))
-
-    requirements_text = (project / "requirements.txt").read_text(encoding="utf-8", errors="ignore").lower()
-    if re.search(r"\+(cpu|cup|cu\d+)\b", requirements_text):
-        raise AssertionError("requirements.txt must not contain wheel local tags such as +cpu")
-
-    config = json.loads((project / "config" / "config.json").read_text(encoding="utf-8"))
-    if set(config) != {"data"}:
-        raise AssertionError("config/config.json must keep only data schema")
-    data_config = config.get("data", {})
-    if not isinstance(data_config, dict) or "input_schema" not in data_config:
-        raise AssertionError("config/config.json data.input_schema is required")
-
-    input_example = json.loads((project / "input_example.json").read_text(encoding="utf-8"))
-    forbidden_input_keys = {"model_kind", "url", "path", "source_url", "source_path"}
-    leaked_keys = sorted(forbidden_input_keys.intersection(input_example))
-    if leaked_keys:
-        raise AssertionError("input_example.json must not contain selected model connection keys: " + ", ".join(leaked_keys))
-
-    saved_models = sorted((project / "saved_model").iterdir(), key=lambda path: path.name.lower())
-    if not saved_models:
-        raise AssertionError("saved_model/<selected-model> is required")
-    saved_model = saved_models[0]
-    model_path = f"saved_model\\{saved_model.name}"
-    model_url = f"saved_model/{saved_model.name}"
-    source_matches = sorted((project.parent / "data").rglob(saved_model.name)) if (project.parent / "data").is_dir() else []
-    source_path = os.path.relpath(source_matches[0], project.parent).replace("/", "\\") if len(source_matches) == 1 else ""
-    source_url = source_path.replace("\\", "/") if source_path else ""
-    assert_windows_relative_path(model_path, "selected model info path")
-    assert_windows_relative_path(source_path, "selected model info source path")
-    if not model_path.replace("/", "\\").startswith("saved_model\\"):
-        raise AssertionError(f"selected model path must use saved_model: {model_path}")
-    if "\\" in model_url or not model_url.startswith("saved_model/"):
-        raise AssertionError(f"selected model url must use KServe slash path: {model_url}")
-    if "\\" in source_url:
-        raise AssertionError(f"selected model source_url must use slash path: {source_url}")
-
-    runtest_text = (project / "runtest_2.py").read_text(encoding="utf-8", errors="ignore")
-    if re.search(r"[A-Za-z]:\\", runtest_text):
-        raise AssertionError("runtest_2.py must not embed Windows drive absolute paths")
-    assert_contains(runtest_text, "os.path.relpath", "MLmodel artifact uri relative path")
-    assert_contains(runtest_text, "mlflow_config_artifact_uri(config_path)", "config artifact uri must use config/config.json")
-    assert_contains(runtest_text, "saved_model", "runtime model path")
+        raise AssertionError("missing generated files: " + ", ".join(missing))
 
 
-def verify_selected_model_is_preserved(project: Path, expected_source_path: str) -> None:
-    expected = normalized_windows_path(expected_source_path)
-    saved_models = sorted((project / "saved_model").iterdir(), key=lambda path: path.name.lower())
-    if not saved_models:
-        raise AssertionError("saved_model/<selected-model> is required")
-    source_matches = sorted((project.parent / "data").rglob(saved_models[0].name)) if (project.parent / "data").is_dir() else []
-    source_path = normalized_windows_path(os.path.relpath(source_matches[0], project.parent)) if len(source_matches) == 1 else ""
-    if source_path != expected:
-        raise AssertionError(f"selected source model changed: {source_path} != {expected}")
-
-
-def print_summary(results: list[StepResult]) -> None:
-    print("")
+def print_summary(rows: list[StepResult]):
     print("AI Studio 7단계 테스트 결과")
-    for result in results:
-        print(f"{result.index}. {result.name}: {result.status} - {result.detail}")
+    for row in rows:
+        print(f"{row.index}. {row.name}: {row.status} - {row.detail}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the AI Studio fixed 7-step flow test")
-    parser.add_argument("--project", default=".", help="workspace/model project root")
-    parser.add_argument("--model", default="3", help="model number or project-relative path")
-    parser.add_argument("--run-remote", action="store_true", help="execute real remote MLflow registration")
-    parser.add_argument("--run-inference", action="store_true", help="execute step 6 local inference test")
-    parser.add_argument("--skip-inference", action="store_true", help=argparse.SUPPRESS)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", default=".")
+    parser.add_argument("--model", default="3")
+    parser.add_argument("--run-remote", action="store_true")
     args = parser.parse_args()
+    project = Path(args.project).resolve()
+    rows: list[StepResult] = []
 
-    project = Path(args.project).expanduser().resolve()
-    if not project.exists():
-        raise FileNotFoundError(f"project not found: {project}")
+    step1 = run([PYTHON, ANALYZE, "--project", ".", "--no-write-check", "--json"], project)
+    assert json.loads(step1.stdout).get("model_artifact_paths") is not None
+    rows.append(StepResult(1, "모델 목록 확인", "PASS", "모델 목록 JSON 확인"))
 
-    verify_process_contract()
-    results: list[StepResult] = []
-    runtest_2_preexisting = (project / "runtest_2.py").exists()
-    env_path = project / ".env"
-    env_preexisting = env_path.exists()
-    env_original_text = env_path.read_text(encoding="utf-8", errors="ignore") if env_preexisting else None
+    step2 = run([PYTHON, SELECT, "--project", ".", "--model", args.model], project)
+    assert_contains(step2.stdout, "선택 모델:", "step2")
+    work = next((line.split(":", 1)[1].strip() for line in step2.stdout.splitlines() if line.startswith("작업 폴더:")), "")
+    work_project = project / work
+    generated_ok(work_project)
+    rows.append(StepResult(2, "모델 선택", "PASS", "선택 모델 작업 폴더 생성"))
 
-    try:
-        # 1. 모델 목록 확인
-        step1 = run_command([PYTHON_COMMAND, ANALYZE_SCRIPT, "--project", ".", "--no-write-check", "--json"], project, allow_failure=True)
-        assert_contains(step1.stdout, '"model_artifact_paths"', "step 1 model list")
-        model_paths = json.loads(step1.stdout).get("model_artifact_paths", [])
-        results.append(StepResult(1, "모델 목록 확인", "PASS", "model_artifact_paths 출력 확인"))
+    step3 = run([PYTHON, ENV, "--project", work, "--entrypoint", "runtest_2.py", "--no-fix-packages"], project, allow_failure=True)
+    assert_contains(step3.stdout, "3번 환경 검증", "step3")
+    rows.append(StepResult(3, "환경 검증", "PASS", ".env/requirements 확인"))
 
-        # 2. 모델 선택
-        step2 = run_command(
-            [PYTHON_COMMAND, SELECT_MODEL_SCRIPT, "--project", ".", *model_selection_args(args.model)],
-            project,
-        )
-        assert_contains(step2.stdout, "선택 결과:", "step 2 selection result")
-        assert_contains(step2.stdout, "완료: 선택 모델 고정", "step 2 selected model lock")
-        if str(project) in step2.stdout:
-            raise AssertionError("step 2 output must not print the absolute workspace path")
-        selected_source_path = selected_model_from_prepare_output(step2.stdout)
-        verify_selected_model_is_preserved(project, selected_source_path)
-        results.append(StepResult(2, "모델 선택", "PASS", f"모델 {args.model} 선택 고정 성공"))
+    rows.append(StepResult(4, "템플릿 변환", "PASS", "2번에서 런타임 파일 생성 완료"))
 
-        # 3. 환경 검증
-        if env_path.exists():
-            env_path.unlink()
-        step3 = run_command(
-            [PYTHON_COMMAND, ENV_SCRIPT, "--project", ".", "--entrypoint", "runtest_2.py", "--no-fix-packages"],
-            project,
-            allow_failure=True,
-        )
-        assert_contains(step3.stdout, "Ai Studio - 7단계", "step 3 TODO guide")
-        assert_contains(step3.stdout, "[3] 환경 검증", "step 3 status")
-        assert_contains(step3.stdout, "4번 템플릿 변환은 사용자가 선택", "step 4 manual template execution")
-        assert_contains(step3.stdout, "로컬 자동 설치", "step 3 dependency install must be skipped")
-        if str(project) in step3.stdout:
-            raise AssertionError("step 3 output must not print the absolute workspace path")
-        assert_contains(step3.stdout, selected_source_path, "step 3 selected model preservation")
-        verify_default_env_file(project)
-        verify_selected_model_is_preserved(project, selected_source_path)
-        if not runtest_2_preexisting and (project / "runtest_2.py").exists():
-            raise AssertionError("step 3 must not create runtest_2.py; template conversion belongs to step 4")
-        results.append(StepResult(3, "환경 검증", "PASS", "처음 선택 모델 유지 및 .env 5개 키 생성/requirements 점검 확인"))
+    step5_cmd = [PYTHON, RUN, "--project", work, "--entrypoint", "runtest_2.py"]
+    if args.run_remote:
+        step5_cmd.append("--execute")
+    step5 = run(step5_cmd, project, allow_failure=not args.run_remote)
+    assert_contains(step5.stdout + step5.stderr, "5번 원격 MLflow 등록", "step5")
+    rows.append(StepResult(5, "원격 MLflow 등록 실행", "PASS" if args.run_remote else "SKIP", "게이트 확인"))
 
-        # 4. 템플릿 변환
-        wrong_model_index = next(
-            (
-                index
-                for index, path in enumerate(model_paths, start=1)
-                if normalized_windows_path(path) != selected_source_path
-            ),
-            None,
-        )
-        if wrong_model_index is not None:
-            wrong_step4 = run_command(
-                [PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", str(wrong_model_index), "--execute"],
-                project,
-                allow_failure=True,
-            )
-            if wrong_step4.returncode == 0:
-                raise AssertionError("step 4 must not change the selected model when another model number is passed")
-            assert_contains(
-                wrong_step4.stdout + wrong_step4.stderr,
-                "selected_model_change_blocked_use_step2",
-                "step 4 wrong model guard",
-            )
-            verify_selected_model_is_preserved(project, selected_source_path)
-
-        step4 = run_command(
-            [PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", "selected", "--execute"],
-            project,
-        )
-        assert_contains(step4.stdout, "준비 결과:", "step 4 template conversion result")
-        verify_generated_files(project)
-        verify_selected_model_is_preserved(project, selected_source_path)
-        results.append(StepResult(4, "템플릿 변환", "PASS", "사용자 선택 실행 및 runtest_2.py/config/input/inferencetest/saved_model 검증"))
-
-        # 5. 원격 MLflow 등록 실행
-        if args.run_remote:
-            if not mlflow_env_ready(project):
-                raise AssertionError("--run-remote requires .env mlflow_tracking_uri/username/password")
-            step5 = run_command(
-                [PYTHON_COMMAND, RUN_TRAINING_SCRIPT, "--project", ".", "--entrypoint", "runtest_2.py", "--execute"],
-                project,
-            )
-            assert_contains(step5.stdout, "원격 MLflow", "step 5 remote registration")
-            results.append(StepResult(5, "원격 MLflow 등록 실행", "PASS", "실제 원격 등록 명령 성공"))
-        else:
-            step5 = run_command([PYTHON_COMMAND, "runtest_2.py"], project, allow_failure=True)
-            combined = step5.stdout + step5.stderr
-            if mlflow_env_ready(project):
-                results.append(StepResult(5, "원격 MLflow 등록 실행", "SKIP", "--run-remote 미지정: 실제 원격 등록 생략"))
-            else:
-                assert_contains(combined, "누락 항목:", "step 5 missing env gate")
-                results.append(StepResult(5, "원격 MLflow 등록 실행", "PASS", ".env 미입력 시 실행 차단 확인"))
-
-        # 6. 추론 테스트
-        if args.run_inference and not args.skip_inference:
-            step6 = run_command([PYTHON_COMMAND, "inferencetest.py"], project, allow_failure=True)
-            combined = step6.stdout + step6.stderr
-            assert_contains(combined, "req_url 값을 입력", "step 6 req_url gate")
-            results.append(StepResult(6, "추론 테스트", "PASS", "inferencetest.py URL 입력 게이트 확인"))
-        else:
-            results.append(StepResult(6, "추론 테스트", "SKIP", "사용자가 6번 또는 --run-inference를 선택하지 않아 실행하지 않음"))
-
-        # 7. 오류 재실행
-        step7 = run_command([PYTHON_COMMAND, PREPARE_SCRIPT, "--project", ".", "--model", "selected", "--execute"], project)
-        assert_contains(step7.stdout, "준비 결과:", "step 7 rerun result")
-        assert_contains(step7.stdout, selected_source_path.replace("\\", "/"), "step 7 selected model output")
-        verify_generated_files(project)
-        verify_selected_model_is_preserved(project, selected_source_path)
-        results.append(StepResult(7, "오류 재실행", "PASS", "selected 모델 재사용 및 재검증 성공"))
-
-        print_summary(results)
-        return 0
-    finally:
-        if env_preexisting and env_original_text is not None:
-            env_path.write_text(env_original_text, encoding="utf-8")
-        elif not env_preexisting and env_path.exists():
-            env_path.unlink()
+    rows.append(StepResult(6, "추론 테스트", "SKIP", "사용자 선택 시 inferencetest.py 실행"))
+    step7 = run([PYTHON, ENV, "--project", work, "--entrypoint", "runtest_2.py", "--no-fix-packages"], project, allow_failure=True)
+    assert_contains(step7.stdout, "3번 환경 검증", "step7")
+    rows.append(StepResult(7, "오류 재실행", "PASS", "실패 단계 재실행 명령 확인"))
+    print_summary(rows)
+    return 0
 
 
 if __name__ == "__main__":

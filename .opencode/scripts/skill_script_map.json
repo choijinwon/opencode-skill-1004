@@ -17,10 +17,7 @@
     "primary_scripts": [
       "02-model-select/select_model.py"
     ],
-    "delegates_to": [
-      "05-train-model/prepare_selected_model.py"
-    ],
-    "purpose": "PowerShell-safe step 2 wrapper that locks the selected model only"
+    "purpose": "PowerShell-safe step 2 wrapper that locks the selected model and creates runtime files"
   },
   "03-environment-check": {
     "skill_folder": "03-agent-mlflow-skill-environment-check",
@@ -47,18 +44,11 @@
   },
   "05-train-model": {
     "skill_folder": "05-agent-mlflow-skill-train-model",
-    "process_steps": [
-      "4. 템플릿 변환",
-      "5. 원격 MLflow 등록 실행"
-    ],
+    "process_steps": ["5. 원격 MLflow 등록 실행"],
     "primary_scripts": [
-      "05-train-model/prepare_selected_model.py",
       "05-train-model/run_training.py"
     ],
-    "support_scripts": [
-      "05-train-model/adapt_ai_studio.py"
-    ],
-    "purpose": "lock selected model, transform templates on step 4, and run confirmed entrypoint on step 5"
+    "purpose": "run the selected model work folder entrypoint on step 5"
   },
   "06-inference-test": {
     "skill_folder": "06-agent-mlflow-skill-inference-test",

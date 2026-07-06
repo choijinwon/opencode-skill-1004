@@ -367,7 +367,7 @@ def main():
     parser = argparse.ArgumentParser(description="Bootstrap one bundled offline model sample folder into a workspace.")
     parser.add_argument("--project", default=".", help="target workspace root")
     parser.add_argument("--sample", choices=sorted(SAMPLES), help="sample key: sklearn, pytorch, tensorflow")
-    parser.add_argument("--model", help="existing-model compatibility: delegate to prepare_selected_model.py")
+    parser.add_argument("--model", help="existing-model compatibility: use 02-model-select/select_model.py instead")
     parser.add_argument("--copy-mode", choices=["folder", "root"], default="root", help="copy sample contents into the workspace root by default; use folder to keep the sample folder name")
     parser.add_argument("--scaffold-existing", action="store_true", help="copy only missing sample-spec scaffold files into an existing model project without overwriting")
     parser.add_argument("--list", action="store_true", help="list selectable samples")
@@ -377,30 +377,7 @@ def main():
     args = parser.parse_args()
 
     if args.model:
-        module_path = ROOT / "scripts" / "05-train-model" / "prepare_selected_model.py"
-        spec = importlib.util.spec_from_file_location("prepare_selected_model_impl", module_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"cannot load script: {module_path}")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        build_selected_model_report = module.build_report
-        print_selected_model_report = module.print_report
-
-        delegated_args = Namespace(
-            project=args.project,
-            model=args.model,
-            execute=args.execute,
-            force=args.force,
-            json=args.json,
-        )
-        report = build_selected_model_report(delegated_args)
-        if args.json:
-            print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
-        else:
-            print("[route] --model은 기존 모델 변환 흐름이므로 prepare_selected_model.py로 처리합니다.")
-            print_selected_model_report(report)
-        return
+        raise SystemExit("--model 흐름은 02-model-select/select_model.py를 직접 실행하세요.")
 
     if args.list:
         rows = list_samples()
