@@ -1,0 +1,4 @@
+{
+  "kind": "tensorflow_keras",
+  "input_dim": 4
+}
